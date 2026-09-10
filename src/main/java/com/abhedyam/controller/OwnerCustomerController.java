@@ -30,14 +30,14 @@ public class OwnerCustomerController {
     private final ISaleItemService saleItemService;
 
     @GetMapping
-    @Operation(summary = "List customers", description = "List customers for an owner with search and pagination. When includePendingAmountDetails is true, each customer includes pending amount (sale total minus paid). Use village param to filter by exact village name.")
+    @Operation(summary = "List customers", description = "List customers for an owner with search and pagination. Default order is by village (customers grouped by village then by name, those with no village last). Pass sortBy=createdAt (or another Customer field) with sortDirection to override. When includePendingAmountDetails is true, each customer includes pending amount (sale total minus paid). Use village param to filter by exact village name.")
     public ApiResponse<PageResponse<CustomerResponse>> listCustomers(
             @PathVariable UUID ownerId,
             @RequestParam(value = QueryParams.Q, required = false) String q,
             @RequestParam(value = "village", required = false) String village,
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "20") Integer size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "village") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDirection,
             @RequestParam(value = QueryParams.INCLUDE_PENDING_AMOUNT_DETAILS, defaultValue = "false") Boolean includePendingAmountDetails) {
         return ApiResponse.success(customerService.getOwnerCustomers(ownerId, q, village, page, size, sortBy, sortDirection, Boolean.TRUE.equals(includePendingAmountDetails)));

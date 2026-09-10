@@ -290,30 +290,56 @@ public class CustomerService implements ICustomerService {
             }
         }
 
-        Sort sort = Sort.by(
-            "DESC".equalsIgnoreCase(sortDirection)
-                ? Sort.Direction.DESC
-                : Sort.Direction.ASC,
-            sortBy != null && !sortBy.trim().isEmpty() ? sortBy : "createdAt"
-        );
-        Pageable pageable = PageRequest.of(page, size, sort);
+        // Default ordering is by village (grouped, then by name, blanks last) —
+        // shopkeepers work village-by-village. Any other sortBy keeps the old
+        // Customer-column behaviour.
+        String effectiveSortBy = sortBy != null && !sortBy.trim().isEmpty() ? sortBy.trim() : "village";
+        boolean sortByVillage = "village".equalsIgnoreCase(effectiveSortBy);
 
         Page<Customer> customerPage;
-        if (normalizedVillage != null) {
-            customerPage = customerRepository.searchCustomersWithVillageFilter(
-                ownerId,
-                normalizedVillage,
-                normalizedSearchText,
-                isNumeric,
-                pageable
-            );
+        if (sortByVillage) {
+            Pageable pageable = PageRequest.of(page, size); // ORDER BY lives in the query
+            if (normalizedVillage != null) {
+                customerPage = customerRepository.searchCustomersWithVillageFilterOrderByVillage(
+                    ownerId,
+                    normalizedVillage,
+                    normalizedSearchText,
+                    isNumeric,
+                    pageable
+                );
+            } else {
+                customerPage = customerRepository.searchCustomersOrderByVillage(
+                    ownerId,
+                    normalizedSearchText,
+                    isNumeric,
+                    pageable
+                );
+            }
         } else {
-            customerPage = customerRepository.searchCustomersWithVillage(
-                ownerId,
-                normalizedSearchText,
-                isNumeric,
-                pageable
+            Sort sort = Sort.by(
+                "DESC".equalsIgnoreCase(sortDirection)
+                    ? Sort.Direction.DESC
+                    : Sort.Direction.ASC,
+                effectiveSortBy
             );
+            Pageable pageable = PageRequest.of(page, size, sort);
+
+            if (normalizedVillage != null) {
+                customerPage = customerRepository.searchCustomersWithVillageFilter(
+                    ownerId,
+                    normalizedVillage,
+                    normalizedSearchText,
+                    isNumeric,
+                    pageable
+                );
+            } else {
+                customerPage = customerRepository.searchCustomersWithVillage(
+                    ownerId,
+                    normalizedSearchText,
+                    isNumeric,
+                    pageable
+                );
+            }
         }
 
         List<Customer> customers = customerPage.getContent();
