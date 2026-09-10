@@ -143,8 +143,11 @@ All endpoints are versioned under `/api/v1/`
 
 ### Authentication
 
-- `POST /api/v1/auth/otp/send` - Send OTP (email primary, SMS fallback)
-- `POST /api/v1/auth/otp/verify` - Verify OTP and get JWT token
+- `POST /api/v1/auth/google/login` - Owner login with Firebase ID token
+- `POST /api/v1/auth/phone/login` - Customer login (Connect app, no OTP)
+- `POST /api/v1/auth/otp/send` - Send SMS OTP for web customer login
+- `POST /api/v1/auth/otp/verify` - Verify OTP and get customer JWT
+- `POST /api/v1/auth/refresh` - Issue a fresh JWT from a still-valid token
 
 ### Key Endpoints
 

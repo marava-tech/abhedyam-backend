@@ -23,5 +23,9 @@ public interface OwnerRepository extends JpaRepository<Owner, UUID> {
                               Pageable pageable);
 
     List<Owner> findBySubscriptionStatusAndValidTillBefore(SubscriptionStatus subscriptionStatus, Instant validTill);
+
+    java.util.Optional<Owner> findByPublicSlug(String publicSlug);
+
+    List<Owner> findByPublicListingEnabledTrueAndIsActiveTrue();
 }
 

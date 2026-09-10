@@ -34,5 +34,11 @@ public class Owner extends User {
     
     @Column
     private Instant validTill;
+
+    @Column(unique = true, length = 80)
+    private String publicSlug;
+
+    @Column(nullable = false)
+    private Boolean publicListingEnabled = false;
 }
 

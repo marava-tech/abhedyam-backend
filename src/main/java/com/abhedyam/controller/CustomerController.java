@@ -7,10 +7,13 @@ import com.abhedyam.dto.NearestCustomerRequest;
 import com.abhedyam.dto.NearestCustomerResponse;
 import com.abhedyam.model.Customer;
 import com.abhedyam.service.interfaces.ICustomerService;
+import com.abhedyam.service.interfaces.ISubscriptionService;
+import com.abhedyam.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +26,10 @@ import java.util.UUID;
 public class CustomerController {
     
     private final ICustomerService customerService;
+    private final ISubscriptionService subscriptionService;
+
+    @Value("${app.subscription.enforce:false}")
+    private boolean enforcePro;
     
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -43,6 +50,9 @@ public class CustomerController {
     
     @PostMapping("/nearest")
     public ApiResponse<NearestCustomerResponse> findNearestCustomer(@Valid @RequestBody NearestCustomerRequest request) {
+        if (enforcePro) {
+            subscriptionService.ensureProSubscription(SecurityUtil.getCurrentUserId());
+        }
         return ApiResponse.success(customerService.findNearestCustomer(request));
     }
 }

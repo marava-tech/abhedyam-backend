@@ -37,6 +37,12 @@ public class OwnerResponse {
     
     @Schema(description = "Subscription plan", example = "GO")
     private Subscription subscription;
+
+    @Schema(description = "Public shop URL slug")
+    private String publicSlug;
+
+    @Schema(description = "Whether the shop is listed publicly")
+    private Boolean publicListingEnabled;
     
     @Schema(description = "Creation timestamp (read-only, system-generated)", example = "2025-11-15T10:51:15.325Z", accessMode = Schema.AccessMode.READ_ONLY)
     private Instant createdAt;

@@ -27,5 +27,11 @@ public class OwnerUpdateRequest {
     
     @Schema(description = "Verification status", example = "false")
     private Boolean isVerified;
+
+    @Schema(description = "Public shop URL slug", example = "ravi-kirana")
+    private String publicSlug;
+
+    @Schema(description = "Whether the shop appears on public listing pages")
+    private Boolean publicListingEnabled;
 }
 
