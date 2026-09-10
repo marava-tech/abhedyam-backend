@@ -48,5 +48,8 @@ public class OwnerPublicResponse {
     
     @Schema(description = "Distance in kilometers (only present when lat/long query params provided)", example = "5.25")
     private BigDecimal distance;
+
+    @Schema(description = "Public shop slug when listing is enabled")
+    private String publicSlug;
 }
 

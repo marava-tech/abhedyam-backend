@@ -80,6 +80,9 @@ public class OwnerService implements IOwnerService {
                     response.setEmail(owner.getEmail());
                     response.setImageUrl(owner.getImageUrl());
                     response.setIsVerified(owner.getIsVerified());
+                    if (Boolean.TRUE.equals(owner.getPublicListingEnabled())) {
+                        response.setPublicSlug(owner.getPublicSlug());
+                    }
                     
                     if (location != null) {
                         response.setLatitude(location.getLatitude());
@@ -176,6 +179,27 @@ public class OwnerService implements IOwnerService {
         if (request.getSubscription() != null) {
             owner.setSubscription(request.getSubscription());
         }
+
+        if (request.getPublicListingEnabled() != null) {
+            owner.setPublicListingEnabled(request.getPublicListingEnabled());
+        }
+
+        if (request.getPublicSlug() != null) {
+            String slug = request.getPublicSlug().trim().toLowerCase();
+            if (slug.isEmpty()) {
+                owner.setPublicSlug(null);
+            } else {
+                if (!slug.matches("^[a-z0-9]+(?:-[a-z0-9]+)*$") || slug.length() > 80) {
+                    throw new BusinessException("INVALID_SLUG", "Shop slug must be lowercase letters, digits and hyphens");
+                }
+                ownerRepository.findByPublicSlug(slug).ifPresent(existing -> {
+                    if (!existing.getId().equals(owner.getId())) {
+                        throw new BusinessException("SLUG_TAKEN", "That shop URL is already in use");
+                    }
+                });
+                owner.setPublicSlug(slug);
+            }
+        }
         
         Owner saved = ownerRepository.save(owner);
         return toResponse(saved);
@@ -199,6 +223,8 @@ public class OwnerService implements IOwnerService {
         response.setImageUrl(owner.getImageUrl());
         response.setIsVerified(owner.getIsVerified());
         response.setSubscription(owner.getSubscription());
+        response.setPublicSlug(owner.getPublicSlug());
+        response.setPublicListingEnabled(owner.getPublicListingEnabled());
         response.setCreatedAt(owner.getCreatedAt());
         response.setUpdatedAt(owner.getUpdatedAt());
         return response;

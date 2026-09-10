@@ -21,9 +21,10 @@ public class FileUploadService implements IFileUploadService {
     private final Cloudinary cloudinary;
     private static final String FOLDER_NAME = "abhedyam";
     private static final String[] ALLOWED_IMAGE_TYPES = {
-        "image/jpeg", "image/jpg", "image/png", "image/gif", 
+        "image/jpeg", "image/jpg", "image/png", "image/gif",
         "image/webp", "image/bmp", "image/svg+xml"
     };
+    private static final String PDF_TYPE = "application/pdf";
     
     @Override
     public FileUploadResponse uploadFile(MultipartFile file) {
@@ -32,15 +33,16 @@ public class FileUploadService implements IFileUploadService {
         }
         
         String contentType = file.getContentType();
-        if (contentType == null || !isImageType(contentType)) {
-            throw new BusinessException("INVALID_FILE_TYPE", 
-                "Only image files are allowed. Supported formats: JPEG, JPG, PNG, GIF, WEBP, BMP, SVG");
+        boolean pdf = PDF_TYPE.equalsIgnoreCase(contentType);
+        if (contentType == null || (!isImageType(contentType) && !pdf)) {
+            throw new BusinessException("INVALID_FILE_TYPE",
+                "Only image and PDF files are allowed. Supported formats: JPEG, JPG, PNG, GIF, WEBP, BMP, SVG, PDF");
         }
         
         try {
             Map<String, Object> uploadParams = ObjectUtils.asMap(
                 "folder", FOLDER_NAME,
-                "resource_type", "image"
+                "resource_type", pdf ? "raw" : "image"
             );
             
             Map<String, Object> uploadResult = cloudinary.uploader().upload(

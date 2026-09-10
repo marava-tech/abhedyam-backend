@@ -125,7 +125,8 @@ app:
     invalidate:
       key: ${CACHE_INVALIDATE_KEY}
   subscription:
-    admin-key: ${SUBSCRIPTION_ADMIN_KEY}
+    admin-key: ${SUBSCRIPTION_ADMIN_KEY:}
+    enforce: ${SUBSCRIPTION_ENFORCE:false}
   admin:
     key-prefix: ${ADMIN_KEY_PREFIX}
     email: ${ADMIN_EMAIL:kinneramadhu123@gmail.com}

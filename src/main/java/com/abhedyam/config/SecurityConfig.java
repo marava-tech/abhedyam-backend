@@ -27,6 +27,7 @@ public class SecurityConfig {
     private final CorrelationIdFilter correlationIdFilter;
     private final LoggingFilter loggingFilter;
     private final AdminKeyFilter adminKeyFilter;
+    private final AuthRateLimitFilter authRateLimitFilter;
 
     @Value("${app.cors.allowed-origins:*}")
     private String allowedOrigins;
@@ -50,6 +51,7 @@ public class SecurityConfig {
                             "/api/v1/cache/invalidate",
                             "/api/v1/webhook/razorpay",
                             "/api/v1/health",
+                            "/api/v1/public/**",
                             "/swagger-ui/**",
                             "/swagger-ui.html",
                             "/swagger-ui/index.html",
@@ -62,6 +64,7 @@ public class SecurityConfig {
                             .requestMatchers("/actuator/**").authenticated()
                             .anyRequest().authenticated();
                 })
+                .addFilterBefore(authRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(correlationIdFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(loggingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

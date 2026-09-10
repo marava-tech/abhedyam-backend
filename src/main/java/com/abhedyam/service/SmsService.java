@@ -24,6 +24,7 @@ public class SmsService implements ISmsService {
     
     private static final String TWO_FACTOR_BASE_URL = "https://2factor.in/API/V1";
     
+    @Override
     public void sendOtp(String phone, String otp) {
         sendOtpWithTemplate(phone, otp);
     }

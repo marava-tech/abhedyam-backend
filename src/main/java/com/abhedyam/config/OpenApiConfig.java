@@ -27,7 +27,7 @@ public class OpenApiConfig {
                 .version("1.0.0")
                 .description("Backend API for Abhedyam Business Management Application. " +
                     "All endpoints are prefixed with /api/v1. " +
-                    "Use JWT token from /auth/otp/verify endpoint for authentication.")
+                    "Use JWT token from /auth/google/login (owners), /auth/otp/verify (web customers), or /auth/phone/login (Connect app).")
                 .contact(new Contact()
                     .name("Abhedyam Team")
                     .email("support@abhedyam.com"))
@@ -44,7 +44,7 @@ public class OpenApiConfig {
                         .type(SecurityScheme.Type.HTTP)
                         .scheme("bearer")
                         .bearerFormat("JWT")
-                        .description("JWT token obtained from /auth/otp/verify endpoint"))
+                        .description("JWT token from Google login, OTP verify, or phone login"))
                 .addSecuritySchemes("AdminKey",
                     new SecurityScheme()
                         .type(SecurityScheme.Type.APIKEY)
