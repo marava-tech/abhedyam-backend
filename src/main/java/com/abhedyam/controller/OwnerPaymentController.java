@@ -28,10 +28,8 @@ public class OwnerPaymentController {
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "20") Integer size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDirection,
-            @RequestParam(value = QueryParams.EXPAND, required = false) String expand) {
-        boolean expandNames = QueryParams.EXPAND_NAMES.equalsIgnoreCase(expand);
-        return ApiResponse.success(paymentService.getOwnerPayments(ownerId, q, page, size, sortBy, sortDirection, expandNames));
+            @RequestParam(defaultValue = "DESC") String sortDirection) {
+        return ApiResponse.success(paymentService.getOwnerPayments(ownerId, q, page, size, sortBy, sortDirection));
     }
 }
 
