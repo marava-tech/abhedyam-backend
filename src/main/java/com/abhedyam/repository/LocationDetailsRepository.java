@@ -20,14 +20,16 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
                      "INNER JOIN Customer c ON c.id = ld.userId " +
                      "WHERE c.ownerId = :ownerId " +
                      "AND ld.village IS NOT NULL " +
-                     "AND LOWER(ld.village) LIKE LOWER(CONCAT('%', :name, '%'))")
+                     "AND LOWER(ld.village) LIKE LOWER(CONCAT('%', :name, '%')) " +
+                     "ORDER BY ld.village ASC")
        List<String> findDistinctVillagesByNameContainingIgnoreCaseAndOwnerId(@Param("name") String name,
                      @Param("ownerId") UUID ownerId);
 
        @Query("SELECT DISTINCT ld.village FROM LocationDetails ld " +
                      "INNER JOIN Customer c ON c.id = ld.userId " +
                      "WHERE c.ownerId = :ownerId " +
-                     "AND ld.village IS NOT NULL")
+                     "AND ld.village IS NOT NULL " +
+                     "ORDER BY ld.village ASC")
        List<String> findDistinctVillagesByOwnerId(@Param("ownerId") UUID ownerId);
 
        @Query("SELECT ld FROM LocationDetails ld " +
@@ -65,7 +67,7 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
                      "AND ld.village IS NOT NULL " +
                      "AND c.isActive = true " +
                      "GROUP BY ld.village " +
-                     "ORDER BY customerCount DESC, ld.village ASC")
+                     "ORDER BY LOWER(TRIM(ld.village)) ASC")
        List<Object[]> findVillagesWithCustomerCountByOwnerId(@Param("ownerId") UUID ownerId);
 
        @Query(value = "SELECT ld.village, COUNT(c.id) as customerCount " +
@@ -75,7 +77,7 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
                      "AND ld.village IS NOT NULL " +
                      "AND c.isActive = true " +
                      "GROUP BY ld.village " +
-                     "ORDER BY customerCount DESC, ld.village ASC", countQuery = "SELECT COUNT(DISTINCT ld.village) " +
+                     "ORDER BY LOWER(TRIM(ld.village)) ASC", countQuery = "SELECT COUNT(DISTINCT ld.village) " +
                                    "FROM LocationDetails ld " +
                                    "INNER JOIN Customer c ON c.id = ld.userId " +
                                    "WHERE c.ownerId = :ownerId " +
@@ -91,7 +93,7 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
                      "AND LOWER(ld.village) LIKE LOWER(CONCAT('%', :name, '%')) " +
                      "AND c.isActive = true " +
                      "GROUP BY ld.village " +
-                     "ORDER BY customerCount DESC, ld.village ASC")
+                     "ORDER BY LOWER(TRIM(ld.village)) ASC")
        List<Object[]> findVillagesWithCustomerCountByNameContainingIgnoreCaseAndOwnerId(
                      @Param("name") String name,
                      @Param("ownerId") UUID ownerId);
@@ -104,7 +106,7 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
                      "AND LOWER(ld.village) LIKE LOWER(CONCAT('%', :name, '%')) " +
                      "AND c.isActive = true " +
                      "GROUP BY ld.village " +
-                     "ORDER BY customerCount DESC, ld.village ASC", countQuery = "SELECT COUNT(DISTINCT ld.village) " +
+                     "ORDER BY LOWER(TRIM(ld.village)) ASC", countQuery = "SELECT COUNT(DISTINCT ld.village) " +
                                    "FROM LocationDetails ld " +
                                    "INNER JOIN Customer c ON c.id = ld.userId " +
                                    "WHERE c.ownerId = :ownerId " +
