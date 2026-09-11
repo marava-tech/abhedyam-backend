@@ -52,6 +52,7 @@ public class PaymentLinkService {
         link.setSaleItemId(request.getSaleItemId());
         link.setAmount(request.getAmount());
         link.setExpiresAt(Instant.now().plus(14, ChronoUnit.DAYS));
+        link.setIsActive(true);
         link = paymentLinkRepository.save(link);
 
         PaymentLinkResponse response = new PaymentLinkResponse();

@@ -69,8 +69,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Skip JWT validation for public endpoints
-        if (path.startsWith("/api/v1/auth") || path.startsWith("/api/v1/health") || path.startsWith("/swagger-ui")) {
+        // Skip JWT validation for public endpoints. /public/** is permitAll so a
+        // pay-link visitor (or an owner previewing their own link) must not be
+        // rejected just because a stale Bearer token was forwarded.
+        if (path.startsWith("/api/v1/auth") || path.startsWith("/api/v1/health")
+                || path.startsWith("/swagger-ui") || path.startsWith("/api/v1/public")) {
             filterChain.doFilter(request, response);
             return;
         }
