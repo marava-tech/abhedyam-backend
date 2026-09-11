@@ -453,7 +453,7 @@ public class PaymentService implements IPaymentService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<PaymentResponse> getOwnerPayments(UUID ownerId, String searchText, Integer page, Integer size, String sortBy, String sortDirection, boolean expandNames) {
+    public PageResponse<PaymentResponse> getOwnerPayments(UUID ownerId, String searchText, Integer page, Integer size, String sortBy, String sortDirection) {
         validateOwnerAccess(ownerId);
         
         if (page == null || page < 0) {
@@ -488,7 +488,7 @@ public class PaymentService implements IPaymentService {
             : paymentRepository.searchPayments(ownerId, normalizedSearchText, isNumeric, amount, pageable);
         
         List<Payment> payments = paymentPage.getContent();
-        List<PaymentResponse> responses = mapPaymentResponses(payments, expandNames);
+        List<PaymentResponse> responses = mapPaymentResponses(payments);
         
         return new PageResponse<>(
             responses,
@@ -844,74 +844,69 @@ public class PaymentService implements IPaymentService {
         }
     }
 
-    private List<PaymentResponse> mapPaymentResponses(List<Payment> payments, boolean expandNames) {
+    /**
+     * Resolves customer and product names for a page of payments.
+     *
+     * The names are always resolved: a payment list that shows only ids is
+     * useless to a shopkeeper. It costs three batched lookups for the whole
+     * page, not one per row, so there is nothing to gate behind a flag.
+     */
+    private List<PaymentResponse> mapPaymentResponses(List<Payment> payments) {
         if (payments.isEmpty()) {
             return List.of();
         }
         
-        java.util.Map<UUID, String> customerNameMap = java.util.Map.of();
-        java.util.Map<UUID, String> productNameMap = java.util.Map.of();
-        java.util.Map<UUID, UUID> saleItemProductMap = java.util.Map.of();
+        List<UUID> customerIds = payments.stream()
+            .map(Payment::getCustomerId)
+            .filter(java.util.Objects::nonNull)
+            .distinct()
+            .toList();
+        List<Customer> customers = customerIds.isEmpty() ? List.of() : 
+            customerRepository.findByIdIn(customerIds);
+        java.util.Map<UUID, String> customerNameMap = customers.stream()
+            .collect(java.util.stream.Collectors.toMap(
+                Customer::getId,
+                Customer::getName,
+                (v1, v2) -> v1
+            ));
         
-        if (expandNames) {
-            List<UUID> customerIds = payments.stream()
-                .map(Payment::getCustomerId)
-                .filter(java.util.Objects::nonNull)
-                .distinct()
-                .toList();
-            List<Customer> customers = customerIds.isEmpty() ? List.of() : 
-                customerRepository.findByIdIn(customerIds);
-            customerNameMap = customers.stream()
-                .collect(java.util.stream.Collectors.toMap(
-                    Customer::getId,
-                    Customer::getName,
-                    (v1, v2) -> v1
-                ));
-            
-            List<UUID> saleItemIds = payments.stream()
-                .map(Payment::getSaleItemId)
-                .filter(java.util.Objects::nonNull)
-                .distinct()
-                .toList();
-            List<SaleItem> saleItems = saleItemIds.isEmpty() ? List.of() : 
-                saleItemRepository.findByIdIn(saleItemIds);
-            saleItemProductMap = saleItems.stream()
-                .collect(java.util.stream.Collectors.toMap(
-                    SaleItem::getId,
-                    SaleItem::getProductId,
-                    (v1, v2) -> v1
-                ));
-            
-            List<UUID> productIds = saleItems.stream()
-                .map(SaleItem::getProductId)
-                .filter(java.util.Objects::nonNull)
-                .distinct()
-                .toList();
-            List<Product> products = productIds.isEmpty() ? List.of() : 
-                productRepository.findByIdIn(productIds);
-            productNameMap = products.stream()
-                .collect(java.util.stream.Collectors.toMap(
-                    Product::getId,
-                    Product::getName,
-                    (v1, v2) -> v1
-                ));
-        }
+        List<UUID> saleItemIds = payments.stream()
+            .map(Payment::getSaleItemId)
+            .filter(java.util.Objects::nonNull)
+            .distinct()
+            .toList();
+        List<SaleItem> saleItems = saleItemIds.isEmpty() ? List.of() : 
+            saleItemRepository.findByIdIn(saleItemIds);
+        java.util.Map<UUID, UUID> saleItemProductMap = saleItems.stream()
+            .collect(java.util.stream.Collectors.toMap(
+                SaleItem::getId,
+                SaleItem::getProductId,
+                (v1, v2) -> v1
+            ));
         
-        java.util.Map<UUID, String> finalCustomerNameMap = customerNameMap;
-        java.util.Map<UUID, String> finalProductNameMap = productNameMap;
-        java.util.Map<UUID, UUID> finalSaleItemProductMap = saleItemProductMap;
+        List<UUID> productIds = saleItems.stream()
+            .map(SaleItem::getProductId)
+            .filter(java.util.Objects::nonNull)
+            .distinct()
+            .toList();
+        List<Product> products = productIds.isEmpty() ? List.of() : 
+            productRepository.findByIdIn(productIds);
+        java.util.Map<UUID, String> productNameMap = products.stream()
+            .collect(java.util.stream.Collectors.toMap(
+                Product::getId,
+                Product::getName,
+                (v1, v2) -> v1
+            ));
         
         return payments.stream()
             .map(payment -> {
-                String customerName = expandNames 
-                    ? finalCustomerNameMap.getOrDefault(payment.getCustomerId(), "Unknown")
-                    : null;
+                String customerName = customerNameMap.getOrDefault(payment.getCustomerId(), "Unknown");
                 
                 String productName = null;
-                if (expandNames && payment.getSaleItemId() != null) {
-                    UUID productId = finalSaleItemProductMap.get(payment.getSaleItemId());
+                if (payment.getSaleItemId() != null) {
+                    UUID productId = saleItemProductMap.get(payment.getSaleItemId());
                     if (productId != null) {
-                        productName = finalProductNameMap.getOrDefault(productId, "Unknown");
+                        productName = productNameMap.getOrDefault(productId, "Unknown");
                     }
                 }
                 
