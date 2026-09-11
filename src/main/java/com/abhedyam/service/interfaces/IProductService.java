@@ -16,8 +16,8 @@ public interface IProductService {
     Product getById(UUID id);
     List<Product> getByOwnerId(UUID ownerId);
     List<ProductWithStockResponse> getProductsWithStockByOwnerId(UUID ownerId);
-    PageResponse<Product> searchProducts(ProductSearchRequest request);
-    PageResponse<Product> searchProductsByOwner(UUID ownerId, ProductSearchRequest request);
+    PageResponse<ProductWithStockResponse> searchProducts(ProductSearchRequest request);
+    PageResponse<ProductWithStockResponse> searchProductsByOwner(UUID ownerId, ProductSearchRequest request);
     List<ProductSearchResult> searchByName(String name);
     Product updateProduct(ProductUpdateRequest request);
     Product toggleActive(UUID id);

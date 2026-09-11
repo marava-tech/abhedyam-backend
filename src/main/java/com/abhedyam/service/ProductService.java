@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -177,26 +178,9 @@ public class ProductService implements IProductService {
                 .toList());
         products = deduplicateByName(products, Product::getName, Product::getPrice, Product::getCreatedAt);
 
+        Map<UUID, BigDecimal> stockByProductId = stockByProductId(ownerId, products);
         List<ProductWithStockResponse> responses = products.stream()
-                .map(product -> {
-                    BigDecimal stock = inventoryRepository.findByOwnerIdAndProductId(ownerId, product.getId())
-                            .map(Inventory::getStock)
-                            .orElse(BigDecimal.ZERO);
-
-                    ProductWithStockResponse response = new ProductWithStockResponse();
-                    response.setId(product.getId());
-                    response.setCode(product.getCode());
-                    response.setName(product.getName());
-                    response.setPrice(product.getPrice());
-                    response.setOwnerId(product.getOwnerId());
-                    response.setIsActive(product.getIsActive());
-                    response.setStock(formatStock(stock));
-                    response.setImageUrl(product.getImageUrl());
-                    response.setCreatedAt(product.getCreatedAt());
-                    response.setUpdatedAt(product.getUpdatedAt());
-
-                    return response;
-                })
+                .map(product -> toWithStock(product, stockByProductId.getOrDefault(product.getId(), BigDecimal.ZERO)))
                 .sorted((p1, p2) -> {
                     int stockCompare = p2.getStock().compareTo(p1.getStock());
                     if (stockCompare != 0) {
@@ -230,14 +214,14 @@ public class ProductService implements IProductService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<Product> searchProducts(ProductSearchRequest request) {
+    public PageResponse<ProductWithStockResponse> searchProducts(ProductSearchRequest request) {
         UUID ownerId = SecurityUtil.getCurrentUserId();
         return searchProductsInternal(ownerId, request);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<Product> searchProductsByOwner(UUID ownerId, ProductSearchRequest request) {
+    public PageResponse<ProductWithStockResponse> searchProductsByOwner(UUID ownerId, ProductSearchRequest request) {
         validateOwnerAccess(ownerId);
         return searchProductsInternal(ownerId, request);
     }
@@ -324,7 +308,7 @@ public class ProductService implements IProductService {
         }
     }
 
-    private PageResponse<Product> searchProductsInternal(UUID ownerId, ProductSearchRequest request) {
+    private PageResponse<ProductWithStockResponse> searchProductsInternal(UUID ownerId, ProductSearchRequest request) {
         String searchTerm = request.getSearchTerm();
         if (searchTerm != null && searchTerm.trim().isEmpty()) {
             searchTerm = null;
@@ -358,14 +342,46 @@ public class ProductService implements IProductService {
                 Product::getPrice,
                 Product::getCreatedAt);
 
+        Map<UUID, BigDecimal> stockByProductId = stockByProductId(ownerId, deduped);
+        List<ProductWithStockResponse> content = deduped.stream()
+                .map(product -> toWithStock(product, stockByProductId.getOrDefault(product.getId(), BigDecimal.ZERO)))
+                .toList();
+
         return new PageResponse<>(
-                deduped,
+                content,
                 productPage.getNumber(),
                 productPage.getSize(),
                 productPage.getTotalElements(),
                 productPage.getTotalPages(),
                 productPage.hasNext(),
                 productPage.hasPrevious());
+    }
+
+    private Map<UUID, BigDecimal> stockByProductId(UUID ownerId, List<Product> products) {
+        if (products.isEmpty()) {
+            return Map.of();
+        }
+        List<UUID> productIds = products.stream().map(Product::getId).toList();
+        return inventoryRepository.findByOwnerIdAndProductIdIn(ownerId, productIds).stream()
+                .collect(Collectors.toMap(
+                        Inventory::getProductId,
+                        inventory -> formatStock(inventory.getStock()),
+                        (first, ignored) -> first));
+    }
+
+    private ProductWithStockResponse toWithStock(Product product, BigDecimal stock) {
+        ProductWithStockResponse response = new ProductWithStockResponse();
+        response.setId(product.getId());
+        response.setCode(product.getCode());
+        response.setName(product.getName());
+        response.setPrice(product.getPrice());
+        response.setOwnerId(product.getOwnerId());
+        response.setIsActive(product.getIsActive());
+        response.setStock(formatStock(stock));
+        response.setImageUrl(product.getImageUrl());
+        response.setCreatedAt(product.getCreatedAt());
+        response.setUpdatedAt(product.getUpdatedAt());
+        return response;
     }
 
     private void validateOwnerAccess(UUID ownerId) {
