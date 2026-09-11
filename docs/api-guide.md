@@ -16,7 +16,7 @@
 ### Products & Inventory
 | Method | Endpoint |
 |---|---|
-| GET | `/owners/{ownerId}/products` |
+| GET | `/owners/{ownerId}/products` | Paginated. Each item includes `stock`. |
 | POST | `/products` |
 | GET | `/stock/{productId}/current` |
 | PUT | `/stock/update` |

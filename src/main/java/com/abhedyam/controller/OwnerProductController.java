@@ -3,7 +3,7 @@ package com.abhedyam.controller;
 import com.abhedyam.dto.ApiResponse;
 import com.abhedyam.dto.PageResponse;
 import com.abhedyam.dto.ProductSearchRequest;
-import com.abhedyam.model.Product;
+import com.abhedyam.dto.ProductWithStockResponse;
 import com.abhedyam.service.interfaces.IProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,8 +21,8 @@ public class OwnerProductController {
     private final IProductService productService;
 
     @GetMapping
-    @Operation(summary = "List products", description = "List products for an owner with search and pagination")
-    public ApiResponse<PageResponse<Product>> listProducts(
+    @Operation(summary = "List products", description = "List products for an owner with search, pagination, and current stock")
+    public ApiResponse<PageResponse<ProductWithStockResponse>> listProducts(
             @PathVariable UUID ownerId,
             @RequestParam(value = "q", required = false) String q,
             @RequestParam(value = "isActive", required = false) Boolean isActive,
