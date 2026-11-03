@@ -115,6 +115,17 @@ public class ReminderService implements IReminderService {
         return savedReminder;
     }
     
+    @Override
+    @Transactional
+    public void cancel(UUID ownerId, UUID id) {
+        Reminder reminder = reminderRepository.findById(id)
+                .filter(r -> ownerId.equals(r.getOwnerId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Reminder not found"));
+        reminder.setStatus(ReminderStatus.DELETED);
+        reminder.setIsActive(false);
+        reminderRepository.save(reminder);
+    }
+
     private List<String> determinePackages(UUID customerId, UUID ownerId) {
         if (customerId != null) {
             return List.of(PackageConstants.CUSTOMER_APP_PACKAGE);
