@@ -128,71 +128,15 @@ public class AuthService {
                 user.getCreatedAt());
     }
 
+    /**
+     * Disabled: this issued a customer token from a phone number alone (no proof of
+     * ownership), so anyone could sign in as any customer. Customers must prove the
+     * number via /auth/otp/verify until a free replacement (owner-issued access code) ships.
+     */
     @Transactional
     public AuthResponse loginWithPhone(PhoneLoginRequest request) {
-        String phoneNumber = request.getPhone();
-        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
-            throw new com.abhedyam.exception.BusinessException("MISSING_PHONE",
-                    "Phone number is required");
-        }
-
-        String normalizedPhone = PhoneUtil.normalizePhone(phoneNumber);
-        if (!PhoneUtil.isValidPhone(normalizedPhone)) {
-            throw new com.abhedyam.exception.BusinessException("INVALID_PHONE",
-                    "Invalid phone number format");
-        }
-
-        Optional<User> existingUser = userRepository.findByPhoneNormalized(normalizedPhone);
-
-        Customer customer;
-        boolean isNewUser;
-
-        if (existingUser.isPresent()) {
-            User user = existingUser.get();
-            if (user.getType() != UserType.CUSTOMER) {
-                throw new com.abhedyam.exception.BusinessException("INVALID_USER_TYPE",
-                        "Only customer login is allowed for this app");
-            }
-            customer = customerRepository.findById(user.getId())
-                    .orElseThrow(
-                            () -> new com.abhedyam.exception.ResourceNotFoundException("Customer record not found"));
-            isNewUser = false;
-            log.info("Customer logged in with phone: {}", normalizedPhone);
-        } else {
-            customer = new Customer();
-            customer.setName("Customer");
-            customer.setPhone(PhoneUtil.extractPhoneWithoutCountryCode(normalizedPhone));
-            customer.setPhoneNormalized(normalizedPhone);
-            customer.setType(UserType.CUSTOMER);
-
-            customer = customerRepository.save(customer);
-
-            try {
-                LocationDetails locationDetails = new LocationDetails();
-                locationDetails.setUserId(customer.getId());
-                locationDetails.setVillage("No Village");
-                locationDetails.setLatitude(BigDecimal.ZERO);
-                locationDetails.setLongitude(BigDecimal.ZERO);
-                locationDetailsRepository.save(locationDetails);
-            } catch (Exception e) {
-                log.warn("Location details save failed for customer {}: {}", customer.getId(), e.getMessage());
-            }
-
-            isNewUser = true;
-            log.info("Created new customer account for phone login - phone: {}", normalizedPhone);
-        }
-
-        String token = jwtUtil.generateCustomerToken(customer.getId(), normalizedPhone);
-
-        return new AuthResponse(
-                token,
-                customer.getId().toString(),
-                normalizedPhone,
-                customer.getName(),
-                isNewUser,
-                UserType.CUSTOMER,
-                customer.getOwnerId(),
-                customer.getCreatedAt());
+        throw new com.abhedyam.exception.BusinessException("OTP_REQUIRED",
+                "Verify your phone number to sign in");
     }
 
     public void sendCustomerOtp(String phone) {
