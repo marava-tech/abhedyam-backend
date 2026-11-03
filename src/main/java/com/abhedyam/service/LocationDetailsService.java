@@ -40,6 +40,8 @@ public class LocationDetailsService implements ILocationDetailsService {
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
     private final RedisTemplate<String, String> redisTemplate;
+    private final com.abhedyam.repository.SaleItemRepository saleItemRepository;
+    private final com.abhedyam.repository.PaymentRepository paymentRepository;
 
     private static final String VILLAGES_CACHE_PREFIX = "villages:";
 
@@ -162,11 +164,21 @@ public class LocationDetailsService implements ILocationDetailsService {
                             normalizedName, ownerId, pageable);
         }
 
+        java.util.Map<java.util.UUID, java.math.BigDecimal> sales = toAmountMap(saleItemRepository.sumTotalsByCustomer(ownerId));
+        java.util.Map<java.util.UUID, java.math.BigDecimal> paid = toAmountMap(paymentRepository.sumSuccessfulByCustomer(ownerId));
+        java.util.Map<java.util.UUID, String> customerVillage = new java.util.HashMap<>();
+        for (Object[] row : locationDetailsRepository.findCustomerVillagesByOwnerId(ownerId)) {
+            customerVillage.put(java.util.UUID.fromString(row[0].toString()), (String) row[1]);
+        }
+        java.util.Map<String, java.math.BigDecimal> pendingByVillage =
+                VillagePendingCalculator.pendingByVillage(sales, paid, customerVillage);
+
         List<VillageResponse> villages = villagePage.getContent().stream()
                 .map(result -> {
                     String village = (String) result[0];
                     Long customerCount = ((Number) result[1]).longValue();
-                    return new VillageResponse(village, customerCount);
+                    return new VillageResponse(village, customerCount,
+                            pendingByVillage.getOrDefault(VillagePendingCalculator.key(village), java.math.BigDecimal.ZERO));
                 })
                 .toList();
 
@@ -178,6 +190,14 @@ public class LocationDetailsService implements ILocationDetailsService {
                 villagePage.getTotalPages(),
                 villagePage.hasNext(),
                 villagePage.hasPrevious());
+    }
+
+    private static java.util.Map<java.util.UUID, java.math.BigDecimal> toAmountMap(List<Object[]> rows) {
+        java.util.Map<java.util.UUID, java.math.BigDecimal> map = new java.util.HashMap<>();
+        for (Object[] row : rows) {
+            map.put(java.util.UUID.fromString(row[0].toString()), new java.math.BigDecimal(row[1].toString()));
+        }
+        return map;
     }
 
     @Transactional

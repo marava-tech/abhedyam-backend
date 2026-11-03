@@ -61,5 +61,16 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     long countSuccessfulPaymentsByOwnerIdAndDateRange(@Param("ownerId") UUID ownerId,
                                                        @Param("startDate") java.time.Instant startDate,
                                                        @Param("endDate") java.time.Instant endDate);
+
+    @Query("SELECT p.customerId, SUM(p.amount) FROM Payment p " +
+           "WHERE p.ownerId = :ownerId AND p.status = 'SUCCESS' GROUP BY p.customerId")
+    List<Object[]> sumSuccessfulByCustomer(@Param("ownerId") UUID ownerId);
+
+    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p " +
+           "WHERE p.ownerId = :ownerId AND p.status = 'SUCCESS' " +
+           "AND p.timestamp >= :from AND p.timestamp < :to")
+    BigDecimal sumSuccessfulBetween(@Param("ownerId") UUID ownerId,
+                                    @Param("from") java.time.Instant from,
+                                    @Param("to") java.time.Instant to);
 }
 

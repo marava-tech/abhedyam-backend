@@ -289,11 +289,17 @@ public class OwnerService implements IOwnerService {
         List<Object[]> villagesData = locationDetailsRepository.findVillagesWithCustomerCountByOwnerId(ownerId);
         long totalVillages = villagesData.size();
         
+        java.time.ZoneId zone = java.time.ZoneId.of("Asia/Kolkata");
+        java.time.ZonedDateTime monthStart = java.time.LocalDate.now(zone).withDayOfMonth(1).atStartOfDay(zone);
+        BigDecimal collectedThisMonth = paymentRepository.sumSuccessfulBetween(
+            ownerId, monthStart.toInstant(), monthStart.plusMonths(1).toInstant());
+
         return new OwnerSummaryResponse(
             totalPendingAmount,
             totalCustomers,
             totalVillages,
-            totalCollectedAmount
+            totalCollectedAmount,
+            collectedThisMonth
         );
     }
     

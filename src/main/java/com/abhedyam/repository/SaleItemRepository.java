@@ -44,5 +44,9 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, UUID> {
     long countDistinctSalesByOwnerIdAndDateRange(@Param("ownerId") UUID ownerId,
                                                   @Param("startDate") java.time.Instant startDate,
                                                   @Param("endDate") java.time.Instant endDate);
+
+    @Query("SELECT s.customerId, SUM(s.price * s.quantity) FROM SaleItem s " +
+           "WHERE s.ownerId = :ownerId GROUP BY s.customerId")
+    List<Object[]> sumTotalsByCustomer(@Param("ownerId") UUID ownerId);
 }
 
