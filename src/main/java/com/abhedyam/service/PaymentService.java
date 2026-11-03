@@ -193,6 +193,51 @@ public class PaymentService implements IPaymentService {
         );
     }
 
+    @Override
+    @Transactional
+    public com.abhedyam.dto.CollectPaymentResponse collectFromCustomer(UUID ownerId, com.abhedyam.dto.CollectPaymentRequest request) {
+        validateOwnerAccess(ownerId);
+
+        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(ErrorCodes.INVALID_AMOUNT, "Payment amount must be greater than zero");
+        }
+
+        Customer customer = customerRepository.findById(request.getCustomerId())
+                .orElseThrow(() -> new ResourceNotFoundException("Customer could not be found"));
+        if (!ownerId.equals(customer.getOwnerId())) {
+            throw new BusinessException(ErrorCodes.UNAUTHORIZED, "You don't have permission to access this customer");
+        }
+
+        List<SaleItem> items = saleItemRepository.findByCustomerIdAndOwnerIdOrderByCreatedAtAsc(customer.getId(), ownerId);
+        List<PaymentAllocator.Open> open = items.stream()
+                .map(si -> new PaymentAllocator.Open(si.getId(), si.getRemainingAmount() != null
+                        ? si.getRemainingAmount()
+                        : si.getPrice().multiply(si.getQuantity() != null ? si.getQuantity() : BigDecimal.ONE)))
+                .toList();
+
+        BigDecimal totalDue = PaymentAllocator.total(open);
+        if (totalDue.signum() <= 0) {
+            throw new BusinessException(ErrorCodes.NO_DUE_AMOUNT, "No payment is due for this customer");
+        }
+        if (request.getAmount().compareTo(totalDue) > 0) {
+            throw new BusinessException(ErrorCodes.PAYMENT_EXCEEDS_DUE,
+                    String.format("Payment amount (₹%s) cannot exceed the total due (₹%s).", request.getAmount(), totalDue));
+        }
+
+        PaymentMedium medium = request.getMedium() != null ? request.getMedium() : PaymentMedium.CASH;
+        List<PaymentResponse> payments = new java.util.ArrayList<>();
+        for (PaymentAllocator.Piece piece : PaymentAllocator.allocate(open, request.getAmount())) {
+            PaymentCreateRequest one = new PaymentCreateRequest();
+            one.setSaleItemId(piece.saleItemId());
+            one.setAmount(piece.amount());
+            one.setMedium(medium);
+            one.setReference(request.getReference());
+            one.setStatus(PaymentStatus.SUCCESS);
+            payments.add(createManualPayment(one));
+        }
+        return new com.abhedyam.dto.CollectPaymentResponse(customer.getId(), request.getAmount(), payments);
+    }
+
     @Transactional
     public PaymentResponse createImportedPayment(UUID ownerId, PaymentCreateRequest request, Instant timestamp) {
         validateOwnerAccess(ownerId);
