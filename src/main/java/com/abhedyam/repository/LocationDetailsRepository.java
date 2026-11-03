@@ -118,4 +118,11 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
                      @Param("ownerId") UUID ownerId,
                      Pageable pageable);
 
+
+       @Query("SELECT c.id, ld.village FROM LocationDetails ld " +
+                     "INNER JOIN Customer c ON c.id = ld.userId " +
+                     "WHERE c.ownerId = :ownerId " +
+                     "AND ld.village IS NOT NULL " +
+                     "AND c.isActive = true")
+       List<Object[]> findCustomerVillagesByOwnerId(@Param("ownerId") UUID ownerId);
 }

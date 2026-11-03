@@ -23,4 +23,7 @@ public class OwnerSummaryResponse {
     
     @Schema(description = "Total collected amount from successful payments", example = "200000.00")
     private BigDecimal totalCollectedAmount;
+
+    @Schema(description = "Amount collected via successful payments in the current calendar month (Asia/Kolkata)", example = "12000.00")
+    private BigDecimal collectedThisMonth;
 }
