@@ -48,5 +48,7 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, UUID> {
     @Query("SELECT s.customerId, SUM(s.price * s.quantity) FROM SaleItem s " +
            "WHERE s.ownerId = :ownerId GROUP BY s.customerId")
     List<Object[]> sumTotalsByCustomer(@Param("ownerId") UUID ownerId);
+
+    List<SaleItem> findByCustomerIdAndOwnerIdOrderByCreatedAtAsc(UUID customerId, UUID ownerId);
 }
 

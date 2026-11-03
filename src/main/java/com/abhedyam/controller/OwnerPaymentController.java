@@ -20,6 +20,15 @@ public class OwnerPaymentController {
 
     private final IPaymentService paymentService;
 
+    @PostMapping("/collect")
+    @Operation(summary = "Collect a payment from a customer",
+            description = "Applies the amount to the customer's oldest unpaid sale items first. Rejected if it exceeds the total due.")
+    public ApiResponse<com.abhedyam.dto.CollectPaymentResponse> collect(
+            @PathVariable UUID ownerId,
+            @jakarta.validation.Valid @RequestBody com.abhedyam.dto.CollectPaymentRequest request) {
+        return ApiResponse.success(paymentService.collectFromCustomer(ownerId, request));
+    }
+
     @GetMapping
     @Operation(summary = "List payments", description = "List payments for an owner with search and pagination")
     public ApiResponse<PageResponse<PaymentResponse>> listPayments(

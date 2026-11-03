@@ -12,6 +12,8 @@ import java.util.UUID;
 public interface IPaymentService {
     Payment create(Payment payment);
     PaymentResponse createManualPayment(PaymentCreateRequest request);
+
+    com.abhedyam.dto.CollectPaymentResponse collectFromCustomer(java.util.UUID ownerId, com.abhedyam.dto.CollectPaymentRequest request);
     Payment getById(UUID id);
     List<Payment> getByOwnerId(UUID ownerId);
     PageResponse<PaymentResponse> getMyPayments(Integer page, Integer size);
