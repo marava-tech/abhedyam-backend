@@ -107,11 +107,12 @@ Done in slice 1 (verified no callers):
   exposed endpoint. Also removed `getByOwnerId`, `getByUserId`, `update` (no callers).
 Deferred to the schema slice (changes the API/DB): `Notification.retryCount` (still in `NotificationResponse`).
 
-## Found while cleaning (not fixed in slice 1)
-- Reminders accept channels EMAIL / SMS / WHATSAPP (the API example is even "SMS"), but the scheduler only
-  delivers IN_APP: other channels are marked SENT and only logged as "skipping". The owner thinks an SMS
-  reminder went out and nothing did. Needs a product decision (reject non-IN_APP at create time, or
-  implement them) — raise before slice 3.
+## Reminder channels (resolved)
+Reminders used to accept EMAIL / SMS / WHATSAPP but only IN_APP was ever delivered (others were marked SENT and
+logged). Removed: `ReminderChannel` is now `IN_APP` only; `channel` is optional in the request (older apps
+still send `IN_APP`); legacy rows read back as IN_APP via `ReminderChannelConverter`. Real SMS/WhatsApp
+sending, if wanted, is a separate product decision (reminders to customers are sent by the owner from their
+own phone via the Remind sheet, never auto-sent).
 
 ## Build slices (each its own branch + PR)
 1. Backend: delete dead paths (S; behaviour-neutral) — DONE on `chore/notifications-cleanup`.

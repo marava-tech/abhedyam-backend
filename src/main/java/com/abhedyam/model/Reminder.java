@@ -25,9 +25,9 @@ public class Reminder extends BaseEntity {
     @Column(nullable = false, length = 50)
     private ReminderType type;
     
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = ReminderChannelConverter.class)
     @Column(nullable = false, length = 50)
-    private ReminderChannel channel;
+    private ReminderChannel channel = ReminderChannel.IN_APP;
     
     @Column(nullable = false)
     private Instant time;
