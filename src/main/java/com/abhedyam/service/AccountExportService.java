@@ -30,6 +30,7 @@ import java.util.zip.ZipOutputStream;
 @Service
 public class AccountExportService implements IAccountExportService {
 
+    static final String SUPPORT_EMAIL = "tech.marava@gmail.com";
     static final Duration COOLDOWN = Duration.ofDays(7);
     private static final List<String> TYPES = List.of("customers", "sales", "payments");
 
@@ -81,10 +82,8 @@ public class AccountExportService implements IAccountExportService {
         try {
             byte[] zip = zip(ownerId);
             String date = java.time.LocalDate.now(ZoneId.of("Asia/Kolkata")).toString();
-            gmailSender.sendGmailWithAttachment(email, "Your Abhedyam data export",
-                    "<p>Your data export is attached as a zip with three files: customers, sales and payments (CSV, opens in Excel or Google Sheets).</p>"
-                            + "<p>If you did not ask for this, please contact tech.marava@gmail.com.</p>",
-                    "abhedyam-export-" + date + ".zip", zip);
+            gmailSender.sendGmailWithAttachment(email, "Your Abhedyam data export", exportEmailHtml(),
+                    "abhedyam-export-" + date + ".zip", zip, SUPPORT_EMAIL);
             log.info("Export emailed for owner {}", ownerId);
         } catch (Exception e) {
             log.error("Export failed for owner {}: {}", ownerId, e.getMessage());
@@ -106,6 +105,22 @@ public class AccountExportService implements IAccountExportService {
             }
         }
         return out.toByteArray();
+    }
+
+    static String exportEmailHtml() {
+        return "<div style=\"font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#0f172a\">"
+                + "<h2 style=\"margin:0 0 16px;color:#4f46e5\">Your Abhedyam data is ready</h2>"
+                + "<p style=\"margin:0 0 12px;line-height:1.5\">As you asked, your data is attached as a zip file.</p>"
+                + "<p style=\"margin:0 0 6px\">Inside the zip:</p>"
+                + "<ul style=\"margin:0 0 16px;padding-left:20px;line-height:1.7\">"
+                + "<li><b>customers.csv</b> &ndash; names, phones, villages and what each owes</li>"
+                + "<li><b>sales.csv</b> &ndash; every item sold, with dues and dates</li>"
+                + "<li><b>payments.csv</b> &ndash; every payment received</li></ul>"
+                + "<p style=\"margin:0 0 16px;line-height:1.5\">Open them in Excel or Google Sheets. You can request a new export once a week.</p>"
+                + "<p style=\"margin:0 0 16px;line-height:1.5;color:#475569\">Didn&rsquo;t ask for this? Write to us at "
+                + "<a href=\"mailto:" + SUPPORT_EMAIL + "\">" + SUPPORT_EMAIL + "</a> and we will look into it.</p>"
+                + "<hr style=\"border:none;border-top:1px solid #e2e8f0;margin:20px 0\">"
+                + "<p style=\"margin:0;font-size:12px;color:#64748b\">Abhedyam by Marava Tech</p></div>";
     }
 
     static String mask(String email) {

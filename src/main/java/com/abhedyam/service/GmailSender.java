@@ -30,10 +30,15 @@ public class GmailSender {
         log.info("Gmail sent successfully to {}", to);
     }
 
-    public void sendGmailWithAttachment(String to, String subject, String content, String filename, byte[] data) throws MessagingException {
+    public void sendGmailWithAttachment(String to, String subject, String content, String filename, byte[] data, String from) throws MessagingException {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true);
-        helper.setFrom(fromEmail);
+        try {
+            helper.setFrom(from, "Abhedyam");
+        } catch (java.io.UnsupportedEncodingException e) {
+            helper.setFrom(from);
+        }
+        helper.setReplyTo(from);
         helper.setTo(to);
         helper.setSubject(subject);
         helper.setText(content, true);
