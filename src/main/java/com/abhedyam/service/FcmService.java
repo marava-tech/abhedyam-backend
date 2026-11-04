@@ -46,7 +46,7 @@ public class FcmService implements IFcmService {
         fcmDetailsRepository.deleteByUserIdAndTokenAndPackageName(userId, token, packageName);
     }
     
-    public void sendNotificationToUser(UUID userId, String title, String body, String packageName) {
+    public void sendNotificationToUser(UUID userId, String title, String body, String packageName, java.util.Map<String, String> data) {
         List<FcmDetails> fcmDetailsList = fcmDetailsRepository.findByUserIdAndPackageName(userId, packageName);
         
         if (fcmDetailsList.isEmpty()) {
@@ -63,6 +63,7 @@ public class FcmService implements IFcmService {
                         .setBody(body)
                         .build())
                     .putData("type", "reminder")
+                    .putAllData(data)
                     .setAndroidConfig(AndroidConfig.builder()
                         .setPriority(AndroidConfig.Priority.HIGH)
                         .setNotification(AndroidNotification.builder()

@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -65,11 +67,12 @@ public class NotificationDispatcher {
         n.setPushAfter(at);
         if (at.isAfter(now)) {
             n.setDeliveryStatus(DeliveryStatus.DEFERRED);
-        } else {
-            push(n);
-            n.setDeliveryStatus(DeliveryStatus.SENT);
+            return notifications.save(n);
         }
-        return notifications.save(n);
+        n.setDeliveryStatus(DeliveryStatus.SENT);
+        n = notifications.save(n); // saved first so the push can carry the row id
+        push(n);
+        return n;
     }
 
     /** Sends pushes that were held for quiet hours. ponytail: single instance, no row locking; add it if we scale out. */
@@ -98,6 +101,16 @@ public class NotificationDispatcher {
     }
 
     private void push(Notification n) {
-        fcm.sendNotificationToUser(n.getOwnerId(), n.getTitle(), n.getMessage(), PackageConstants.BUSINESS_APP_PACKAGE);
+        fcm.sendNotificationToUser(n.getOwnerId(), n.getTitle(), n.getMessage(), PackageConstants.BUSINESS_APP_PACKAGE, dataFor(n));
+    }
+
+    /** What the app needs to open the right screen when the push is tapped. FCM data values must be strings, never null. */
+    static Map<String, String> dataFor(Notification n) {
+        Map<String, String> d = new HashMap<>();
+        if (n.getId() != null) d.put("notificationId", n.getId().toString());
+        if (n.getCategory() != null) d.put("category", n.getCategory().name());
+        if (n.getRelatedEntityType() != null) d.put("relatedEntityType", n.getRelatedEntityType());
+        if (n.getRelatedEntityId() != null) d.put("relatedEntityId", n.getRelatedEntityId().toString());
+        return d;
     }
 }
