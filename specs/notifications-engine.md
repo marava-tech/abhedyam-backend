@@ -36,8 +36,7 @@ App
 ## Events (v1, owner-facing)
 | Key | When | Push? | Default |
 |---|---|---|---|
-| `PAYMENT_NEEDS_OK` | a customer paid via link/app and needs the owner's OK | yes | on |
-| `PAYMENT_RECEIVED` | a payment is confirmed (customer pay link settled) | yes | on |
+| `PAYMENT_NEEDS_OK` | a customer paid via the app and needs the owner's OK | yes | on |
 | `DUE_DIGEST` | once a day at the owner's digest time, only if something is due: "7 customers owe ₹1,24,000 · oldest 45 days" | yes (1/day max) | on, 08:00 |
 | `OWNER_REMINDER` | a reminder the owner created fires at its time | yes | on |
 
@@ -118,7 +117,7 @@ own phone via the Remind sheet, never auto-sent).
 1. Backend: delete dead paths (S; behaviour-neutral) — DONE on `chore/notifications-cleanup`.
 2. Backend: dispatcher, `QuietHours`, preferences + settings API, deferred-push job (M) — DONE on `feat/notification-dispatcher` (muted categories live in an element-collection table instead of a `notification_preferences` table; the deferred job is a method on the dispatcher, not a separate class).
 3. Backend: move `PAYMENT_NEEDS_OK` and `OWNER_REMINDER` onto the dispatcher (S) — DONE on `feat/notifications-use-dispatcher`. Reminders addressed to a customer (customer app) keep their own path; they are not owner notifications. The pending-payment push body is now the full sentence (one body for row and push).
-4. Backend: `DUE_DIGEST` job + `PAYMENT_RECEIVED` (M).
+4. Backend: `DUE_DIGEST` job (M) — DONE on `feat/notifications-use-dispatcher` (stacked on slice 3). `PAYMENT_RECEIVED` was dropped: customer payments are held PENDING until the owner confirms them, so no payment auto-confirms and there is no trigger. Add the category back when a gateway settles payments automatically. The digest is skipped entirely (no in-app row) when the owner turns it off.
 5. App: Notifications screen settings + deep links + single FCM init (M).
 6. App: remove the old unread-count double fetch and unused code (S).
 

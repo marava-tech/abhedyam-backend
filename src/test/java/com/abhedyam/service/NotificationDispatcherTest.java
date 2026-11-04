@@ -51,14 +51,14 @@ class NotificationDispatcherTest {
 
     @Test
     void daytimeWritesRowAndPushesNow() {
-        Notification n = send(NotificationCategory.PAYMENT_RECEIVED, null, day);
+        Notification n = send(NotificationCategory.OWNER_REMINDER, null, day);
         assertEquals(DeliveryStatus.SENT, n.getDeliveryStatus());
         verify(fcm).sendNotificationToUser(eq(owner), eq("T"), eq("B"), any());
     }
 
     @Test
     void nightKeepsRowButHoldsThePush() {
-        Notification n = send(NotificationCategory.PAYMENT_RECEIVED, null, night);
+        Notification n = send(NotificationCategory.OWNER_REMINDER, null, night);
         assertEquals(DeliveryStatus.DEFERRED, n.getDeliveryStatus());
         assertTrue(n.getPushAfter().isAfter(night));
         verifyNoInteractions(fcm);
@@ -83,7 +83,7 @@ class NotificationDispatcherTest {
 
     @Test
     void deferredPushGoesOutOnceQuietHoursEnd() {
-        Notification held = send(NotificationCategory.PAYMENT_RECEIVED, null, night);
+        Notification held = send(NotificationCategory.OWNER_REMINDER, null, night);
         when(repo.findByDeliveryStatusAndPushAfterLessThanEqual(DeliveryStatus.DEFERRED, held.getPushAfter())).thenReturn(List.of(held));
         dispatcher.deliverDeferred(held.getPushAfter());
         assertEquals(DeliveryStatus.SENT, held.getDeliveryStatus());
@@ -92,8 +92,8 @@ class NotificationDispatcherTest {
 
     @Test
     void deferredPushIsDroppedIfOwnerMutedMeanwhile() {
-        Notification held = send(NotificationCategory.PAYMENT_RECEIVED, null, night);
-        defaults.getMutedCategories().add(NotificationCategory.PAYMENT_RECEIVED);
+        Notification held = send(NotificationCategory.OWNER_REMINDER, null, night);
+        defaults.getMutedCategories().add(NotificationCategory.OWNER_REMINDER);
         when(repo.findByDeliveryStatusAndPushAfterLessThanEqual(DeliveryStatus.DEFERRED, held.getPushAfter())).thenReturn(List.of(held));
         dispatcher.deliverDeferred(held.getPushAfter());
         assertEquals(DeliveryStatus.SKIPPED, held.getDeliveryStatus());
