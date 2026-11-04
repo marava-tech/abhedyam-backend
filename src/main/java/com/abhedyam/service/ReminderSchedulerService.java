@@ -3,7 +3,6 @@ package com.abhedyam.service;
 import com.abhedyam.model.Reminder;
 import com.abhedyam.model.enums.ReminderChannel;
 import com.abhedyam.model.enums.ReminderStatus;
-import com.abhedyam.model.enums.UserType;
 import com.abhedyam.repository.ReminderRepository;
 import com.abhedyam.service.interfaces.IReminderSchedulerService;
 import com.abhedyam.util.PackageConstants;
@@ -140,41 +139,9 @@ public class ReminderSchedulerService implements IReminderSchedulerService {
                             reminder.getId(), reminder.getOwnerId(), packageName, e.getMessage());
                     }
                 }
-            } else {
-                sendBroadcastNotifications(reminder.getId(), packages, title, body);
             }
         } else {
             log.debug("Skipping reminder send for non-IN_APP channel: {} (reminder: {})", reminder.getChannel(), reminder.getId());
         }
     }
-    
-    private void sendBroadcastNotifications(UUID reminderId, List<String> packages, String title, String body) {
-        boolean hasBusinessApp = packages.contains(PackageConstants.BUSINESS_APP_PACKAGE);
-        boolean hasCustomerApp = packages.contains(PackageConstants.CUSTOMER_APP_PACKAGE);
-        
-        if (hasBusinessApp && hasCustomerApp) {
-            sendNotificationToAllUsers(reminderId, UserType.BUSINESS, PackageConstants.BUSINESS_APP_PACKAGE, title, body);
-            sendNotificationToAllUsers(reminderId, UserType.CUSTOMER, PackageConstants.CUSTOMER_APP_PACKAGE, title, body);
-        } else if (hasBusinessApp) {
-            sendNotificationToAllUsers(reminderId, UserType.BUSINESS, PackageConstants.BUSINESS_APP_PACKAGE, title, body);
-        } else if (hasCustomerApp) {
-            sendNotificationToAllUsers(reminderId, UserType.CUSTOMER, PackageConstants.CUSTOMER_APP_PACKAGE, title, body);
-        } else {
-            log.warn("No valid package found for reminder {} with packages: {}", reminderId, packages);
-        }
-    }
-    
-    private void sendNotificationToAllUsers(UUID reminderId, UserType userType, String packageName, String title, String body) {
-        try {
-            fcmService.sendNotificationToAllUsersByType(userType, title, body, packageName);
-            String userTypeName = userType == UserType.BUSINESS ? "owners" : "customers";
-            log.info("FCM notification sent for reminder {} to all {} with package {}", 
-                reminderId, userTypeName, packageName);
-        } catch (Exception e) {
-            String userTypeName = userType == UserType.BUSINESS ? "owners" : "customers";
-            log.error("Failed to send FCM notification for reminder {} to all {}: {}", 
-                reminderId, userTypeName, e.getMessage());
-        }
-    }
 }
-

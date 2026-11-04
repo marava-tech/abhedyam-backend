@@ -52,29 +52,6 @@ public class NotificationService implements INotificationService {
     }
     
     @Override
-    public List<Notification> getAll() {
-        return notificationRepository.findAll();
-    }
-    
-    @Override
-    public List<Notification> getByOwnerId(UUID ownerId) {
-        UUID currentOwnerId = SecurityUtil.getCurrentUserId();
-        if (!currentOwnerId.equals(ownerId)) {
-            throw new BusinessException("UNAUTHORIZED", "You can only access your own notifications");
-        }
-        return notificationRepository.findByOwnerId(ownerId);
-    }
-    
-    @Override
-    public List<Notification> getByUserId(UUID userId) {
-        UUID ownerId = SecurityUtil.getCurrentUserId();
-        List<Notification> notifications = notificationRepository.findByUserId(userId);
-        return notifications.stream()
-            .filter(n -> n.getOwnerId().equals(ownerId))
-            .toList();
-    }
-    
-    @Override
     public List<Notification> getMyNotifications(Boolean unreadOnly) {
         UUID currentUserId = SecurityUtil.getCurrentUserId();
         
@@ -134,15 +111,6 @@ public class NotificationService implements INotificationService {
         }
         
         return List.of();
-    }
-    
-    @Override
-    @Transactional
-    public Notification update(UUID id, Notification notificationDetails) {
-        Notification notification = getById(id);
-        if (notificationDetails.getMessage() != null) notification.setMessage(notificationDetails.getMessage());
-        if (notificationDetails.getIsRead() != null) notification.setIsRead(notificationDetails.getIsRead());
-        return notificationRepository.save(notification);
     }
 }
 
