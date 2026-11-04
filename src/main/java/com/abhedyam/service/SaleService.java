@@ -152,7 +152,7 @@ public class SaleService implements ISaleService {
             log.info("Sale created successfully: Transaction ID {}, Total Amount: {}, Customer: {}, Items: {}",
                     transactionId, totalAmount, customer.getName(), saleItems.size());
 
-            invalidateOwnerCachesOnSaleCreation(ownerId);
+            invalidateOwnerCachesOnSaleChange(ownerId);
 
             UUID firstSaleItemId = saleItems.isEmpty() ? null : saleItems.get(0).getId();
             try {
@@ -564,6 +564,7 @@ public class SaleService implements ISaleService {
         }
 
         log.info("Sale cancelled: Transaction ID {}", transactionId);
+        invalidateOwnerCachesOnSaleChange(ownerId); // a cancelled sale changes balances, stock and stats; without this they stay stale for the 5 min cache TTL
 
         Customer customer = customerRepository.findById(firstItem.getCustomerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Customer could not be found"));
@@ -604,7 +605,7 @@ public class SaleService implements ISaleService {
                 totalDue);
     }
 
-    private void invalidateOwnerCachesOnSaleCreation(UUID ownerId) {
+    private void invalidateOwnerCachesOnSaleChange(UUID ownerId) {
         try {
             customerService.invalidateOwnerCaches(ownerId);
             productService.invalidateOwnerCaches(ownerId);
