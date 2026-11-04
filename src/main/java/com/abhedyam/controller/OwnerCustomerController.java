@@ -39,8 +39,9 @@ public class OwnerCustomerController {
             @RequestParam(defaultValue = "20") Integer size,
             @RequestParam(defaultValue = "village") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDirection,
-            @RequestParam(value = QueryParams.INCLUDE_PENDING_AMOUNT_DETAILS, defaultValue = "false") Boolean includePendingAmountDetails) {
-        return ApiResponse.success(customerService.getOwnerCustomers(ownerId, q, village, page, size, sortBy, sortDirection, Boolean.TRUE.equals(includePendingAmountDetails)));
+            @RequestParam(value = QueryParams.INCLUDE_PENDING_AMOUNT_DETAILS, defaultValue = "false") Boolean includePendingAmountDetails,
+            @RequestParam(value = "owesOnly", defaultValue = "false") Boolean owesOnly) {
+        return ApiResponse.success(customerService.getOwnerCustomers(ownerId, q, village, page, size, sortBy, sortDirection, Boolean.TRUE.equals(includePendingAmountDetails), Boolean.TRUE.equals(owesOnly)));
     }
 
     @GetMapping("/{customerId}/summary")

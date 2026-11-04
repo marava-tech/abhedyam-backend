@@ -14,6 +14,7 @@ import com.abhedyam.dto.CustomerUpdateRequest;
 import com.abhedyam.dto.NearestCustomerRequest;
 import com.abhedyam.dto.NearestCustomerResponse;
 import com.abhedyam.dto.PageResponse;
+import com.abhedyam.util.PendingOrdering;
 import com.abhedyam.exception.BusinessException;
 import com.abhedyam.exception.ResourceNotFoundException;
 import com.abhedyam.model.Customer;
@@ -55,6 +56,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -269,7 +271,18 @@ public class CustomerService implements ICustomerService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<CustomerResponse> getOwnerCustomers(UUID ownerId, String searchText, String village, Integer page, Integer size, String sortBy, String sortDirection, boolean includePendingAmountDetails) {
+        return getOwnerCustomers(ownerId, searchText, village, page, size, sortBy, sortDirection, includePendingAmountDetails, false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<CustomerResponse> getOwnerCustomers(UUID ownerId, String searchText, String village, Integer page, Integer size, String sortBy, String sortDirection, boolean includePendingAmountDetails, boolean owesOnly) {
         validateOwnerAccess(ownerId);
+
+        boolean byPending = "pendingAmount".equalsIgnoreCase(sortBy != null ? sortBy.trim() : "");
+        if (byPending || owesOnly) {
+            return getOwnerCustomersByPending(ownerId, searchText, village, page, size, byPending, sortDirection, owesOnly);
+        }
 
         if (page == null || page < 0) {
             page = 0;
@@ -395,6 +408,55 @@ public class CustomerService implements ICustomerService {
         );
     }
     
+    /** Pending = sale totals - successful payments, per customer, for the whole owner. */
+    private Map<UUID, BigDecimal> pendingByCustomer(UUID ownerId) {
+        Map<UUID, BigDecimal> total = new HashMap<>();
+        for (SaleItem si : saleItemRepository.findByOwnerId(ownerId)) {
+            BigDecimal line = si.getPrice().multiply(si.getQuantity() != null ? si.getQuantity() : BigDecimal.ONE);
+            total.merge(si.getCustomerId(), line, BigDecimal::add);
+        }
+        for (Payment p : paymentRepository.findByOwnerId(ownerId)) {
+            if (p.getStatus() == PaymentStatus.SUCCESS) total.merge(p.getCustomerId(), p.getAmount().negate(), BigDecimal::add);
+        }
+        return total;
+    }
+
+    /**
+     * sortBy=pendingAmount and/or owesOnly: pending is not a column, so filter/sort/page in memory
+     * (an owner has at most thousands of customers). Without byPending the village order is kept.
+     */
+    private PageResponse<CustomerResponse> getOwnerCustomersByPending(UUID ownerId, String searchText, String village, Integer page, Integer size,
+                                                                       boolean byPending, String sortDirection, boolean owesOnly) {
+        int p = page == null || page < 0 ? 0 : page;
+        int sz = size == null || size < 1 ? 20 : size;
+        String text = searchText != null && !searchText.trim().isEmpty() ? searchText.trim() : null;
+        String vil = village != null && !village.trim().isEmpty() ? village.trim() : null;
+        boolean numeric = false;
+        if (text != null) {
+            try { Long.parseLong(text); numeric = true; } catch (NumberFormatException ignored) { }
+        }
+        List<Customer> all = vil != null
+            ? customerRepository.searchCustomersWithVillageFilterOrderByVillage(ownerId, vil, text, numeric, Pageable.unpaged()).getContent()
+            : customerRepository.searchCustomersOrderByVillage(ownerId, text, numeric, Pageable.unpaged()).getContent();
+
+        Map<UUID, BigDecimal> pending = pendingByCustomer(ownerId);
+        List<Customer> rows = PendingOrdering.apply(all, pending, byPending, !"ASC".equalsIgnoreCase(sortDirection), owesOnly);
+
+        int from = (int) Math.min((long) p * sz, rows.size());
+        int to = Math.min(from + sz, rows.size());
+        List<Customer> pageRows = rows.subList(from, to);
+        List<UUID> ids = pageRows.stream().map(Customer::getId).toList();
+        Map<UUID, String> villageMap = ids.isEmpty() ? Map.of() : locationDetailsRepository.findByUserIdIn(ids).stream()
+            .collect(Collectors.toMap(LocationDetails::getUserId, LocationDetails::getVillage, (a, b) -> a));
+        List<CustomerResponse> responses = pageRows.stream().map(c -> {
+            CustomerResponse r = CustomerResponse.fromEntity(c, villageMap.get(c.getId()));
+            r.setPendingAmount(pending.getOrDefault(c.getId(), BigDecimal.ZERO));
+            return r;
+        }).toList();
+        int totalPages = (int) Math.ceil(rows.size() / (double) sz);
+        return new PageResponse<>(responses, p, sz, rows.size(), totalPages, p + 1 < totalPages, p > 0);
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<CustomerResponse> filterCustomers(String searchText) {
