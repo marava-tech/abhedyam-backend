@@ -29,5 +29,17 @@ public class GmailSender {
         mailSender.send(message);
         log.info("Gmail sent successfully to {}", to);
     }
+
+    public void sendGmailWithAttachment(String to, String subject, String content, String filename, byte[] data) throws MessagingException {
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true);
+        helper.setFrom(fromEmail);
+        helper.setTo(to);
+        helper.setSubject(subject);
+        helper.setText(content, true);
+        helper.addAttachment(filename, new org.springframework.core.io.ByteArrayResource(data), "application/zip");
+        mailSender.send(message);
+        log.info("Gmail with attachment sent to {}", to);
+    }
 }
 

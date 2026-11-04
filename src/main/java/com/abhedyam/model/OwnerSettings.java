@@ -25,6 +25,11 @@ public class OwnerSettings extends BaseEntity {
     @Column(nullable = false)
     private Boolean isDarkModeEnabled = false;
     
+    /** When the owner last asked for a data export (limits requests to one per week). */
+    @Column
+    @jakarta.persistence.Convert(converter = com.abhedyam.config.IstInstantConverter.class)
+    private java.time.Instant lastExportRequestedAt;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "json")
     private Map<String, Object> otherFlags;
