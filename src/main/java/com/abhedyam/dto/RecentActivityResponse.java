@@ -37,6 +37,15 @@ public class RecentActivityResponse {
     @Schema(description = "Entity ID related to the activity", example = "3595381f-d038-4d6b-8fe0-dc76ebb7dde2", accessMode = Schema.AccessMode.READ_ONLY)
     private UUID entityId;
     
+    @Schema(description = "Customer the activity is about (null for older rows / non-customer events)", accessMode = Schema.AccessMode.READ_ONLY)
+    private UUID customerId;
+
+    @Schema(description = "Customer name", example = "Prakash T", accessMode = Schema.AccessMode.READ_ONLY)
+    private String customerName;
+
+    @Schema(description = "One short plain line shown when the card is expanded", example = "Rice ×2 · Paid ₹500, due ₹1,900", accessMode = Schema.AccessMode.READ_ONLY)
+    private String detail;
+
     @Schema(description = "Activity timestamp", example = "2025-11-15T10:51:15.325Z", accessMode = Schema.AccessMode.READ_ONLY)
     private Instant timestamp;
 }

@@ -142,7 +142,7 @@ public class AuditService implements IAuditService {
     @Override
     @Async("virtualThreadExecutor")
     @Transactional
-    public void logSaleCreation(UUID saleId, UUID ownerId, UUID customerId, String customerName, BigDecimal amount, String transactionId) {
+    public void logSaleCreation(UUID saleId, UUID ownerId, UUID customerId, String customerName, BigDecimal amount, String transactionId, String itemsSummary, BigDecimal paid) {
         try {
             Audit audit = new Audit();
             audit.setOwnerId(ownerId);
@@ -150,9 +150,11 @@ public class AuditService implements IAuditService {
             audit.setAction(AuditAction.CREATE);
             audit.setEntityId(saleId);
             audit.setAmount(amount);
-            audit.setHeadline(String.format("Sale of ₹%s created for %s", amount, customerName));
-            audit.setDescription(String.format("Created a new sale transaction for customer %s with total amount ₹%s. Transaction ID: %s", 
-                customerName, amount, transactionId));
+            audit.setCustomerId(customerId);
+            audit.setCustomerName(customerName);
+            audit.setHeadline(String.format("Sale to %s", customerName));
+            audit.setDetail(ActivityText.saleDetail(itemsSummary, paid, amount));
+            audit.setDescription(String.format("Sale of %s to %s. %s", ActivityText.money(amount), customerName, audit.getDetail()));
             audit.setTimestamp(Instant.now());
             
             auditRepository.save(audit);
@@ -241,8 +243,12 @@ public class AuditService implements IAuditService {
                 ? reminderText.substring(0, 150) + "..." 
                 : (reminderText != null && !reminderText.trim().isEmpty() ? reminderText : "No message provided");
             
+            audit.setCustomerId(customerId);
+            audit.setCustomerName(customerName);
+            audit.setDetail(ActivityText.reminderDetail(reminderTime));
+
             if (customerId != null && customerName != null) {
-                headline = String.format("Reminder '%s' created for %s", reminderNameDisplay, customerName);
+                headline = String.format("Reminder set for %s", customerName);
                 description = String.format("A reminder has been scheduled for customer %s on %s. " +
                     "The reminder message: \"%s\"", customerName, formattedTime, reminderPreview);
             } else if (ownerId != null) {
@@ -281,7 +287,7 @@ public class AuditService implements IAuditService {
     @Override
     @Async("virtualThreadExecutor")
     @Transactional
-    public void logPaymentSuccess(UUID paymentId, UUID ownerId, UUID customerId, String customerName, UUID saleItemId, String productName, BigDecimal amount, String reference) {
+    public void logPaymentSuccess(UUID paymentId, UUID ownerId, UUID customerId, String customerName, UUID saleItemId, String productName, BigDecimal amount, String reference, String medium) {
         try {
             Audit audit = new Audit();
             audit.setOwnerId(ownerId);
@@ -289,10 +295,13 @@ public class AuditService implements IAuditService {
             audit.setAction(AuditAction.UPDATE);
             audit.setEntityId(paymentId);
             audit.setAmount(amount);
-            audit.setHeadline(String.format("Payment of ₹%s received from %s", amount, customerName));
+            audit.setCustomerId(customerId);
+            audit.setCustomerName(customerName);
+            audit.setHeadline(String.format("Payment from %s", customerName));
+            audit.setDetail(ActivityText.paymentDetail(medium, productName));
             
-            String description = String.format("Received payment of ₹%s from %s for product '%s'", 
-                amount, customerName, productName);
+            String description = String.format("Received %s from %s for '%s'", 
+                ActivityText.money(amount), customerName, productName);
             
             if (reference != null && !reference.trim().isEmpty()) {
                 String referenceText = formatPaymentReference(reference);

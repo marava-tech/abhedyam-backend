@@ -19,11 +19,11 @@ public interface IAuditService {
                               UUID ownerId, BigDecimal amount, String details);
     void logStockChange(UUID productId, UUID ownerId, String productName, BigDecimal oldStock, 
                        BigDecimal newStock, String source, String details);
-    void logSaleCreation(UUID saleId, UUID ownerId, UUID customerId, String customerName, BigDecimal amount, String transactionId);
+    void logSaleCreation(UUID saleId, UUID ownerId, UUID customerId, String customerName, BigDecimal amount, String transactionId, String itemsSummary, BigDecimal paid);
     void logSaleCancellation(UUID saleId, UUID ownerId, UUID customerId, String customerName, BigDecimal amount, String transactionId);
     void logProductCreation(UUID productId, UUID ownerId, String productName, String productCode);
     void logReminderCreation(UUID reminderId, UUID ownerId, UUID customerId, String customerName, String reminderName, String reminderText, Instant reminderTime);
-    void logPaymentSuccess(UUID paymentId, UUID ownerId, UUID customerId, String customerName, UUID saleItemId, String productName, BigDecimal amount, String reference);
+    void logPaymentSuccess(UUID paymentId, UUID ownerId, UUID customerId, String customerName, UUID saleItemId, String productName, BigDecimal amount, String reference, String medium);
     void logPaymentCreation(UUID paymentId, UUID ownerId, UUID customerId, String customerName, UUID saleItemId, String productName, BigDecimal amount, String reference, String status, String medium);
     void logSubscriptionChange(UUID ownerId, String oldPlan, String newPlan, String oldStatus, String newStatus, String subscriptionId, Instant validTill);
 }
