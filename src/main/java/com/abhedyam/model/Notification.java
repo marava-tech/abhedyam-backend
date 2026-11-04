@@ -1,5 +1,7 @@
 package com.abhedyam.model;
 
+import com.abhedyam.model.enums.DeliveryStatus;
+import com.abhedyam.model.enums.NotificationCategory;
 import com.abhedyam.model.enums.NotificationType;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -11,7 +13,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "notifications")
+@Table(name = "notifications", uniqueConstraints = @UniqueConstraint(columnNames = {"ownerId", "dedupeKey"}))
 @Getter
 @Setter
 public class Notification extends BaseEntity {
@@ -49,5 +51,26 @@ public class Notification extends BaseEntity {
     
     @Column
     private Instant readAt;
+
+    /** Why this was sent (null on rows created before the dispatcher existed). */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 40)
+    private NotificationCategory category;
+
+    /** Push title; the in-app message is {@link #message}. */
+    @Column
+    private String title;
+
+    /** Same key twice for one owner = same event; the second is ignored. Nullable. */
+    @Column
+    private String dedupeKey;
+
+    /** Earliest time the push may go out (quiet hours). */
+    @Column
+    private Instant pushAfter;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private DeliveryStatus deliveryStatus;
 }
 
