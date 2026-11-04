@@ -24,8 +24,7 @@ public class ReminderCreateRequest {
     @Schema(description = "Type of reminder", example = "FOLLOW_UP", required = true)
     private ReminderType type;
     
-    @NotNull(message = "Channel is required")
-    @Schema(description = "Notification channel", example = "SMS", required = true)
+    @Schema(description = "Delivery channel. Only IN_APP is supported (optional, kept for older app versions)", example = "IN_APP")
     private ReminderChannel channel;
     
     @NotNull(message = "Due time is required")

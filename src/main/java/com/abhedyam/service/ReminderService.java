@@ -5,6 +5,7 @@ import com.abhedyam.exception.BusinessException;
 import com.abhedyam.exception.ResourceNotFoundException;
 import com.abhedyam.model.Customer;
 import com.abhedyam.model.Reminder;
+import com.abhedyam.model.enums.ReminderChannel;
 import com.abhedyam.model.enums.ReminderStatus;
 import com.abhedyam.repository.CustomerRepository;
 import com.abhedyam.repository.ReminderRepository;
@@ -46,7 +47,7 @@ public class ReminderService implements IReminderService {
         reminder.setOwnerId(ownerId);
         reminder.setName(request.getName());
         reminder.setType(request.getType());
-        reminder.setChannel(request.getChannel());
+        reminder.setChannel(ReminderChannel.IN_APP);
         reminder.setTime(request.getDueAt());
         reminder.setText(request.getText());
         reminder.setStatus(ReminderStatus.PENDING);
