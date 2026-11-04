@@ -13,6 +13,8 @@ import java.util.UUID;
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
     List<Notification> findByOwnerId(UUID ownerId);
     List<Notification> findByUserId(UUID userId);
+    java.util.Optional<Notification> findByOwnerIdAndDedupeKey(UUID ownerId, String dedupeKey);
+    List<Notification> findByDeliveryStatusAndPushAfterLessThanEqual(com.abhedyam.model.enums.DeliveryStatus status, java.time.Instant at);
     
     @Query("SELECT n FROM Notification n WHERE (n.ownerId = :userId OR n.userId = :userId) " +
            "AND (n.isActive = true OR n.isActive IS NULL) " +

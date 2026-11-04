@@ -24,6 +24,7 @@ public class NotificationResponse {
     private String relatedEntityType;
     private Integer retryCount;
     private Instant createdAt;
+    private String category;
     
     public static NotificationResponse fromEntity(Notification notification) {
         return new NotificationResponse(
@@ -38,7 +39,8 @@ public class NotificationResponse {
             notification.getRelatedEntityId(),
             notification.getRelatedEntityType(),
             notification.getRetryCount(),
-            notification.getCreatedAt()
+            notification.getCreatedAt(),
+            notification.getCategory() == null ? null : notification.getCategory().name()
         );
     }
 }
