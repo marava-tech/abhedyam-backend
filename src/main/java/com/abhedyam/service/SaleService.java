@@ -1,6 +1,7 @@
 package com.abhedyam.service;
 
 import com.abhedyam.constants.ErrorCodes;
+import com.abhedyam.dto.PaymentCreateRequest;
 import com.abhedyam.dto.SaleCreateRequest;
 import com.abhedyam.dto.SaleDetailResponse;
 import com.abhedyam.dto.SaleItemRequest;
@@ -11,6 +12,8 @@ import com.abhedyam.model.Inventory;
 import com.abhedyam.model.LocationDetails;
 import com.abhedyam.model.Product;
 import com.abhedyam.model.SaleItem;
+import com.abhedyam.model.enums.PaymentMedium;
+import com.abhedyam.model.enums.PaymentStatus;
 import com.abhedyam.model.enums.UserType;
 import com.abhedyam.repository.CustomerRepository;
 import com.abhedyam.repository.InventoryRepository;
@@ -33,6 +36,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -59,6 +63,10 @@ public class SaleService implements ISaleService {
 
     private static final String IDEMPOTENCY_PREFIX = "sale:idempotency:";
     private static final int IDEMPOTENCY_TTL_MINUTES = 5;
+    private static final String WALK_IN_NAME = "Walk-in";
+    private static final Set<String> SALE_INPUT_ERRORS = Set.of(
+            ErrorCodes.INVALID_QUANTITY, ErrorCodes.PAYMENT_EXCEEDS_DUE,
+            ErrorCodes.INVALID_AMOUNT, ErrorCodes.WALK_IN_MUST_BE_PAID);
 
     @Override
     @Transactional
@@ -67,6 +75,14 @@ public class SaleService implements ISaleService {
         String transactionId = UUID.randomUUID().toString();
 
         try {
+            String clientRedisKey = clientIdempotencyRedisKey(ownerId, request);
+            if (clientRedisKey != null) {
+                SaleDetailResponse existing = findExistingSale(clientRedisKey);
+                if (existing != null) {
+                    return existing;
+                }
+            }
+
             Customer customer = resolveCustomer(request, ownerId, transactionId);
 
             List<UUID> productIds = new ArrayList<>();
@@ -80,19 +96,13 @@ public class SaleService implements ISaleService {
                 processedItems.add(itemRequest);
             }
 
-            String idempotencyKey = generateIdempotencyKey(customer.getId(), productIds);
-            String redisKey = IDEMPOTENCY_PREFIX + idempotencyKey;
-
-            try {
-                String existingTransactionId = redisTemplate.opsForValue().get(redisKey);
-                if (existingTransactionId != null) {
-                    log.warn(
-                            "Duplicate sale request detected with idempotencyKey: {}, returning existing transaction: {}",
-                            idempotencyKey, existingTransactionId);
-                    return getSaleByTransactionId(existingTransactionId);
+            String redisKey = clientRedisKey;
+            if (redisKey == null) {
+                redisKey = IDEMPOTENCY_PREFIX + generateIdempotencyKey(customer.getId(), productIds);
+                SaleDetailResponse existing = findExistingSale(redisKey);
+                if (existing != null) {
+                    return existing;
                 }
-            } catch (Exception e) {
-                log.warn("Redis check failed for idempotency, proceeding with sale creation: {}", e.getMessage());
             }
 
             List<SaleItem> saleItems = new ArrayList<>();
@@ -103,10 +113,10 @@ public class SaleService implements ISaleService {
                 Product product = products.get(i);
                 UUID productId = productIds.get(i);
 
-                BigDecimal quantity = BigDecimal.ONE;
+                BigDecimal quantity = SalePricing.quantityOf(itemRequest.getQuantity());
                 BigDecimal itemPrice = resolveItemPrice(itemRequest, product);
 
-                BigDecimal itemTotal = itemPrice.multiply(quantity);
+                BigDecimal itemTotal = SalePricing.lineTotal(itemPrice, quantity);
                 totalAmount = totalAmount.add(itemTotal);
 
                 SaleItem saleItem = createSaleItem(customer.getId(), ownerId, productId, itemPrice,
@@ -122,6 +132,13 @@ public class SaleService implements ISaleService {
                     log.error("Stock update failed for product {} in transaction {}, continuing sale: {}",
                             productId, transactionId, e.getMessage());
                 }
+            }
+
+            boolean walkIn = Boolean.TRUE.equals(request.getWalkIn()) && request.getCustomerId() == null;
+            SalePricing.checkPaid(totalAmount, request.getPaidAmount(), walkIn);
+            if (request.getPaidAmount() != null && request.getPaidAmount().signum() > 0) {
+                recordPaidAtSale(saleItems, request.getPaidAmount(), request.getPaymentMedium());
+                saleItems = saleItemRepository.findByTransactionId(transactionId);
             }
 
             try {
@@ -145,6 +162,13 @@ public class SaleService implements ISaleService {
 
             return buildSaleDetailResponse(transactionId, customer, saleItems, totalAmount);
 
+        } catch (BusinessException e) {
+            if (SALE_INPUT_ERRORS.contains(e.getErrorCode())) {
+                throw e;
+            }
+            log.error("Business error in sale creation for transaction {}: {}", transactionId, e.getMessage(), e);
+            throw new BusinessException("SALE_CREATION_FAILED",
+                    "Unable to create sale. Please try again");
         } catch (Exception e) {
             log.error("Critical error in sale creation for transaction {}: {}", transactionId, e.getMessage(), e);
             throw new BusinessException("SALE_CREATION_FAILED",
@@ -153,6 +177,14 @@ public class SaleService implements ISaleService {
     }
 
     private Customer resolveCustomer(SaleCreateRequest request, UUID ownerId, String transactionId) {
+        if (request.getCustomerId() == null && Boolean.TRUE.equals(request.getWalkIn())) {
+            return customerRepository.findFirstByOwnerIdAndNameIgnoreCase(ownerId, WALK_IN_NAME)
+                    .orElseGet(() -> {
+                        request.setCustomerName(WALK_IN_NAME);
+                        request.setCustomerPhone(null);
+                        return findOrCreateCustomer(request, ownerId);
+                    });
+        }
         if (request.getCustomerId() != null) {
             return customerRepository.findById(request.getCustomerId())
                     .map(customer -> {
@@ -403,6 +435,41 @@ public class SaleService implements ISaleService {
         saleItem.setTransactionId(transactionId);
         saleItem.setDueDate(dueDate);
         return saleItem;
+    }
+
+    private String clientIdempotencyRedisKey(UUID ownerId, SaleCreateRequest request) {
+        String key = request.getIdempotencyKey();
+        if (key == null || key.isBlank()) {
+            return null;
+        }
+        return IDEMPOTENCY_PREFIX + "client:" + ownerId + ":" + key.trim();
+    }
+
+    private SaleDetailResponse findExistingSale(String redisKey) {
+        try {
+            String existingTransactionId = redisTemplate.opsForValue().get(redisKey);
+            if (existingTransactionId != null) {
+                log.warn("Duplicate sale request detected, returning existing transaction: {}", existingTransactionId);
+                return getSaleByTransactionId(existingTransactionId);
+            }
+        } catch (Exception e) {
+            log.warn("Redis check failed for idempotency, proceeding with sale creation: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    private void recordPaidAtSale(List<SaleItem> saleItems, BigDecimal paid, PaymentMedium medium) {
+        List<PaymentAllocator.Open> open = saleItems.stream()
+                .map(si -> new PaymentAllocator.Open(si.getId(), si.getRemainingAmount()))
+                .toList();
+        for (PaymentAllocator.Piece piece : PaymentAllocator.allocate(open, paid)) {
+            PaymentCreateRequest one = new PaymentCreateRequest();
+            one.setSaleItemId(piece.saleItemId());
+            one.setAmount(piece.amount());
+            one.setMedium(medium != null ? medium : PaymentMedium.CASH);
+            one.setStatus(PaymentStatus.SUCCESS);
+            paymentService.createManualPayment(one);
+        }
     }
 
     private String generateIdempotencyKey(UUID customerId, List<UUID> productIds) {
