@@ -20,14 +20,11 @@ import com.abhedyam.repository.PaymentRepository;
 import com.abhedyam.repository.ProductRepository;
 import com.abhedyam.repository.SaleItemRepository;
 import com.abhedyam.repository.UserRepository;
-import com.abhedyam.model.Notification;
+import com.abhedyam.model.enums.NotificationCategory;
 import com.abhedyam.model.enums.NotificationType;
 import com.abhedyam.service.interfaces.IAuditService;
 import com.abhedyam.service.interfaces.ICustomerService;
-import com.abhedyam.service.interfaces.IFcmService;
-import com.abhedyam.service.interfaces.INotificationService;
 import com.abhedyam.service.interfaces.IPaymentService;
-import com.abhedyam.util.PackageConstants;
 import com.abhedyam.util.SecurityUtil;
 import com.abhedyam.constants.CacheKeys;
 import com.abhedyam.constants.ErrorCodes;
@@ -57,8 +54,7 @@ public class PaymentService implements IPaymentService {
     private final SaleItemRepository saleItemRepository;
     private final UserRepository userRepository;
     private final IAuditService auditService;
-    private final INotificationService notificationService;
-    private final IFcmService fcmService;
+    private final NotificationDispatcher dispatcher;
     private final ICustomerService customerService;
     private final CustomerService customerServiceConcrete;
     private final RedisTemplate<String, String> redisTemplate;
@@ -833,31 +829,12 @@ public class PaymentService implements IPaymentService {
     
     private void sendPendingPaymentNotificationToOwner(Payment payment, Customer customer, Product product, UUID ownerId) {
         try {
-            String message = String.format("You have a payment pending please verify. Customer: %s, Amount: ₹%s, Product: %s", 
+            String message = String.format("You have a payment pending please verify. Customer: %s, Amount: ₹%s, Product: %s",
                 customer.getName(), payment.getAmount(), product.getName());
-            
-            Notification notification = new Notification();
-            notification.setOwnerId(ownerId);
-            notification.setUserId(ownerId);
-            notification.setType(NotificationType.ACTION_REQUIRED);
-            notification.setMessage(message);
-            notification.setTimestamp(Instant.now());
-            notification.setIsRead(false);
-            notification.setRelatedEntityId(payment.getId());
-            notification.setRelatedEntityType("PAYMENT");
-            notification.setRetryCount(0);
-            
-            notificationService.create(notification);
-            log.info("In-app notification created for pending payment {} to owner {}", payment.getId(), ownerId);
-            
-            String title = "Payment Pending Verification";
-            String body = String.format("%s has a payment of ₹%s pending verification", customer.getName(), payment.getAmount());
-            
-            fcmService.sendNotificationToUser(ownerId, title, body, PackageConstants.BUSINESS_APP_PACKAGE);
-            log.info("FCM notification sent for pending payment {} to owner {}", payment.getId(), ownerId);
+            dispatcher.notify(ownerId, NotificationCategory.PAYMENT_NEEDS_OK, NotificationType.ACTION_REQUIRED,
+                "Payment Pending Verification", message, "PAYMENT", payment.getId(), "payment-needs-ok:" + payment.getId());
         } catch (Exception e) {
-            log.error("Failed to send notification for pending payment {} to owner {}: {}", 
-                payment.getId(), ownerId, e.getMessage(), e);
+            log.error("Failed to notify owner {} of pending payment {}: {}", ownerId, payment.getId(), e.getMessage(), e);
         }
     }
     
