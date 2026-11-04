@@ -53,7 +53,24 @@ class NotificationDispatcherTest {
     void daytimeWritesRowAndPushesNow() {
         Notification n = send(NotificationCategory.OWNER_REMINDER, null, day);
         assertEquals(DeliveryStatus.SENT, n.getDeliveryStatus());
-        verify(fcm).sendNotificationToUser(eq(owner), eq("T"), eq("B"), any());
+        verify(fcm).sendNotificationToUser(eq(owner), eq("T"), eq("B"), any(), any());
+    }
+
+    @Test
+    void pushCarriesWhatTheAppNeedsToOpenTheRightScreen() {
+        UUID id = UUID.randomUUID(), entity = UUID.randomUUID();
+        Notification n = new Notification();
+        n.setId(id);
+        n.setCategory(NotificationCategory.PAYMENT_NEEDS_OK);
+        n.setRelatedEntityType("PAYMENT");
+        n.setRelatedEntityId(entity);
+        assertEquals(java.util.Map.of("notificationId", id.toString(), "category", "PAYMENT_NEEDS_OK",
+            "relatedEntityType", "PAYMENT", "relatedEntityId", entity.toString()), NotificationDispatcher.dataFor(n));
+    }
+
+    @Test
+    void dataSkipsMissingFieldsBecauseFcmRejectsNulls() {
+        assertTrue(NotificationDispatcher.dataFor(new Notification()).isEmpty());
     }
 
     @Test
@@ -87,7 +104,7 @@ class NotificationDispatcherTest {
         when(repo.findByDeliveryStatusAndPushAfterLessThanEqual(DeliveryStatus.DEFERRED, held.getPushAfter())).thenReturn(List.of(held));
         dispatcher.deliverDeferred(held.getPushAfter());
         assertEquals(DeliveryStatus.SENT, held.getDeliveryStatus());
-        verify(fcm, times(1)).sendNotificationToUser(eq(owner), eq("T"), eq("B"), any());
+        verify(fcm, times(1)).sendNotificationToUser(eq(owner), eq("T"), eq("B"), any(), any());
     }
 
     @Test
