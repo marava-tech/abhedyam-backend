@@ -28,6 +28,9 @@ public interface ICustomerService {
     PageResponse<Customer> searchCustomers(CustomerSearchRequest request);
     List<CustomerSearchResult> searchByName(String name);
     PageResponse<CustomerResponse> getOwnerCustomers(UUID ownerId, String searchText, String village, Integer page, Integer size, String sortBy, String sortDirection, boolean includePendingAmountDetails);
+
+    /** Same list with optional "owes only" filter; sortBy=pendingAmount sorts by what is owed. */
+    PageResponse<CustomerResponse> getOwnerCustomers(UUID ownerId, String searchText, String village, Integer page, Integer size, String sortBy, String sortDirection, boolean includePendingAmountDetails, boolean owesOnly);
     CustomerBasicSummaryResponse getCustomerBasicSummary(UUID ownerId, UUID customerId);
     CustomerSalesSummaryResponse getCustomerSalesSummary(UUID ownerId, UUID customerId);
     CustomerPaymentsSummaryResponse getCustomerPaymentsSummary(UUID ownerId, UUID customerId);
