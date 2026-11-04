@@ -106,6 +106,7 @@ public class SaleService implements ISaleService {
             }
 
             List<SaleItem> saleItems = new ArrayList<>();
+            List<ActivityText.Line> activityLines = new ArrayList<>();
             BigDecimal totalAmount = BigDecimal.ZERO;
 
             for (int i = 0; i < processedItems.size(); i++) {
@@ -124,6 +125,7 @@ public class SaleService implements ISaleService {
 
                 SaleItem savedItem = saleItemRepository.save(saleItem);
                 saleItems.add(savedItem);
+                activityLines.add(new ActivityText.Line(product.getName(), quantity));
 
                 try {
                     stockService.recordSaleOut(productId, quantity, savedItem.getId(),
@@ -155,7 +157,8 @@ public class SaleService implements ISaleService {
             UUID firstSaleItemId = saleItems.isEmpty() ? null : saleItems.get(0).getId();
             try {
                 auditService.logSaleCreation(firstSaleItemId != null ? firstSaleItemId : UUID.randomUUID(),
-                        ownerId, customer.getId(), customer.getName(), totalAmount, transactionId);
+                        ownerId, customer.getId(), customer.getName(), totalAmount, transactionId,
+                        ActivityText.itemsSummary(activityLines), request.getPaidAmount());
             } catch (Exception e) {
                 log.warn("Audit logging failed, sale still created: {}", e.getMessage());
             }

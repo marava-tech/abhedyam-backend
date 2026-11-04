@@ -43,6 +43,16 @@ public class Audit extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(columnDefinition = "VARCHAR(36)")
+    private UUID customerId;
+
+    @Column(length = 255)
+    private String customerName;
+
+    @Column(length = 255)
+    private String detail;
+
     @Column(nullable = false)
     private Instant timestamp;
 }

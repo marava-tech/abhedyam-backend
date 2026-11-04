@@ -439,6 +439,9 @@ public class StatsService implements IStatsService {
                                                         audit.getDescription(),
                                                         amount,
                                                         audit.getEntityId(),
+                                                        audit.getCustomerId(),
+                                                        audit.getCustomerName(),
+                                                        audit.getDetail(),
                                                         audit.getTimestamp());
                                 })
                                 .collect(Collectors.toList());

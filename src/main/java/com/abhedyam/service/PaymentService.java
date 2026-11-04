@@ -155,7 +155,8 @@ public class PaymentService implements IPaymentService {
                 request.getSaleItemId(),
                 product.getName(),
                 savedPayment.getAmount(),
-                savedPayment.getReference()
+                savedPayment.getReference(),
+                savedPayment.getMedium() != null ? savedPayment.getMedium().name() : null
             );
         } else {
             auditService.logPaymentCreation(
@@ -305,7 +306,8 @@ public class PaymentService implements IPaymentService {
                 request.getSaleItemId(),
                 product.getName(),
                 savedPayment.getAmount(),
-                savedPayment.getReference()
+                savedPayment.getReference(),
+                savedPayment.getMedium() != null ? savedPayment.getMedium().name() : null
             );
         } else {
             auditService.logPaymentCreation(
@@ -773,7 +775,8 @@ public class PaymentService implements IPaymentService {
                 payment.getSaleItemId(),
                 productName,
                 payment.getAmount(),
-                payment.getReference()
+                payment.getReference(),
+                payment.getMedium() != null ? payment.getMedium().name() : null
             );
         }
         
