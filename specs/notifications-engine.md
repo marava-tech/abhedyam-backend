@@ -117,7 +117,7 @@ own phone via the Remind sheet, never auto-sent).
 ## Build slices (each its own branch + PR)
 1. Backend: delete dead paths (S; behaviour-neutral) — DONE on `chore/notifications-cleanup`.
 2. Backend: dispatcher, `QuietHours`, preferences + settings API, deferred-push job (M) — DONE on `feat/notification-dispatcher` (muted categories live in an element-collection table instead of a `notification_preferences` table; the deferred job is a method on the dispatcher, not a separate class).
-3. Backend: move `PAYMENT_NEEDS_OK` and `OWNER_REMINDER` onto the dispatcher (S).
+3. Backend: move `PAYMENT_NEEDS_OK` and `OWNER_REMINDER` onto the dispatcher (S) — DONE on `feat/notifications-use-dispatcher`. Reminders addressed to a customer (customer app) keep their own path; they are not owner notifications. The pending-payment push body is now the full sentence (one body for row and push).
 4. Backend: `DUE_DIGEST` job + `PAYMENT_RECEIVED` (M).
 5. App: Notifications screen settings + deep links + single FCM init (M).
 6. App: remove the old unread-count double fetch and unused code (S).
