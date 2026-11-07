@@ -79,7 +79,7 @@ public class DueDigestJob {
         if (notifications.findByOwnerIdAndDedupeKey(ownerId, key).isPresent()) return;
 
         DueDigest digest = DueDigest.of(toMap(saleItems.sumTotalsByCustomer(ownerId)), toMap(payments.sumSuccessfulByCustomer(ownerId)),
-            saleItems.findByOwnerId(ownerId), now);
+            oldestUnpaid(saleItems.oldestUnpaidSaleByCustomer(ownerId)), now);
         String stockLine = stockLine(ownerId);
         if (digest == null && stockLine == null) return;
         List<String> parts = new java.util.ArrayList<>();
@@ -136,6 +136,16 @@ public class DueDigestJob {
     private static Map<UUID, BigDecimal> toMap(java.util.List<Object[]> rows) {
         Map<UUID, BigDecimal> m = new HashMap<>();
         for (Object[] r : rows) m.put(UUID.fromString(r[0].toString()), new BigDecimal(r[1].toString())); // same parsing as LocationDetailsService: row types vary by driver
+        return m;
+    }
+
+    private static Map<UUID, java.time.Instant> oldestUnpaid(java.util.List<Object[]> rows) {
+        Map<UUID, java.time.Instant> m = new HashMap<>();
+        for (Object[] r : rows) {
+            if (r[1] == null) continue;
+            m.put(UUID.fromString(r[0].toString()),
+                r[1] instanceof java.time.Instant i ? i : ((java.sql.Timestamp) r[1]).toInstant());
+        }
         return m;
     }
 }
