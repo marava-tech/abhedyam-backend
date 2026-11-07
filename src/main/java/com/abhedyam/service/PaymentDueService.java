@@ -64,7 +64,7 @@ public class PaymentDueService implements IPaymentDueService {
     static PaymentDueResponse response(PaymentDue d, BigDecimal paid, LocalDate today) {
         return new PaymentDueResponse(d.getId(), d.getAmount(), paid, d.getAmount().subtract(paid).max(BigDecimal.ZERO),
                 d.getDueDate(), d.getNote(), DueAllocator.status(d.getAmount(), paid, d.getDueDate(), today).name(),
-                d.getCreatedAt(), Boolean.TRUE.equals(d.getRemindOwner()));
+                d.getCreatedAt(), d.getEarlyReminderDays());
     }
 
     /** Paid per due for dues of one customer and that customer's payments (any status; only SUCCESS counts). */
@@ -160,7 +160,7 @@ public class PaymentDueService implements IPaymentDueService {
         d.setAmount(amount);
         d.setDueDate(r.getDueDate());
         d.setNote(note(r.getNote()));
-        d.setRemindOwner(Boolean.TRUE.equals(r.getRemindOwner()));
+        d.setEarlyReminderDays(r.getEarlyReminderDays() == null ? null : remindDays(r.getEarlyReminderDays()));
         d = dueRepository.save(d);
         // Recorded now, so no earlier payment counts toward it.
         return response(d, BigDecimal.ZERO, s.today());
@@ -185,7 +185,7 @@ public class PaymentDueService implements IPaymentDueService {
             d.setDueDate(r.getDueDate());
         }
         if (r.getNote() != null) d.setNote(note(r.getNote()));
-        if (r.getRemindOwner() != null) d.setRemindOwner(r.getRemindOwner());
+        if (r.getEarlyReminderDays() != null) d.setEarlyReminderDays(remindDays(r.getEarlyReminderDays()));
         dueRepository.save(d);
         return load(ownerId, customerId).response(d);
     }
@@ -220,6 +220,13 @@ public class PaymentDueService implements IPaymentDueService {
             throw invalid(left.signum() <= 0 ? "The whole balance already has due dates"
                     : "Only ₹" + rupees(left) + " is left to plan");
         }
+    }
+
+    /** 0 = no extra reminder (null); otherwise 2..30 (1 is the reminder every due already gets). */
+    static Integer remindDays(int days) {
+        if (days == 0 || days == 1) return null;
+        if (days < 0 || days > 30) throw invalid("An earlier reminder can be 2 to 30 days before");
+        return days;
     }
 
     private static String note(String note) {

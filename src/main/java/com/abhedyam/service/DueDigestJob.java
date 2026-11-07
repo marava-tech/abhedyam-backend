@@ -29,7 +29,7 @@ import java.util.UUID;
 
 /**
  * Once a day per owner, at their digest time: how much is due (with today's and missed dues), and a
- * reminder for each due the owner asked to be reminded of that falls tomorrow. Only owners with the business app
+ * reminder the day before every unpaid due, plus the extra earlier one the owner chose for it. Only owners with the business app
  * installed (an FCM token) and the digest turned on. The dispatcher dedupes on the date, so a
  * restart or a late tick never sends twice, and moves it past quiet hours.
  * ponytail: every 15 min we recompute for owners with nothing due yet; fine for a few hundred owners,
@@ -69,7 +69,7 @@ public class DueDigestJob {
         if (local.toLocalTime().isBefore(s.getDigestTime())) return;
         LocalDate today = local.toLocalDate();
         List<OwnerDueResponse> dues = paymentDues.ownerDues(ownerId);
-        remindTomorrow(ownerId, dues, today);
+        remindAhead(ownerId, dues, today);
 
         if (s.getMutedCategories().contains(NotificationCategory.DUE_DIGEST)) return;
         String key = "digest:" + today;
@@ -85,16 +85,21 @@ public class DueDigestJob {
 
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEE, d MMM");
 
-    /** Key holds the date, so moving a due re-arms its reminder; the dispatcher drops repeats. */
-    private void remindTomorrow(UUID ownerId, List<OwnerDueResponse> dues, LocalDate today) {
+    /** Key holds the date and the lead time, so changing either re-arms the reminder; the dispatcher drops repeats. */
+    private void remindAhead(UUID ownerId, List<OwnerDueResponse> dues, LocalDate today) {
         for (OwnerDueResponse o : dues) {
             var d = o.getDue();
-            if (!d.isRemindOwner() || d.getStatus().equals("PAID") || !d.getDueDate().equals(today.plusDays(1))) continue;
+            if (d.getStatus().equals("PAID")) continue;
+            int n;
+            if (d.getDueDate().minusDays(1).equals(today)) n = 1;
+            else if (d.getEarlyReminderDays() != null && d.getDueDate().minusDays(d.getEarlyReminderDays()).equals(today)) n = d.getEarlyReminderDays();
+            else continue;
             String name = o.getCustomerName() == null ? "A customer" : o.getCustomerName();
+            String when = n == 1 ? "tomorrow" : "in " + n + " days";
             String body = "₹" + PaymentDueService.rupees(d.getRemaining()) + " due on " + d.getDueDate().format(DAY)
                 + (d.getNote() == null ? "" : " · " + d.getNote());
-            dispatcher.notify(ownerId, NotificationCategory.OWNER_REMINDER, NotificationType.INFO, name + " pays tomorrow", body,
-                "CUSTOMER", o.getCustomerId(), "due-remind:" + d.getId() + ":" + d.getDueDate());
+            dispatcher.notify(ownerId, NotificationCategory.OWNER_REMINDER, NotificationType.INFO, name + " pays " + when, body,
+                "CUSTOMER", o.getCustomerId(), "due-remind:" + d.getId() + ":" + d.getDueDate() + ":" + n);
         }
     }
 
