@@ -236,6 +236,7 @@ public class CustomerService implements ICustomerService {
         List<UUID> customerIds = customers.stream().map(Customer::getId).toList();
         List<LocationDetails> locations = locationDetailsRepository.findByUserIdIn(customerIds);
         java.util.Map<UUID, String> villageMap = locations.stream()
+            .filter(l -> l.getVillage() != null) // toMap rejects null values; no village = absent
             .collect(java.util.stream.Collectors.toMap(
                 LocationDetails::getUserId,
                 LocationDetails::getVillage,
@@ -364,6 +365,7 @@ public class CustomerService implements ICustomerService {
         List<UUID> customerIds = customers.stream().map(Customer::getId).toList();
         List<LocationDetails> locations = locationDetailsRepository.findByUserIdIn(customerIds);
         Map<UUID, String> villageMap = locations.stream()
+            .filter(l -> l.getVillage() != null) // toMap rejects null values; no village = absent
             .collect(Collectors.toMap(
                 LocationDetails::getUserId,
                 LocationDetails::getVillage,
@@ -452,6 +454,7 @@ public class CustomerService implements ICustomerService {
         List<Customer> pageRows = rows.subList(from, to);
         List<UUID> ids = pageRows.stream().map(Customer::getId).toList();
         Map<UUID, String> villageMap = ids.isEmpty() ? Map.of() : locationDetailsRepository.findByUserIdIn(ids).stream()
+            .filter(l -> l.getVillage() != null) // toMap rejects null values; no village = absent
             .collect(Collectors.toMap(LocationDetails::getUserId, LocationDetails::getVillage, (a, b) -> a));
         List<CustomerResponse> responses = pageRows.stream().map(c -> {
             CustomerResponse r = CustomerResponse.fromEntity(c, villageMap.get(c.getId()));
@@ -489,6 +492,7 @@ public class CustomerService implements ICustomerService {
         List<UUID> customerIds = limitedCustomers.stream().map(Customer::getId).toList();
         List<LocationDetails> locations = locationDetailsRepository.findByUserIdIn(customerIds);
         java.util.Map<UUID, String> villageMap = locations.stream()
+            .filter(l -> l.getVillage() != null) // toMap rejects null values; no village = absent
             .collect(java.util.stream.Collectors.toMap(
                 LocationDetails::getUserId,
                 LocationDetails::getVillage,
@@ -547,6 +551,7 @@ public class CustomerService implements ICustomerService {
         List<UUID> customerIds = customers.stream().map(Customer::getId).toList();
         List<LocationDetails> locations = locationDetailsRepository.findByUserIdIn(customerIds);
         java.util.Map<UUID, String> villageMap = locations.stream()
+            .filter(l -> l.getVillage() != null) // toMap rejects null values; no village = absent
             .collect(java.util.stream.Collectors.toMap(
                 LocationDetails::getUserId,
                 LocationDetails::getVillage,
