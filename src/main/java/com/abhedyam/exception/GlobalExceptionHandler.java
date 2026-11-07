@@ -58,8 +58,9 @@ public class GlobalExceptionHandler {
             path
         );
         
+        // "Not your customer" is a permission problem (403), not a dead session: apps log the owner out on 401.
         HttpStatus status = "UNAUTHORIZED".equals(ex.getErrorCode()) 
-            ? HttpStatus.UNAUTHORIZED 
+            ? HttpStatus.FORBIDDEN 
             : "RATE_LIMITED".equals(ex.getErrorCode())
                 ? HttpStatus.TOO_MANY_REQUESTS
                 : HttpStatus.BAD_REQUEST;
