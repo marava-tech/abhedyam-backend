@@ -13,6 +13,8 @@ import com.abhedyam.model.Payment;
 import com.abhedyam.model.PaymentDue;
 import com.abhedyam.model.enums.PaymentStatus;
 import com.abhedyam.repository.CustomerRepository;
+import com.abhedyam.repository.LocationDetailsRepository;
+import com.abhedyam.model.LocationDetails;
 import com.abhedyam.repository.PaymentDueRepository;
 import com.abhedyam.repository.PaymentRepository;
 import com.abhedyam.service.interfaces.ICustomerService;
@@ -42,6 +44,7 @@ public class PaymentDueService implements IPaymentDueService {
     private final PaymentDueRepository dueRepository;
     private final PaymentRepository paymentRepository;
     private final CustomerRepository customerRepository;
+    private final LocationDetailsRepository locations;
     /** Its payments summary checks that the owner is the caller and owns the customer, and gives the balance. */
     private final ICustomerService customerService;
     private final INotificationSettingsService notificationSettings;
@@ -72,7 +75,7 @@ public class PaymentDueService implements IPaymentDueService {
         return DueAllocator.allocate(
                 dues.stream().map(d -> new DueAllocator.Due(d.getId(), d.getAmount(), d.getDueDate(), d.getCreatedAt())).toList(),
                 payments.stream().filter(p -> p.getStatus() == PaymentStatus.SUCCESS)
-                        .map(p -> new DueAllocator.Paid(p.getAmount(), p.getCreatedAt())).toList());
+                        .map(p -> new DueAllocator.Paid(p.getAmount(), p.getCreatedAt(), p.getDueId())).toList());
     }
 
     private LocalDate today(UUID ownerId) {
@@ -93,10 +96,10 @@ public class PaymentDueService implements IPaymentDueService {
         State s = load(ownerId, customerId);
         List<PaymentDueResponse> dues = s.dues().stream().map(s::response).toList();
         BigDecimal planned = s.plannedExcept(null);
-        long missed = dues.stream().filter(d -> d.getStatus().equals("MISSED")).count();
+        long overdue = dues.stream().filter(d -> d.getStatus().equals("OVERDUE")).count();
         PaymentDueResponse next = dues.stream().filter(d -> !d.getStatus().equals("PAID")).findFirst().orElse(null);
         return new CustomerDuesResponse(s.balance(), planned, s.balance().subtract(planned).max(BigDecimal.ZERO),
-                missed, next, dues);
+                overdue, next, dues);
     }
 
     @Override
@@ -110,6 +113,10 @@ public class PaymentDueService implements IPaymentDueService {
                 .collect(Collectors.groupingBy(Payment::getCustomerId));
         Map<UUID, Customer> customers = customerRepository.findAllById(ids).stream()
                 .collect(Collectors.toMap(Customer::getId, Function.identity()));
+        Map<UUID, String> villages = new HashMap<>();
+        for (LocationDetails l : locations.findByUserIdIn(ids)) {
+            if (l.getVillage() != null && !l.getVillage().isBlank()) villages.putIfAbsent(l.getUserId(), l.getVillage());
+        }
         LocalDate today = today(ownerId);
         List<OwnerDueResponse> out = new ArrayList<>();
         byCustomer.forEach((customerId, dues) -> {
@@ -117,6 +124,7 @@ public class PaymentDueService implements IPaymentDueService {
             Customer c = customers.get(customerId);
             for (PaymentDue d : dues) {
                 out.add(new OwnerDueResponse(customerId, c == null ? null : c.getName(), c == null ? null : c.getPhone(),
+                        villages.get(customerId),
                         response(d, paid.get(d.getId()), today)));
             }
         });
@@ -130,16 +138,16 @@ public class PaymentDueService implements IPaymentDueService {
         if (!ownerId.equals(SecurityUtil.getCurrentUserId())) {
             throw new BusinessException(ErrorCodes.UNAUTHORIZED, "You can only see your own dues");
         }
-        LocalDate end = today(ownerId).plusDays(Math.max(0, Math.min(days, 90)));
-        List<OwnerDueResponse> missed = new ArrayList<>(), upcoming = new ArrayList<>();
+        LocalDate end = today(ownerId).plusDays(Math.max(0, Math.min(days, 365)));
+        List<OwnerDueResponse> overdue = new ArrayList<>(), upcoming = new ArrayList<>();
         for (OwnerDueResponse o : ownerDues(ownerId)) {
             String st = o.getDue().getStatus();
-            if (st.equals("MISSED")) missed.add(o);
+            if (st.equals("OVERDUE")) overdue.add(o);
             else if (!st.equals("PAID") && !o.getDue().getDueDate().isAfter(end)) upcoming.add(o);
         }
-        List<OwnerDueResponse> dues = new ArrayList<>(missed);
+        List<OwnerDueResponse> dues = new ArrayList<>(overdue);
         dues.addAll(upcoming);
-        return new UpcomingDuesResponse(sum(upcoming), missed.size(), sum(missed), dues);
+        return new UpcomingDuesResponse(sum(upcoming), overdue.size(), sum(overdue), dues);
     }
 
     static BigDecimal sum(List<OwnerDueResponse> dues) {

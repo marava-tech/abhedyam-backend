@@ -22,7 +22,7 @@ public class PaymentDueController {
     private final IPaymentDueService service;
 
     @GetMapping("/dues")
-    @Operation(summary = "Upcoming and missed dues", description = "All customers: missed dues first, then unpaid dues due within `days` (default 7, max 90). Paid dues are left out.")
+    @Operation(summary = "Upcoming and overdue dues", description = "All customers: missed dues first, then unpaid dues due within `days` (default 7, max 365). Paid dues are left out.")
     public ApiResponse<UpcomingDuesResponse> upcoming(@PathVariable UUID ownerId, @RequestParam(defaultValue = "7") int days) {
         return ApiResponse.success(service.upcoming(ownerId, days));
     }

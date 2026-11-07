@@ -135,6 +135,7 @@ public class PaymentService implements IPaymentService {
         payment.setMedium(request.getMedium());
         payment.setTimestamp(Instant.now());
         payment.setReference(request.getReference());
+        payment.setDueId(request.getDueId());
         payment.setStatus(request.getStatus() != null ? request.getStatus() : PaymentStatus.SUCCESS);
         
         Payment savedPayment = paymentRepository.save(payment);
@@ -230,6 +231,7 @@ public class PaymentService implements IPaymentService {
             one.setMedium(medium);
             one.setReference(request.getReference());
             one.setStatus(PaymentStatus.SUCCESS);
+            one.setDueId(request.getDueId());
             payments.add(createManualPayment(one));
         }
         return new com.abhedyam.dto.CollectPaymentResponse(customer.getId(), request.getAmount(), payments);

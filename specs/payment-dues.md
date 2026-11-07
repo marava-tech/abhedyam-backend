@@ -11,7 +11,7 @@ Dues belong to the **customer**, not a sale: payments are made against the custo
 Successful payments are replayed in the order they were recorded (`createdAt`). Each payment fills the open due with the earliest `dueDate` that **already existed** when the payment was recorded. A payment recorded before any due existed counts for none. Money beyond all dues is left over (it still lowers the balance).
 Because it is recomputed on every read, deleting, confirming or failing a payment updates dues by itself.
 
-Status: `PAID` (paid = amount) · `MISSED` (date before today, owner's time zone, not fully paid) · `PARTLY_PAID` · `OPEN`.
+Status: `PAID` (paid = amount) · `OVERDUE` (date before today, owner's time zone, not fully paid) · `PARTLY_PAID` · `OPEN`.
 
 ## Rules
 - amount > 0; dueDate required, not before today when created or moved.
@@ -20,16 +20,21 @@ Status: `PAID` (paid = amount) · `MISSED` (date before today, owner's time zone
 
 ## API (owner only, own customers)
 `/api/v1/owners/{ownerId}/customers/{customerId}/dues`
-- `GET` → `{ balance, planned, unplanned, missedCount, next, dues[] }` where `planned` = unpaid part of all dues, `unplanned = max(0, balance − planned)`, `next` = earliest not-paid due. Each due: `id, amount, paid, remaining, dueDate, note, status, createdAt`. Sorted by dueDate.
+- `GET` → `{ balance, planned, unplanned, overdueCount, next, dues[] }` where `planned` = unpaid part of all dues, `unplanned = max(0, balance − planned)`, `next` = earliest not-paid due. Each due: `id, amount, paid, remaining, dueDate, note, status, createdAt`. Sorted by dueDate.
 - `POST {amount, dueDate, note}` → the due
 - `PUT /{dueId} {amount?, dueDate?, note?}` → the due
 - `DELETE /{dueId}`
 
 ## Owner-wide, reminders, digest (slices 3-5)
-- `GET /api/v1/owners/{ownerId}/dues?days=7` → `{ upcomingAmount, missedCount, missedAmount, dues[] }`; each item `{customerId, customerName, customerPhone, due}`; missed first, then unpaid dues up to `days` ahead (max 90). For Home "Due this week".
+- `GET /api/v1/owners/{ownerId}/dues?days=7` → `{ upcomingAmount, overdueCount, overdueAmount, dues[] }`; each item `{customerId, customerName, customerPhone, due}`; missed first, then unpaid dues up to `days` ahead (max 90). For Home "Due this week".
 - Every unpaid due gets an `OWNER_REMINDER` push the day before, at the owner's digest time: "Prava pays tomorrow" · "₹5,000 due on Thu, 5 Nov", opening that customer (`relatedEntityType=CUSTOMER`). `earlyReminderDays` (2-30, null = none; send 0 on edit to remove) adds one earlier reminder ("Prava pays in 7 days"). Dedupe key `due-remind:{id}:{date}:{days}`, so moving the date re-arms it. Muting Owner reminders in notification settings stops the pushes (the in-app rows stay).
-- Daily digest starts with "2 dues today ₹7,000 · 1 missed ₹3,000" when there are any.
+- Daily digest starts with "2 dues today ₹7,000 · 1 overdue ₹3,000" when there are any.
 - Messaging the customer is app-only: the phone's SMS/WhatsApp composer with a ready text; nothing is sent by the server.
+
+## Terms and "Got paid" (owner-facing)
+- Statuses: Upcoming (`OPEN`), Due today (`OPEN` dated today, app label), Partly paid, **Overdue** (`OVERDUE`, was `MISSED`; date passed, not fully paid), Paid.
+- "Got paid" on a due records a real payment through `POST /owners/{ownerId}/payments/collect` with `dueId`: the balance, ledger and due stay consistent. Payments carry a nullable `dueId`; the allocator fills that due first, then the usual earliest-date order. Overdue dues can also be moved to a new date (edit) or deleted.
+- Owner-wide list items also carry `village`; `days` max 365.
 
 ## Later slices
 App Dues card + sheet (slice 2), message the customer from a due (3), owner push + digest by dues (4), Home "Due this week" (5). Optional sale link and a split helper in New sale only if asked.

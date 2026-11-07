@@ -28,6 +28,9 @@ public class PaymentCreateRequest {
     
     @Schema(description = "Payment reference/transaction ID", example = "TXN123456789")
     private String reference;
+
+    @io.swagger.v3.oas.annotations.media.Schema(description = "Optional: the due this payment is for (filled first)")
+    private java.util.UUID dueId;
     
     @Schema(description = "Payment status", example = "SUCCESS")
     private PaymentStatus status;

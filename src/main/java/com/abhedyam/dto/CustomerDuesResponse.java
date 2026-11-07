@@ -15,7 +15,7 @@ public class CustomerDuesResponse {
     private BigDecimal planned;
     /** Part of the balance with no due date: max(0, balance - planned). */
     private BigDecimal unplanned;
-    private long missedCount;
+    private long overdueCount;
     /** Earliest due that is not fully paid, or null. */
     private PaymentDueResponse next;
     /** Sorted by due date. */

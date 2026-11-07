@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Once a day per owner, at their digest time: how much is due (with today's and missed dues), and a
+ * Once a day per owner, at their digest time: how much is due (with today's and overdue dues), and a
  * reminder the day before every unpaid due, plus the extra earlier one the owner chose for it. Only owners with the business app
  * installed (an FCM token) and the digest turned on. The dispatcher dedupes on the date, so a
  * restart or a late tick never sends twice, and moves it past quiet hours.

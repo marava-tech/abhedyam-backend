@@ -15,7 +15,7 @@ public interface IPaymentDueService {
     /** Every active due of the owner with its paid part, sorted by date. No access check: server-side callers only. */
     List<OwnerDueResponse> ownerDues(UUID ownerId);
 
-    /** Missed dues, then unpaid dues up to [days] from today. Caller must be the owner. */
+    /** Overdue dues, then unpaid dues up to [days] from today. Caller must be the owner. */
     UpcomingDuesResponse upcoming(UUID ownerId, int days);
 
     PaymentDueResponse create(UUID ownerId, UUID customerId, PaymentDueRequest request);

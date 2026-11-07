@@ -52,10 +52,22 @@ class DueAllocatorTest {
     }
 
     @Test
+    void gotPaidOnALaterDueFillsThatDueFirst() {
+        UUID early = UUID.randomUUID(), later = UUID.randomUUID();
+        var dues = List.of(new DueAllocator.Due(early, d("3000"), NOV12, T0),
+                new DueAllocator.Due(later, d("2000"), NOV20, T0));
+
+        var paid = DueAllocator.allocate(dues, List.of(new DueAllocator.Paid(d("2500"), at(1), later)));
+
+        assertEquals(0, d("2000").compareTo(paid.get(later)));
+        assertEquals(0, d("500").compareTo(paid.get(early)));
+    }
+
+    @Test
     void status() {
         LocalDate today = LocalDate.of(2026, 11, 15);
         assertEquals(DueAllocator.Status.PAID, DueAllocator.status(d("10"), d("10"), NOV12, today));
-        assertEquals(DueAllocator.Status.MISSED, DueAllocator.status(d("10"), d("4"), NOV12, today));
+        assertEquals(DueAllocator.Status.OVERDUE, DueAllocator.status(d("10"), d("4"), NOV12, today));
         assertEquals(DueAllocator.Status.PARTLY_PAID, DueAllocator.status(d("10"), d("4"), NOV20, today));
         assertEquals(DueAllocator.Status.OPEN, DueAllocator.status(d("10"), d("0"), today, today));
     }

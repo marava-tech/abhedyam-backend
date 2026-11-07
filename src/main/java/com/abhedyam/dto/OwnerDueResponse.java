@@ -12,5 +12,6 @@ public class OwnerDueResponse {
     private UUID customerId;
     private String customerName;
     private String customerPhone;
+    private String village;
     private PaymentDueResponse due;
 }
