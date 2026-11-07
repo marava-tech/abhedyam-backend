@@ -8,8 +8,6 @@ import java.util.Map;
 @Data
 @Schema(description = "Request to update owner settings")
 public class OwnerSettingsUpdateRequest {
-    @Schema(description = "Daily quote enabled", example = "true")
-    private Boolean dailyQuoteEnabled;
     
     @Schema(description = "Dark mode enabled", example = "false")
     private Boolean isDarkModeEnabled;

@@ -49,7 +49,6 @@ class OwnerSettingsServiceTest {
         OwnerSettings existing = new OwnerSettings();
         existing.setId(ownerId);
         existing.setOwnerId(ownerId);
-        existing.setDailyQuoteEnabled(true);
         existing.setIsDarkModeEnabled(false);
 
         when(ownerSettingsRepository.findByOwnerId(ownerId)).thenReturn(Optional.of(existing));
@@ -66,7 +65,6 @@ class OwnerSettingsServiceTest {
         OwnerSettings created = new OwnerSettings();
         created.setId(ownerId);
         created.setOwnerId(ownerId);
-        created.setDailyQuoteEnabled(true);
         created.setIsDarkModeEnabled(false);
 
         // first read empty, insert-ignore (also safe when a parallel request won), second read finds the row

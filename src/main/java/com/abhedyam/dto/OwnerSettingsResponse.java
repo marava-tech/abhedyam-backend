@@ -13,8 +13,6 @@ public class OwnerSettingsResponse {
     @Schema(description = "Settings ID (read-only, system-generated)", example = "3595381f-d038-4d6b-8fe0-dc76ebb7dde2", accessMode = Schema.AccessMode.READ_ONLY)
     private UUID id;
     
-    @Schema(description = "Daily quote enabled", example = "true")
-    private Boolean dailyQuoteEnabled;
     
     @Schema(description = "Dark mode enabled", example = "false")
     private Boolean isDarkModeEnabled;

@@ -73,7 +73,6 @@ class OwnerSettingsRaceTest {
             for (Future<OwnerSettingsResponse> f : results) {
                 OwnerSettingsResponse r = f.get(20, TimeUnit.SECONDS); // throws if any request failed
                 assertThat(r.getId()).isEqualTo(owner);
-                assertThat(r.getDailyQuoteEnabled()).isTrue();
             }
         } finally {
             pool.shutdownNow();
