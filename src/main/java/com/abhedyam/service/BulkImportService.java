@@ -38,8 +38,10 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -60,6 +62,11 @@ public class BulkImportService implements IBulkImportService {
 
     @Override
     public BulkImportResult importData(UUID ownerId, MultipartFile file) {
+        return importData(ownerId, file, false);
+    }
+
+    @Override
+    public BulkImportResult importData(UUID ownerId, MultipartFile file, boolean dryRun) {
         validateOwnerAccess(ownerId);
         validateFile(file);
 
@@ -68,6 +75,7 @@ public class BulkImportService implements IBulkImportService {
         int paymentsRecorded = 0;
         int rowsSkipped = 0;
         List<String> errors = new ArrayList<>();
+        Set<String> simulatedCreatedKeys = new HashSet<>();
 
         try (InputStream inputStream = file.getInputStream(); XSSFWorkbook workbook = new XSSFWorkbook(inputStream)) {
             Sheet sheet = workbook.getSheet(SHEET_NAME);
@@ -90,37 +98,44 @@ public class BulkImportService implements IBulkImportService {
                 int displayRow = rowIndex + 1;
                 try {
                     ImportRow importRow = parseRow(row, formatter);
-                    CustomerResolution customerResolution = resolveCustomer(ownerId, importRow);
+                    CustomerResolution customerResolution = resolveCustomer(ownerId, importRow, dryRun, simulatedCreatedKeys);
 
                     if (customerResolution.created()) {
                         customersCreated++;
                     }
 
-                    SaleCreateRequest saleRequest = new SaleCreateRequest();
-                    saleRequest.setCustomerId(customerResolution.customer().getId());
-                    saleRequest.setDueDate(importRow.paymentDeadline());
+                    if (dryRun) {
+                        salesImported++;
+                        if (importRow.amountPaid().compareTo(BigDecimal.ZERO) > 0) {
+                            paymentsRecorded++;
+                        }
+                    } else {
+                        SaleCreateRequest saleRequest = new SaleCreateRequest();
+                        saleRequest.setCustomerId(customerResolution.customer().getId());
+                        saleRequest.setDueDate(importRow.paymentDeadline());
 
-                    SaleItemRequest saleItemRequest = new SaleItemRequest();
-                    saleItemRequest.setProductName(importRow.productName());
-                    saleItemRequest.setPrice(importRow.productPrice());
-                    saleRequest.setItems(List.of(saleItemRequest));
+                        SaleItemRequest saleItemRequest = new SaleItemRequest();
+                        saleItemRequest.setProductName(importRow.productName());
+                        saleItemRequest.setPrice(importRow.productPrice());
+                        saleRequest.setItems(List.of(saleItemRequest));
 
-                    SaleDetailResponse sale = saleService.createSale(saleRequest);
-                    if (sale.getItems() == null || sale.getItems().isEmpty()) {
-                        throw new BusinessException(ErrorCodes.INVALID,
-                                "Sale was created without any sale items");
-                    }
-                    salesImported++;
+                        SaleDetailResponse sale = saleService.createSale(saleRequest);
+                        if (sale.getItems() == null || sale.getItems().isEmpty()) {
+                            throw new BusinessException(ErrorCodes.INVALID,
+                                    "Sale was created without any sale items");
+                        }
+                        salesImported++;
 
-                    if (importRow.amountPaid().compareTo(BigDecimal.ZERO) > 0) {
-                        PaymentCreateRequest paymentRequest = new PaymentCreateRequest();
-                        paymentRequest.setSaleItemId(sale.getItems().get(0).getId());
-                        paymentRequest.setAmount(importRow.amountPaid());
-                        paymentRequest.setMedium(PaymentMedium.CASH);
-                        paymentRequest.setStatus(PaymentStatus.SUCCESS);
+                        if (importRow.amountPaid().compareTo(BigDecimal.ZERO) > 0) {
+                            PaymentCreateRequest paymentRequest = new PaymentCreateRequest();
+                            paymentRequest.setSaleItemId(sale.getItems().get(0).getId());
+                            paymentRequest.setAmount(importRow.amountPaid());
+                            paymentRequest.setMedium(PaymentMedium.CASH);
+                            paymentRequest.setStatus(PaymentStatus.SUCCESS);
 
-                        paymentService.createImportedPayment(ownerId, paymentRequest, importRow.amountPaidDate());
-                        paymentsRecorded++;
+                            paymentService.createImportedPayment(ownerId, paymentRequest, importRow.amountPaidDate());
+                            paymentsRecorded++;
+                        }
                     }
                 } catch (Exception e) {
                     rowsSkipped++;
@@ -196,7 +211,7 @@ public class BulkImportService implements IBulkImportService {
                 paymentDeadline);
     }
 
-    private CustomerResolution resolveCustomer(UUID ownerId, ImportRow row) {
+    private CustomerResolution resolveCustomer(UUID ownerId, ImportRow row, boolean dryRun, Set<String> simulatedCreatedKeys) {
         if (row.phone() != null && !row.phone().isBlank()) {
             String normalizedPhone = PhoneUtil.normalizePhone(row.phone());
             Optional<Customer> existingCustomer = customerRepository.findByPhoneNormalized(normalizedPhone);
@@ -208,12 +223,33 @@ public class BulkImportService implements IBulkImportService {
                 }
                 return new CustomerResolution(customer, false);
             }
+            if (dryRun && simulatedCreatedKeys.contains("phone:" + normalizedPhone)) {
+                Customer placeholder = new Customer();
+                placeholder.setId(UUID.randomUUID());
+                return new CustomerResolution(placeholder, false);
+            }
         } else {
             Optional<Customer> existingCustomer = customerRepository.findFirstByOwnerIdAndNameIgnoreCase(ownerId,
                     row.customerName());
             if (existingCustomer.isPresent()) {
                 return new CustomerResolution(existingCustomer.get(), false);
             }
+            if (dryRun && simulatedCreatedKeys.contains("name:" + row.customerName().trim().toLowerCase())) {
+                Customer placeholder = new Customer();
+                placeholder.setId(UUID.randomUUID());
+                return new CustomerResolution(placeholder, false);
+            }
+        }
+
+        if (dryRun) {
+            if (row.phone() != null && !row.phone().isBlank()) {
+                simulatedCreatedKeys.add("phone:" + PhoneUtil.normalizePhone(row.phone()));
+            } else {
+                simulatedCreatedKeys.add("name:" + row.customerName().trim().toLowerCase());
+            }
+            Customer placeholder = new Customer();
+            placeholder.setId(UUID.randomUUID());
+            return new CustomerResolution(placeholder, true);
         }
 
         CustomerCreateRequest request = new CustomerCreateRequest();
