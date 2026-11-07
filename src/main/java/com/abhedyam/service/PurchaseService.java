@@ -234,7 +234,7 @@ public class PurchaseService implements IPurchaseService {
         if (n == null) throw invalid("Pick an item or type a new one");
         ItemRequest create = new ItemRequest();
         create.setName(n.getName());
-        create.setPrice(n.getPrice());
+        create.setPrice(n.getPrice() == null ? BigDecimal.ZERO : n.getPrice()); // selling price is asked after the purchase
         create.setUnit(n.getUnit());
         create.setLowStockLevel(n.getLowStockLevel());
         create.setTrackStock(true);

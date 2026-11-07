@@ -71,3 +71,11 @@ purchases, cancel restores, deleted purchase ignored; paidBack/profit; create wi
   purchase quantity and at least 2 × lowStockLevel − stock; whole units, ≥ 1. Each line carries the item and its
   last purchase (`lastSupplier`, `lastUnitCost`, `lastQuantity`, `lastBoughtOn`) so the app can group by supplier
   and pre-fill a new purchase.
+
+## Bill-style entry (owner feedback 2026-11-07: "extremely hard to understand")
+- The app enters a purchase like a wholesaler bill: item · how many · price for 1 → line total; the total adds up.
+  Each line sends `unitCost`; `totalPaid` is sent only when the owner paid a different amount or left prices empty.
+- Every line has a cost and `totalPaid` differs from their sum (discount, transport) → every cost is scaled to
+  `totalPaid`. Lines without a cost still share what is left, as before.
+- `newItem.price` is optional (0 = selling price not set yet; the app asks after saving). Items with price 0 are left
+  out of `potentialProfit`.

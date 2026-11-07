@@ -72,7 +72,7 @@ public class ItemService implements IItemService {
             if (i.getStockValue() == null) missingCost++;
             else {
                 value = value.add(i.getStockValue());
-                profit = profit.add(i.getStock().multiply(i.getPrice().subtract(i.getCostPrice())));
+                if (i.getPrice().signum() > 0) profit = profit.add(i.getStock().multiply(i.getPrice().subtract(i.getCostPrice())));
             }
             if (i.isNotSelling()) {
                 notSelling++;
