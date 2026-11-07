@@ -22,6 +22,9 @@ public class OwnerSettingsResponse {
     @Schema(description = "Villages view: group customers by village and plan village visits", example = "false")
     private Boolean villageModeEnabled;
     
+    @Schema(description = "Location tools: map pins, directions, nearby customers, visit route", example = "true")
+    private Boolean locationToolsEnabled;
+    
     @Schema(description = "Other feature flags")
     private Map<String, Object> otherFlags;
     

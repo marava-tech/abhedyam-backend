@@ -34,6 +34,10 @@ public class OwnerSettings extends BaseEntity {
     @Column
     private Boolean villageModeEnabled;
 
+    /** Location tools: map pins, directions, nearby customers, visit route. null = on (the default). */
+    @Column
+    private Boolean locationToolsEnabled;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "json")
     private Map<String, Object> otherFlags;

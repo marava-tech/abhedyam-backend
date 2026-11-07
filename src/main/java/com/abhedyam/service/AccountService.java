@@ -102,7 +102,7 @@ public class AccountService implements IAccountService {
                     due.merge(s.getCustomerId(), nz(s.getRemainingAmount()), BigDecimal::add);
                 }
                 Map<UUID, String> villages = new HashMap<>();
-                for (LocationDetails l : locationDetailsRepository.findCustomerLocationsByOwnerId(ownerId)) {
+                for (LocationDetails l : locationDetailsRepository.findByUserIdIn(customers.stream().map(Customer::getId).toList())) { // all villages, pin or not
                     villages.put(l.getUserId(), s(l.getVillage()));
                 }
                 out.append(CsvUtil.row(List.of("Name", "Phone", "Village", "Pending amount", "Added on")));

@@ -19,10 +19,11 @@ public class LocationDetails extends BaseEntity {
     @Column(nullable = false, unique = true, columnDefinition = "VARCHAR(36)")
     private UUID userId;
     
-    @Column(nullable = false, precision = 10, scale = 7)
+    /** The map pin; null when only a village is known (village = grouping label, pin = Location tools). */
+    @Column(precision = 10, scale = 7)
     private BigDecimal latitude;
     
-    @Column(nullable = false, precision = 10, scale = 7)
+    @Column(precision = 10, scale = 7)
     private BigDecimal longitude;
     
     @Column

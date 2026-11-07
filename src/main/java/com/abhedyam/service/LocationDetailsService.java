@@ -249,9 +249,10 @@ public class LocationDetailsService implements ILocationDetailsService {
         LocationDetails location = locationDetailsRepository.findByUserId(customerId).orElse(null);
 
         if (location == null) {
-            if (request.getLatitude() == null || request.getLongitude() == null) {
+            boolean hasPin = request.getLatitude() != null && request.getLongitude() != null;
+            if (!hasPin && (request.getVillage() == null || request.getVillage().isBlank())) {
                 throw new BusinessException("MISSING_REQUIRED_FIELDS",
-                        "Latitude and longitude are required when creating location");
+                        "Send a map pin (latitude and longitude) or a village");
             }
             location = new LocationDetails();
             location.setId(customerId);
@@ -322,8 +323,10 @@ public class LocationDetailsService implements ILocationDetailsService {
         LocationDetailsResponse response = new LocationDetailsResponse();
         response.setId(location.getId());
         response.setUserId(location.getUserId());
-        response.setLatitude(location.getLatitude());
-        response.setLongitude(location.getLongitude());
+        // No pin is stored as NULL, but sent as 0 like before: released apps parse latitude as a required number
+        // and already treat 0,0 as "no location".
+        response.setLatitude(location.getLatitude() != null ? location.getLatitude() : java.math.BigDecimal.ZERO);
+        response.setLongitude(location.getLongitude() != null ? location.getLongitude() : java.math.BigDecimal.ZERO);
         response.setVillage(location.getVillage());
         response.setAddressText(location.getAddressText());
         response.setCreatedAt(location.getCreatedAt());

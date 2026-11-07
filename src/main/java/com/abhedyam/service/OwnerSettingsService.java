@@ -62,6 +62,9 @@ public class OwnerSettingsService implements IOwnerSettingsService {
         if (request.getVillageModeEnabled() != null) {
             settings.setVillageModeEnabled(request.getVillageModeEnabled());
         }
+        if (request.getLocationToolsEnabled() != null) {
+            settings.setLocationToolsEnabled(request.getLocationToolsEnabled());
+        }
         if (request.getOtherFlags() != null) {
             settings.setOtherFlags(request.getOtherFlags());
         }
@@ -83,6 +86,7 @@ public class OwnerSettingsService implements IOwnerSettingsService {
         response.setDailyQuoteEnabled(settings.getDailyQuoteEnabled());
         response.setIsDarkModeEnabled(settings.getIsDarkModeEnabled());
         response.setVillageModeEnabled(Boolean.TRUE.equals(settings.getVillageModeEnabled()));
+        response.setLocationToolsEnabled(!Boolean.FALSE.equals(settings.getLocationToolsEnabled()));
         response.setOtherFlags(settings.getOtherFlags());
         response.setCreatedAt(settings.getCreatedAt());
         response.setUpdatedAt(settings.getUpdatedAt());
