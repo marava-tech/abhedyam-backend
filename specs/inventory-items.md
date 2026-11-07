@@ -63,3 +63,8 @@ unused endpoints (slice 4).
 Movements + totals for each type; sale of untracked writes nothing; tracked sale goes negative; cancel restores;
 **a stock failure doesn't roll back the sale**; status/filter/summary/stockValue; name uniqueness; migration rule;
 owner can't touch another owner's items.
+
+## Slice 3: low stock in the morning summary (2026-11-07)
+The daily digest ends with "Buy soon: Oil (out), Dal (1 kg left) +1 more" (out first, then low; 2 names max).
+When nobody owes money but stock is low, the digest is still sent, titled "Stock running low". A stock error never
+blocks the money digest. Same DUE_DIGEST category and mute switch.

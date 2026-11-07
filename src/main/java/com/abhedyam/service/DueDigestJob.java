@@ -47,6 +47,7 @@ public class DueDigestJob {
     private final PaymentRepository payments;
     private final NotificationDispatcher dispatcher;
     private final IPaymentDueService paymentDues;
+    private final com.abhedyam.service.interfaces.IItemService items;
     private final com.abhedyam.service.interfaces.IOwnerSettingsService ownerSettings;
 
     @Scheduled(cron = "0 */15 * * * *")
@@ -79,10 +80,25 @@ public class DueDigestJob {
 
         DueDigest digest = DueDigest.of(toMap(saleItems.sumTotalsByCustomer(ownerId)), toMap(payments.sumSuccessfulByCustomer(ownerId)),
             saleItems.findByOwnerId(ownerId), now);
-        if (digest == null) return;
+        String stockLine = stockLine(ownerId);
+        if (digest == null && stockLine == null) return;
+        List<String> parts = new java.util.ArrayList<>();
         String duesLine = DueDigest.duesLine(dues, today);
-        String body = duesLine == null ? digest.text() : duesLine + " · " + digest.text();
-        dispatcher.notify(ownerId, NotificationCategory.DUE_DIGEST, NotificationType.INFO, "Money to collect", body, "DIGEST", null, key);
+        if (duesLine != null) parts.add(duesLine);
+        if (digest != null) parts.add(digest.text());
+        if (stockLine != null) parts.add(stockLine);
+        String title = digest != null ? "Money to collect" : "Stock running low";
+        dispatcher.notify(ownerId, NotificationCategory.DUE_DIGEST, NotificationType.INFO, title, String.join(" · ", parts), "DIGEST", null, key);
+    }
+
+    /** A stock problem must never stop the money digest. */
+    private String stockLine(UUID ownerId) {
+        try {
+            return DueDigest.stockLine(items.all(ownerId));
+        } catch (Exception e) {
+            log.warn("Digest stock line skipped for owner {}: {}", ownerId, e.getMessage());
+            return null;
+        }
     }
 
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEE, d MMM");

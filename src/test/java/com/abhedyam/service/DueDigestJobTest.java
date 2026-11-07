@@ -37,6 +37,7 @@ class DueDigestJobTest {
     @Mock NotificationDispatcher dispatcher;
     @Mock com.abhedyam.service.interfaces.IPaymentDueService paymentDues;
     @Mock com.abhedyam.service.interfaces.IOwnerSettingsService ownerSettings;
+    @Mock com.abhedyam.service.interfaces.IItemService items;
     @InjectMocks DueDigestJob job;
 
     final UUID owner = UUID.randomUUID(), customer = UUID.randomUUID();
@@ -148,5 +149,34 @@ class DueDigestJobTest {
         when(saleItems.sumTotalsByCustomer(owner)).thenReturn(List.of());
         job.run(ist(9, 0));
         verifyNoInteractions(dispatcher);
+    }
+
+    static com.abhedyam.dto.ItemResponse item(String name, String stock, com.abhedyam.dto.ItemResponse.Status status) {
+        return new com.abhedyam.dto.ItemResponse(UUID.randomUUID(), name, java.math.BigDecimal.TEN, null, com.abhedyam.model.enums.StockUnit.KG,
+            true, new java.math.BigDecimal(stock), java.math.BigDecimal.ONE, status, null, null, null, java.math.BigDecimal.ZERO, null, null, false);
+    }
+
+    @Test
+    void digestEndsWithWhatToBuy() {
+        when(items.all(owner)).thenReturn(List.of(item("Rice", "0.5", com.abhedyam.dto.ItemResponse.Status.LOW),
+            item("Oil", "0", com.abhedyam.dto.ItemResponse.Status.OUT), item("Salt", "9", com.abhedyam.dto.ItemResponse.Status.OK),
+            item("Dal", "1", com.abhedyam.dto.ItemResponse.Status.LOW)));
+        job.run(ist(8, 15));
+        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.DUE_DIGEST), any(), eq("Money to collect"),
+            eq("1 customer owes ₹500 · oldest 0 days · Buy soon: Oil (out), Dal (1 kg left) +1 more"), any(), any(), any());
+    }
+
+    @Test
+    void stockAloneStillSendsADigestAndAStockErrorNeverBlocksIt() {
+        when(saleItems.sumTotalsByCustomer(owner)).thenReturn(List.of());
+        when(items.all(owner)).thenReturn(List.of(item("Oil", "0", com.abhedyam.dto.ItemResponse.Status.OUT)));
+        job.run(ist(8, 15));
+        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.DUE_DIGEST), any(), eq("Stock running low"), eq("Buy soon: Oil (out)"), any(), any(), any());
+
+        reset(dispatcher);
+        when(saleItems.sumTotalsByCustomer(owner)).thenReturn(java.util.Collections.singletonList(new Object[] {customer.toString(), new java.math.BigDecimal("500.00")}));
+        when(items.all(owner)).thenThrow(new RuntimeException("boom"));
+        job.run(ist(8, 15));
+        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.DUE_DIGEST), any(), eq("Money to collect"), eq("1 customer owes ₹500 · oldest 0 days"), any(), any(), any());
     }
 }
