@@ -176,4 +176,54 @@ class BulkImportDryRunTest {
         // Verify writes occurred
         verify(customerService).create(any());
     }
+
+    @Test
+    void wrongLengthPhoneSkipsTheRowWithAReason() throws Exception {
+        byte[] bytes;
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Import Data");
+            sheet.createRow(0);
+            sheet.createRow(1);
+            Row bad = sheet.createRow(2);
+            bad.createCell(0).setCellValue("Carol");
+            bad.createCell(1).setCellValue("12345");
+            bad.createCell(3).setCellValue("Dal");
+            bad.createCell(4).setCellValue(300);
+            bad.createCell(5).setCellValue(0);
+            Row noPhone = sheet.createRow(3);
+            noPhone.createCell(0).setCellValue("Dev");
+            noPhone.createCell(3).setCellValue("Dal");
+            noPhone.createCell(4).setCellValue(300);
+            noPhone.createCell(5).setCellValue(0);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            workbook.write(bos);
+            bytes = bos.toByteArray();
+        }
+        MockMultipartFile file = new MockMultipartFile("file", "test.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", bytes);
+
+        BulkImportResult result = bulkImportService.importData(ownerId, file, true);
+
+        assertThat(result.getSalesImported()).isEqualTo(1); // blank phone is still fine
+        assertThat(result.getRowsSkipped()).isEqualTo(1);
+        assertThat(result.getErrors().get(0)).contains("Row 3: Phone must be a 10-digit number");
+    }
+
+    @Test
+    void shippedTemplateHasNoDataRows() throws Exception {
+        try (var in = new org.springframework.core.io.ClassPathResource("templates/Abhedyam_Customer_Import.xlsx").getInputStream();
+             XSSFWorkbook workbook = new XSSFWorkbook(in)) {
+            Sheet sheet = workbook.getSheet("Import Data");
+            org.apache.poi.ss.usermodel.DataFormatter f = new org.apache.poi.ss.usermodel.DataFormatter();
+            assertThat(f.formatCellValue(sheet.getRow(0).getCell(0))).isEqualTo("Customer Name");
+            // The import reads data from the 3rd row: anything there would be imported or reported as an error.
+            for (int r = 2; r <= sheet.getLastRowNum(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) continue;
+                for (int c = 0; c < 8; c++) {
+                    assertThat(f.formatCellValue(row.getCell(c)).trim()).as("row %d col %d", r + 1, c + 1).isEmpty();
+                }
+            }
+        }
+    }
 }
