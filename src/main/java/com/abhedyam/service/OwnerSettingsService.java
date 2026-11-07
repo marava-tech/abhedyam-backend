@@ -43,14 +43,10 @@ public class OwnerSettingsService implements IOwnerSettingsService {
                 OwnerSettings newSettings = new OwnerSettings();
                 newSettings.setId(ownerId);
                 newSettings.setOwnerId(ownerId);
-                newSettings.setDailyQuoteEnabled(true);
                 newSettings.setIsDarkModeEnabled(false);
                 return newSettings;
                 });
         
-        if (request.getDailyQuoteEnabled() != null) {
-            settings.setDailyQuoteEnabled(request.getDailyQuoteEnabled());
-        }
         if (request.getIsDarkModeEnabled() != null) {
             settings.setIsDarkModeEnabled(request.getIsDarkModeEnabled());
         }
@@ -78,7 +74,6 @@ public class OwnerSettingsService implements IOwnerSettingsService {
     private OwnerSettingsResponse toResponse(OwnerSettings settings) {
         OwnerSettingsResponse response = new OwnerSettingsResponse();
         response.setId(settings.getId());
-        response.setDailyQuoteEnabled(settings.getDailyQuoteEnabled());
         response.setIsDarkModeEnabled(settings.getIsDarkModeEnabled());
         response.setVillageModeEnabled(Boolean.TRUE.equals(settings.getVillageModeEnabled()));
         response.setLocationToolsEnabled(!Boolean.FALSE.equals(settings.getLocationToolsEnabled()));

@@ -19,8 +19,6 @@ public class OwnerSettings extends BaseEntity {
     @Column(nullable = false, unique = true, columnDefinition = "VARCHAR(36)")
     private UUID ownerId;
     
-    @Column(nullable = false)
-    private Boolean dailyQuoteEnabled = true;
     
     @Column(nullable = false)
     private Boolean isDarkModeEnabled = false;
