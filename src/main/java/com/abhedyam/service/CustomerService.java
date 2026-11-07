@@ -417,13 +417,13 @@ public class CustomerService implements ICustomerService {
     
     /** Pending = sale totals - successful payments, per customer, for the whole owner. */
     private Map<UUID, BigDecimal> pendingByCustomer(UUID ownerId) {
+        // Summed in SQL: loading every sale line and payment the owner ever made grew with history.
         Map<UUID, BigDecimal> total = new HashMap<>();
-        for (SaleItem si : saleItemRepository.findByOwnerId(ownerId)) {
-            BigDecimal line = si.getPrice().multiply(si.getQuantity() != null ? si.getQuantity() : BigDecimal.ONE);
-            total.merge(si.getCustomerId(), line, BigDecimal::add);
+        for (Object[] r : saleItemRepository.sumTotalsByCustomer(ownerId)) {
+            total.merge(UUID.fromString(r[0].toString()), new BigDecimal(r[1].toString()), BigDecimal::add);
         }
-        for (Payment p : paymentRepository.findByOwnerId(ownerId)) {
-            if (p.getStatus() == PaymentStatus.SUCCESS) total.merge(p.getCustomerId(), p.getAmount().negate(), BigDecimal::add);
+        for (Object[] r : paymentRepository.sumSuccessfulByCustomer(ownerId)) {
+            total.merge(UUID.fromString(r[0].toString()), new BigDecimal(r[1].toString()).negate(), BigDecimal::add);
         }
         return total;
     }
