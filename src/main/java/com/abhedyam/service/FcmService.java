@@ -87,12 +87,11 @@ public class FcmService implements IFcmService {
                 log.error("Failed to send FCM notification to user {} with token {}: {}", 
                     userId, fcmDetails.getToken(), e.getMessage());
                 
-                String errorCode = e.getErrorCode() != null ? e.getErrorCode().toString() : null;
-                String errorMessage = e.getMessage();
-                if ((errorCode != null && (
-                    errorCode.contains("INVALID_ARGUMENT") || 
-                    errorCode.contains("UNREGISTERED"))) ||
-                    (errorMessage != null && errorMessage.contains("Requested entity was not found"))) {
+                // A phone that uninstalled or got a new token: forget it, or every push keeps trying it (seen: "NotRegistered").
+                var code = e.getMessagingErrorCode();
+                if (code == com.google.firebase.messaging.MessagingErrorCode.UNREGISTERED
+                    || code == com.google.firebase.messaging.MessagingErrorCode.INVALID_ARGUMENT) {
+                    String errorCode = String.valueOf(code);
                     log.info("Removing invalid token for user {}: {}", userId, errorCode);
                     fcmDetailsRepository.delete(fcmDetails);
                 }

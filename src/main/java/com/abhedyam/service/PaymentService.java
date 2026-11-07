@@ -831,10 +831,10 @@ public class PaymentService implements IPaymentService {
     
     private void sendPendingPaymentNotificationToOwner(Payment payment, Customer customer, Product product, UUID ownerId) {
         try {
-            String message = String.format("You have a payment pending please verify. Customer: %s, Amount: ₹%s, Product: %s",
-                customer.getName(), payment.getAmount(), product.getName());
+            // "Prava paid ₹1,000" · "For Cooler. Check it and OK it in Collected."
             dispatcher.notify(ownerId, NotificationCategory.PAYMENT_NEEDS_OK, NotificationType.ACTION_REQUIRED,
-                "Payment Pending Verification", message, "PAYMENT", payment.getId(), "payment-needs-ok:" + payment.getId());
+                customer.getName() + " paid ₹" + PaymentDueService.rupees(payment.getAmount()),
+                "For " + product.getName() + ". Check it and OK it in Collected.", "PAYMENT", payment.getId(), "payment-needs-ok:" + payment.getId());
         } catch (Exception e) {
             log.error("Failed to notify owner {} of pending payment {}: {}", ownerId, payment.getId(), e.getMessage(), e);
         }
