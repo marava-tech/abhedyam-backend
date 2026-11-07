@@ -71,7 +71,7 @@ class DueDigestJobTest {
         when(paymentDues.ownerDues(owner)).thenReturn(List.of(due(tomorrow, "OPEN", null)));
         job.run(ist(8, 15));
         verify(dispatcher).notify(eq(owner), eq(NotificationCategory.OWNER_REMINDER), eq(NotificationType.INFO), eq("Prava pays tomorrow"),
-            eq("₹5,000 due on Thu, 5 Nov · after harvest"), eq("CUSTOMER"), eq(customer), eq("due-remind:" + dueId + ":2026-11-05:1"));
+            eq("₹5,000 due on Thu, 5 Nov · after harvest"), eq("DUE"), eq(dueId), eq("due-remind:" + dueId + ":2026-11-05:1"));
 
         reset(dispatcher);
         when(paymentDues.ownerDues(owner)).thenReturn(List.of(due(tomorrow, "PAID", null),
@@ -86,6 +86,16 @@ class DueDigestJobTest {
         job.run(ist(8, 15));
         verify(dispatcher).notify(eq(owner), eq(NotificationCategory.OWNER_REMINDER), any(), eq("Prava pays in 7 days"), any(), any(), any(),
             eq("due-remind:" + dueId + ":2026-11-11:7"));
+    }
+
+    @Test
+    void villageVisitIsRemindedTheDayBefore() {
+        UUID visit = UUID.randomUUID();
+        when(paymentDues.ownerVisits(owner)).thenReturn(List.of(new com.abhedyam.dto.CollectionVisitResponse(visit, "Hanamkonda",
+            java.time.LocalDate.of(2026, 11, 5), null, "UPCOMING", 6, new java.math.BigDecimal("18400"))));
+        job.run(ist(8, 15));
+        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.OWNER_REMINDER), any(), eq("Visit Hanamkonda tomorrow"),
+            eq("6 customers owe ₹18,400"), eq("VISIT"), eq(visit), eq("visit-remind:" + visit + ":2026-11-05"));
     }
 
     @Test

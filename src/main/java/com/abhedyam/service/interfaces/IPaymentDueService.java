@@ -1,5 +1,7 @@
 package com.abhedyam.service.interfaces;
 
+import com.abhedyam.dto.CollectionVisitRequest;
+import com.abhedyam.dto.CollectionVisitResponse;
 import com.abhedyam.dto.CustomerDuesResponse;
 import com.abhedyam.dto.OwnerDueResponse;
 import com.abhedyam.dto.UpcomingDuesResponse;
@@ -23,4 +25,13 @@ public interface IPaymentDueService {
     PaymentDueResponse update(UUID ownerId, UUID customerId, UUID dueId, PaymentDueRequest request);
 
     void delete(UUID ownerId, UUID customerId, UUID dueId);
+
+    /** Open village visits with who owes there. No access check: server-side callers only. */
+    List<CollectionVisitResponse> ownerVisits(UUID ownerId);
+
+    CollectionVisitResponse createVisit(UUID ownerId, CollectionVisitRequest request);
+
+    CollectionVisitResponse updateVisit(UUID ownerId, UUID visitId, CollectionVisitRequest request);
+
+    void deleteVisit(UUID ownerId, UUID visitId);
 }

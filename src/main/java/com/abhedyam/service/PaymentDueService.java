@@ -1,6 +1,8 @@
 package com.abhedyam.service;
 
 import com.abhedyam.constants.ErrorCodes;
+import com.abhedyam.dto.CollectionVisitRequest;
+import com.abhedyam.dto.CollectionVisitResponse;
 import com.abhedyam.dto.CustomerDuesResponse;
 import com.abhedyam.dto.OwnerDueResponse;
 import com.abhedyam.dto.PaymentDueRequest;
@@ -8,11 +10,14 @@ import com.abhedyam.dto.PaymentDueResponse;
 import com.abhedyam.dto.UpcomingDuesResponse;
 import com.abhedyam.exception.BusinessException;
 import com.abhedyam.exception.ResourceNotFoundException;
+import com.abhedyam.model.CollectionVisit;
 import com.abhedyam.model.Customer;
 import com.abhedyam.model.Payment;
 import com.abhedyam.model.PaymentDue;
 import com.abhedyam.model.enums.PaymentStatus;
+import com.abhedyam.repository.CollectionVisitRepository;
 import com.abhedyam.repository.CustomerRepository;
+import com.abhedyam.repository.SaleItemRepository;
 import com.abhedyam.repository.LocationDetailsRepository;
 import com.abhedyam.model.LocationDetails;
 import com.abhedyam.repository.PaymentDueRepository;
@@ -45,6 +50,8 @@ public class PaymentDueService implements IPaymentDueService {
     private final PaymentRepository paymentRepository;
     private final CustomerRepository customerRepository;
     private final LocationDetailsRepository locations;
+    private final CollectionVisitRepository visitRepository;
+    private final SaleItemRepository saleItems;
     /** Its payments summary checks that the owner is the caller and owns the customer, and gives the balance. */
     private final ICustomerService customerService;
     private final INotificationSettingsService notificationSettings;
@@ -135,9 +142,7 @@ public class PaymentDueService implements IPaymentDueService {
     @Override
     @Transactional(readOnly = true)
     public UpcomingDuesResponse upcoming(UUID ownerId, int days) {
-        if (!ownerId.equals(SecurityUtil.getCurrentUserId())) {
-            throw new BusinessException(ErrorCodes.UNAUTHORIZED, "You can only see your own dues");
-        }
+        requireSelf(ownerId);
         LocalDate end = today(ownerId).plusDays(Math.max(0, Math.min(days, 365)));
         List<OwnerDueResponse> overdue = new ArrayList<>(), upcoming = new ArrayList<>();
         for (OwnerDueResponse o : ownerDues(ownerId)) {
@@ -147,7 +152,12 @@ public class PaymentDueService implements IPaymentDueService {
         }
         List<OwnerDueResponse> dues = new ArrayList<>(overdue);
         dues.addAll(upcoming);
-        return new UpcomingDuesResponse(sum(upcoming), overdue.size(), sum(overdue), dues);
+        List<CollectionVisitResponse> visits = ownerVisits(ownerId).stream()
+                .filter(v -> v.getStatus().equals("OVERDUE") || !v.getVisitDate().isAfter(end))
+                .sorted(Comparator.comparing((CollectionVisitResponse v) -> !v.getStatus().equals("OVERDUE"))
+                        .thenComparing(CollectionVisitResponse::getVisitDate))
+                .toList();
+        return new UpcomingDuesResponse(sum(upcoming), overdue.size(), sum(overdue), dues, visits);
     }
 
     static BigDecimal sum(List<OwnerDueResponse> dues) {
@@ -205,6 +215,96 @@ public class PaymentDueService implements IPaymentDueService {
         d.setIsActive(false);
         d.setDeletedAt(Instant.now());
         dueRepository.save(d);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CollectionVisitResponse> ownerVisits(UUID ownerId) {
+        List<CollectionVisit> visits = visitRepository.findByOwnerIdAndIsActiveTrueAndDoneAtIsNull(ownerId);
+        if (visits.isEmpty()) return List.of();
+        Map<UUID, String> villageByCustomer = new HashMap<>();
+        for (Object[] row : locations.findCustomerVillagesByOwnerId(ownerId)) {
+            villageByCustomer.put(UUID.fromString(row[0].toString()), (String) row[1]);
+        }
+        Map<String, VillagePendingCalculator.Owing> owing = VillagePendingCalculator.owingByVillage(
+                amounts(saleItems.sumTotalsByCustomer(ownerId)), amounts(paymentRepository.sumSuccessfulByCustomer(ownerId)),
+                villageByCustomer);
+        LocalDate today = today(ownerId);
+        return visits.stream().map(v -> visitResponse(v, owing.get(VillagePendingCalculator.key(v.getVillage())), today)).toList();
+    }
+
+    private static CollectionVisitResponse visitResponse(CollectionVisit v, VillagePendingCalculator.Owing o, LocalDate today) {
+        return new CollectionVisitResponse(v.getId(), v.getVillage(), v.getVisitDate(), v.getNote(),
+                v.getVisitDate().isBefore(today) ? "OVERDUE" : "UPCOMING",
+                o == null ? 0 : o.customers(), o == null ? BigDecimal.ZERO : o.amount());
+    }
+
+    /** Same parsing as LocationDetailsService: row types vary by driver. */
+    private static Map<UUID, BigDecimal> amounts(List<Object[]> rows) {
+        Map<UUID, BigDecimal> m = new HashMap<>();
+        for (Object[] r : rows) m.put(UUID.fromString(r[0].toString()), new BigDecimal(r[1].toString()));
+        return m;
+    }
+
+    @Override
+    @Transactional
+    public CollectionVisitResponse createVisit(UUID ownerId, CollectionVisitRequest r) {
+        requireSelf(ownerId);
+        if (r.getVillage() == null || r.getVillage().isBlank() || r.getVisitDate() == null) {
+            throw invalid("Pick a village and a date");
+        }
+        String village = r.getVillage().trim();
+        if (village.length() > 120) throw invalid("Village name is too long");
+        checkDate(r.getVisitDate(), today(ownerId));
+        CollectionVisit v = new CollectionVisit();
+        v.setOwnerId(ownerId);
+        v.setVillage(village);
+        v.setVisitDate(r.getVisitDate());
+        v.setNote(note(r.getNote()));
+        visitRepository.save(v);
+        return find(ownerVisits(ownerId), v.getId());
+    }
+
+    @Override
+    @Transactional
+    public CollectionVisitResponse updateVisit(UUID ownerId, UUID visitId, CollectionVisitRequest r) {
+        CollectionVisit v = ownVisit(ownerId, visitId);
+        if (r.getVisitDate() != null && !r.getVisitDate().equals(v.getVisitDate())) {
+            checkDate(r.getVisitDate(), today(ownerId));
+            v.setVisitDate(r.getVisitDate());
+        }
+        if (r.getNote() != null) v.setNote(note(r.getNote()));
+        if (Boolean.TRUE.equals(r.getDone())) v.setDoneAt(Instant.now());
+        visitRepository.save(v);
+        CollectionVisitResponse open = ownerVisits(ownerId).stream().filter(x -> x.getId().equals(visitId)).findFirst().orElse(null);
+        return open != null ? open : visitResponse(v, null, today(ownerId)); // done: it left the list
+    }
+
+    @Override
+    @Transactional
+    public void deleteVisit(UUID ownerId, UUID visitId) {
+        CollectionVisit v = ownVisit(ownerId, visitId);
+        v.setIsActive(false);
+        v.setDeletedAt(Instant.now());
+        visitRepository.save(v);
+    }
+
+    private CollectionVisit ownVisit(UUID ownerId, UUID visitId) {
+        requireSelf(ownerId);
+        return visitRepository.findById(visitId)
+                .filter(v -> v.getOwnerId().equals(ownerId) && Boolean.TRUE.equals(v.getIsActive()) && v.getDoneAt() == null)
+                .orElseThrow(() -> new ResourceNotFoundException("Visit could not be found"));
+    }
+
+    private static CollectionVisitResponse find(List<CollectionVisitResponse> visits, UUID id) {
+        return visits.stream().filter(v -> v.getId().equals(id)).findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Visit could not be found"));
+    }
+
+    private static void requireSelf(UUID ownerId) {
+        if (!ownerId.equals(SecurityUtil.getCurrentUserId())) {
+            throw new BusinessException(ErrorCodes.UNAUTHORIZED, "You can only see your own collections");
+        }
     }
 
     private static PaymentDue find(State s, UUID dueId) {

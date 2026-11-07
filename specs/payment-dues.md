@@ -36,5 +36,10 @@ Status: `PAID` (paid = amount) · `OVERDUE` (date before today, owner's time zon
 - "Got paid" on a due records a real payment through `POST /owners/{ownerId}/payments/collect` with `dueId`: the balance, ledger and due stay consistent. Payments carry a nullable `dueId`; the allocator fills that due first, then the usual earliest-date order. Overdue dues can also be moved to a new date (edit) or deleted.
 - Owner-wide list items also carry `village`; `days` max 365.
 
+## Upcoming collections: village visits
+- `collection_visits`: `ownerId, village, visitDate, note, doneAt`. `POST /owners/{ownerId}/collection-visits {village, visitDate, note}`, `PUT .../{visitId} {visitDate?, note?, done?}` (done = leaves the list), `DELETE`.
+- `GET /owners/{ownerId}/dues` also returns `visits[]`: `{id, village, visitDate, note, status UPCOMING|OVERDUE, owingCount, owingAmount}` (who owes in that village now, same max(0, sales - paid) rule as village totals), overdue first then by date.
+- Day-before push "Visit Hanamkonda tomorrow" · "6 customers owe ₹18,400" (`relatedEntityType=VISIT`). Due reminders now carry `relatedEntityType=DUE` + the due id, so the app opens Upcoming collections with that due highlighted.
+
 ## Later slices
 App Dues card + sheet (slice 2), message the customer from a due (3), owner push + digest by dues (4), Home "Due this week" (5). Optional sale link and a split helper in New sale only if asked.

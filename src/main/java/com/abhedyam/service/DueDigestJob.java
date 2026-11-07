@@ -70,6 +70,7 @@ public class DueDigestJob {
         LocalDate today = local.toLocalDate();
         List<OwnerDueResponse> dues = paymentDues.ownerDues(ownerId);
         remindAhead(ownerId, dues, today);
+        remindVisits(ownerId, today);
 
         if (s.getMutedCategories().contains(NotificationCategory.DUE_DIGEST)) return;
         String key = "digest:" + today;
@@ -99,7 +100,19 @@ public class DueDigestJob {
             String body = "₹" + PaymentDueService.rupees(d.getRemaining()) + " due on " + d.getDueDate().format(DAY)
                 + (d.getNote() == null ? "" : " · " + d.getNote());
             dispatcher.notify(ownerId, NotificationCategory.OWNER_REMINDER, NotificationType.INFO, name + " pays " + when, body,
-                "CUSTOMER", o.getCustomerId(), "due-remind:" + d.getId() + ":" + d.getDueDate() + ":" + n);
+                "DUE", d.getId(), "due-remind:" + d.getId() + ":" + d.getDueDate() + ":" + n);
+        }
+    }
+
+    /** Day before a planned village visit: "Visit Hanamkonda tomorrow" · "6 customers owe ₹18,400". */
+    private void remindVisits(UUID ownerId, LocalDate today) {
+        for (var v : paymentDues.ownerVisits(ownerId)) {
+            if (!v.getVisitDate().equals(today.plusDays(1))) continue;
+            String body = v.getOwingCount() == 0 ? "Nobody there owes you right now"
+                : v.getOwingCount() + (v.getOwingCount() == 1 ? " customer owes ₹" : " customers owe ₹") + PaymentDueService.rupees(v.getOwingAmount());
+            if (v.getNote() != null) body += " · " + v.getNote();
+            dispatcher.notify(ownerId, NotificationCategory.OWNER_REMINDER, NotificationType.INFO, "Visit " + v.getVillage() + " tomorrow", body,
+                "VISIT", v.getId(), "visit-remind:" + v.getId() + ":" + v.getVisitDate());
         }
     }
 

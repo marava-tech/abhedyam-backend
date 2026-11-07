@@ -1,6 +1,8 @@
 package com.abhedyam.controller;
 
 import com.abhedyam.dto.ApiResponse;
+import com.abhedyam.dto.CollectionVisitRequest;
+import com.abhedyam.dto.CollectionVisitResponse;
 import com.abhedyam.dto.CustomerDuesResponse;
 import com.abhedyam.dto.PaymentDueRequest;
 import com.abhedyam.dto.PaymentDueResponse;
@@ -16,15 +18,35 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/owners/{ownerId}")
 @RequiredArgsConstructor
-@Tag(name = "Payment Dues", description = "Promised part-payments of a customer's balance, each with its own date")
+@Tag(name = "Upcoming collections", description = "Customer dues (amount + date) and village visits, in date order")
 public class PaymentDueController {
 
     private final IPaymentDueService service;
 
     @GetMapping("/dues")
-    @Operation(summary = "Upcoming and overdue dues", description = "All customers: missed dues first, then unpaid dues due within `days` (default 7, max 365). Paid dues are left out.")
+    @Operation(summary = "Upcoming and overdue dues", description = "Upcoming collections: overdue dues first, then unpaid dues within `days` (default 7, max 365), plus open village visits in the same window. Paid dues and done visits are left out.")
     public ApiResponse<UpcomingDuesResponse> upcoming(@PathVariable UUID ownerId, @RequestParam(defaultValue = "7") int days) {
         return ApiResponse.success(service.upcoming(ownerId, days));
+    }
+
+    @PostMapping("/collection-visits")
+    @Operation(summary = "Plan a village visit", description = "village + visitDate (today or later), optional note")
+    public ApiResponse<CollectionVisitResponse> createVisit(@PathVariable UUID ownerId, @RequestBody CollectionVisitRequest request) {
+        return ApiResponse.success(service.createVisit(ownerId, request));
+    }
+
+    @PutMapping("/collection-visits/{visitId}")
+    @Operation(summary = "Move, edit or mark a village visit done", description = "Only the fields sent change; done=true removes it from the list")
+    public ApiResponse<CollectionVisitResponse> updateVisit(@PathVariable UUID ownerId, @PathVariable UUID visitId,
+                                                            @RequestBody CollectionVisitRequest request) {
+        return ApiResponse.success(service.updateVisit(ownerId, visitId, request));
+    }
+
+    @DeleteMapping("/collection-visits/{visitId}")
+    @Operation(summary = "Delete a village visit")
+    public ApiResponse<Void> deleteVisit(@PathVariable UUID ownerId, @PathVariable UUID visitId) {
+        service.deleteVisit(ownerId, visitId);
+        return ApiResponse.success(null);
     }
 
     @GetMapping("/customers/{customerId}/dues")

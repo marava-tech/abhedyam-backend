@@ -30,4 +30,22 @@ final class VillagePendingCalculator {
         });
         return result;
     }
+
+    record Owing(long customers, BigDecimal amount) {}
+
+    /** Per village key: how many customers owe and how much (same max(0, sales - paid) rule). */
+    static Map<String, Owing> owingByVillage(Map<UUID, BigDecimal> salesByCustomer,
+                                             Map<UUID, BigDecimal> paidByCustomer,
+                                             Map<UUID, String> villageByCustomer) {
+        Map<String, Owing> result = new HashMap<>();
+        villageByCustomer.forEach((customerId, village) -> {
+            BigDecimal pending = salesByCustomer.getOrDefault(customerId, BigDecimal.ZERO)
+                    .subtract(paidByCustomer.getOrDefault(customerId, BigDecimal.ZERO));
+            if (pending.signum() > 0) {
+                result.merge(key(village), new Owing(1, pending),
+                        (a, b) -> new Owing(a.customers() + b.customers(), a.amount().add(b.amount())));
+            }
+        });
+        return result;
+    }
 }

@@ -15,4 +15,6 @@ public class UpcomingDuesResponse {
     private BigDecimal overdueAmount;
     /** Overdue first (oldest first), then upcoming by date. Paid dues are left out. */
     private List<OwnerDueResponse> dues;
+    /** Village visits not marked done: overdue first, then by date (same window). */
+    private List<CollectionVisitResponse> visits;
 }
