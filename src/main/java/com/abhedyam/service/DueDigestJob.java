@@ -1,5 +1,6 @@
 package com.abhedyam.service;
 
+import com.abhedyam.dto.OwnerDueResponse;
 import com.abhedyam.model.NotificationSettings;
 import com.abhedyam.model.enums.NotificationCategory;
 import com.abhedyam.model.enums.NotificationType;
@@ -8,6 +9,7 @@ import com.abhedyam.repository.NotificationRepository;
 import com.abhedyam.repository.PaymentRepository;
 import com.abhedyam.repository.SaleItemRepository;
 import com.abhedyam.service.interfaces.INotificationSettingsService;
+import com.abhedyam.service.interfaces.IPaymentDueService;
 import com.abhedyam.util.PackageConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,14 +18,18 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * Once a day per owner, at their digest time: how much is due. Only owners with the business app
+ * Once a day per owner, at their digest time: how much is due (with today's and missed dues), and a
+ * reminder for each due the owner asked to be reminded of that falls tomorrow. Only owners with the business app
  * installed (an FCM token) and the digest turned on. The dispatcher dedupes on the date, so a
  * restart or a late tick never sends twice, and moves it past quiet hours.
  * ponytail: every 15 min we recompute for owners with nothing due yet; fine for a few hundred owners,
@@ -40,6 +46,7 @@ public class DueDigestJob {
     private final SaleItemRepository saleItems;
     private final PaymentRepository payments;
     private final NotificationDispatcher dispatcher;
+    private final IPaymentDueService paymentDues;
 
     @Scheduled(cron = "0 */15 * * * *")
     public void run() {
@@ -58,16 +65,37 @@ public class DueDigestJob {
 
     private void sendIfDue(UUID ownerId, Instant now) {
         NotificationSettings s = settings.forOwner(ownerId);
-        if (s.getMutedCategories().contains(NotificationCategory.DUE_DIGEST)) return;
         ZonedDateTime local = now.atZone(ZoneId.of(s.getTimezone()));
         if (local.toLocalTime().isBefore(s.getDigestTime())) return;
-        String key = "digest:" + local.toLocalDate();
+        LocalDate today = local.toLocalDate();
+        List<OwnerDueResponse> dues = paymentDues.ownerDues(ownerId);
+        remindTomorrow(ownerId, dues, today);
+
+        if (s.getMutedCategories().contains(NotificationCategory.DUE_DIGEST)) return;
+        String key = "digest:" + today;
         if (notifications.findByOwnerIdAndDedupeKey(ownerId, key).isPresent()) return;
 
         DueDigest digest = DueDigest.of(toMap(saleItems.sumTotalsByCustomer(ownerId)), toMap(payments.sumSuccessfulByCustomer(ownerId)),
             saleItems.findByOwnerId(ownerId), now);
         if (digest == null) return;
-        dispatcher.notify(ownerId, NotificationCategory.DUE_DIGEST, NotificationType.INFO, "Money to collect", digest.text(), "DIGEST", null, key);
+        String duesLine = DueDigest.duesLine(dues, today);
+        String body = duesLine == null ? digest.text() : duesLine + " · " + digest.text();
+        dispatcher.notify(ownerId, NotificationCategory.DUE_DIGEST, NotificationType.INFO, "Money to collect", body, "DIGEST", null, key);
+    }
+
+    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEE, d MMM");
+
+    /** Key holds the date, so moving a due re-arms its reminder; the dispatcher drops repeats. */
+    private void remindTomorrow(UUID ownerId, List<OwnerDueResponse> dues, LocalDate today) {
+        for (OwnerDueResponse o : dues) {
+            var d = o.getDue();
+            if (!d.isRemindOwner() || d.getStatus().equals("PAID") || !d.getDueDate().equals(today.plusDays(1))) continue;
+            String name = o.getCustomerName() == null ? "A customer" : o.getCustomerName();
+            String body = "₹" + PaymentDueService.rupees(d.getRemaining()) + " due on " + d.getDueDate().format(DAY)
+                + (d.getNote() == null ? "" : " · " + d.getNote());
+            dispatcher.notify(ownerId, NotificationCategory.OWNER_REMINDER, NotificationType.INFO, name + " pays tomorrow", body,
+                "CUSTOMER", o.getCustomerId(), "due-remind:" + d.getId() + ":" + d.getDueDate());
+        }
     }
 
     private static Map<UUID, BigDecimal> toMap(java.util.List<Object[]> rows) {

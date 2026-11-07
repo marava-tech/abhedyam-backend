@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,21 @@ record DueDigest(int customers, BigDecimal total, long oldestDays) {
         String amount = indian(total.longValue());
         return customers + (customers == 1 ? " customer owes ₹" : " customers owe ₹") + amount
             + " · oldest " + oldestDays + (oldestDays == 1 ? " day" : " days");
+    }
+
+    /** "2 dues today ₹7,000 · 1 missed ₹3,000", or null when no due is today or missed. */
+    static String duesLine(List<com.abhedyam.dto.OwnerDueResponse> dues, LocalDate today) {
+        int todayCount = 0, missedCount = 0;
+        BigDecimal todayAmount = BigDecimal.ZERO, missedAmount = BigDecimal.ZERO;
+        for (var o : dues) {
+            var d = o.getDue();
+            if (d.getStatus().equals("MISSED")) { missedCount++; missedAmount = missedAmount.add(d.getRemaining()); }
+            else if (!d.getStatus().equals("PAID") && d.getDueDate().equals(today)) { todayCount++; todayAmount = todayAmount.add(d.getRemaining()); }
+        }
+        List<String> parts = new java.util.ArrayList<>();
+        if (todayCount > 0) parts.add(todayCount + (todayCount == 1 ? " due today ₹" : " dues today ₹") + indian(todayAmount.setScale(0, RoundingMode.HALF_UP).longValue()));
+        if (missedCount > 0) parts.add(missedCount + " missed ₹" + indian(missedAmount.setScale(0, RoundingMode.HALF_UP).longValue()));
+        return parts.isEmpty() ? null : String.join(" · ", parts);
     }
 
     /** 124000 -> "1,24,000" (Java's en-IN formatter groups in thousands, which Indian owners do not expect). */

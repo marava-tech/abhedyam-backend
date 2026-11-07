@@ -20,4 +20,5 @@ public class PaymentDueResponse {
     /** OPEN, PARTLY_PAID, PAID or MISSED */
     private String status;
     private Instant createdAt;
+    private boolean remindOwner;
 }

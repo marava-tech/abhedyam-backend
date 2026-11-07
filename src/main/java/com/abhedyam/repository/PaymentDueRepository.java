@@ -10,4 +10,6 @@ import java.util.UUID;
 @Repository
 public interface PaymentDueRepository extends JpaRepository<PaymentDue, UUID> {
     List<PaymentDue> findByOwnerIdAndCustomerIdAndIsActiveTrue(UUID ownerId, UUID customerId);
+
+    List<PaymentDue> findByOwnerIdAndIsActiveTrue(UUID ownerId);
 }

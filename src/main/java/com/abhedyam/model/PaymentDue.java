@@ -33,4 +33,8 @@ public class PaymentDue extends BaseEntity {
 
     @Column(length = 200)
     private String note;
+
+    /** Push the owner the day before, at their digest time. */
+    @Column(nullable = false)
+    private Boolean remindOwner = false;
 }

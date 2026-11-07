@@ -2,17 +2,23 @@ package com.abhedyam.service;
 
 import com.abhedyam.constants.ErrorCodes;
 import com.abhedyam.dto.CustomerDuesResponse;
+import com.abhedyam.dto.OwnerDueResponse;
 import com.abhedyam.dto.PaymentDueRequest;
 import com.abhedyam.dto.PaymentDueResponse;
+import com.abhedyam.dto.UpcomingDuesResponse;
 import com.abhedyam.exception.BusinessException;
 import com.abhedyam.exception.ResourceNotFoundException;
+import com.abhedyam.model.Customer;
+import com.abhedyam.model.Payment;
 import com.abhedyam.model.PaymentDue;
 import com.abhedyam.model.enums.PaymentStatus;
+import com.abhedyam.repository.CustomerRepository;
 import com.abhedyam.repository.PaymentDueRepository;
 import com.abhedyam.repository.PaymentRepository;
 import com.abhedyam.service.interfaces.ICustomerService;
 import com.abhedyam.service.interfaces.INotificationSettingsService;
 import com.abhedyam.service.interfaces.IPaymentDueService;
+import com.abhedyam.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,17 +28,20 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class PaymentDueService implements IPaymentDueService {
 
+    private static final Comparator<PaymentDue> BY_DATE =
+            Comparator.comparing(PaymentDue::getDueDate).thenComparing(PaymentDue::getCreatedAt);
+
     private final PaymentDueRepository dueRepository;
     private final PaymentRepository paymentRepository;
+    private final CustomerRepository customerRepository;
     /** Its payments summary checks that the owner is the caller and owns the customer, and gives the balance. */
     private final ICustomerService customerService;
     private final INotificationSettingsService notificationSettings;
@@ -43,11 +52,7 @@ public class PaymentDueService implements IPaymentDueService {
 
         BigDecimal remainingOf(PaymentDue d) { return d.getAmount().subtract(paidOf(d)).max(BigDecimal.ZERO); }
 
-        PaymentDueResponse response(PaymentDue d) {
-            BigDecimal p = paidOf(d);
-            return new PaymentDueResponse(d.getId(), d.getAmount(), p, remainingOf(d), d.getDueDate(), d.getNote(),
-                    DueAllocator.status(d.getAmount(), p, d.getDueDate(), today).name(), d.getCreatedAt());
-        }
+        PaymentDueResponse response(PaymentDue d) { return PaymentDueService.response(d, paidOf(d), today); }
 
         /** Unpaid part of every due except the one being edited (null = none). */
         BigDecimal plannedExcept(UUID skip) {
@@ -56,18 +61,30 @@ public class PaymentDueService implements IPaymentDueService {
         }
     }
 
+    static PaymentDueResponse response(PaymentDue d, BigDecimal paid, LocalDate today) {
+        return new PaymentDueResponse(d.getId(), d.getAmount(), paid, d.getAmount().subtract(paid).max(BigDecimal.ZERO),
+                d.getDueDate(), d.getNote(), DueAllocator.status(d.getAmount(), paid, d.getDueDate(), today).name(),
+                d.getCreatedAt(), Boolean.TRUE.equals(d.getRemindOwner()));
+    }
+
+    /** Paid per due for dues of one customer and that customer's payments (any status; only SUCCESS counts). */
+    private static Map<UUID, BigDecimal> allocate(List<PaymentDue> dues, List<Payment> payments) {
+        return DueAllocator.allocate(
+                dues.stream().map(d -> new DueAllocator.Due(d.getId(), d.getAmount(), d.getDueDate(), d.getCreatedAt())).toList(),
+                payments.stream().filter(p -> p.getStatus() == PaymentStatus.SUCCESS)
+                        .map(p -> new DueAllocator.Paid(p.getAmount(), p.getCreatedAt())).toList());
+    }
+
+    private LocalDate today(UUID ownerId) {
+        return LocalDate.now(ZoneId.of(notificationSettings.forOwner(ownerId).getTimezone()));
+    }
+
     private State load(UUID ownerId, UUID customerId) {
         BigDecimal balance = customerService.getCustomerPaymentsSummary(ownerId, customerId).getDueAmount();
-        List<PaymentDue> dues = dueRepository.findByOwnerIdAndCustomerIdAndIsActiveTrue(ownerId, customerId);
-        dues.sort(Comparator.comparing(PaymentDue::getDueDate).thenComparing(PaymentDue::getCreatedAt));
-        List<DueAllocator.Paid> payments = paymentRepository.findByCustomerIdAndOwnerId(customerId, ownerId).stream()
-                .filter(p -> p.getStatus() == PaymentStatus.SUCCESS)
-                .map(p -> new DueAllocator.Paid(p.getAmount(), p.getCreatedAt()))
-                .toList();
-        Map<UUID, BigDecimal> paid = DueAllocator.allocate(dues.stream()
-                .map(d -> new DueAllocator.Due(d.getId(), d.getAmount(), d.getDueDate(), d.getCreatedAt())).toList(), payments);
-        LocalDate today = LocalDate.now(ZoneId.of(notificationSettings.forOwner(ownerId).getTimezone()));
-        return new State(balance, today, dues, paid);
+        List<PaymentDue> dues = new ArrayList<>(dueRepository.findByOwnerIdAndCustomerIdAndIsActiveTrue(ownerId, customerId));
+        dues.sort(BY_DATE);
+        Map<UUID, BigDecimal> paid = allocate(dues, paymentRepository.findByCustomerIdAndOwnerId(customerId, ownerId));
+        return new State(balance, today(ownerId), dues, paid);
     }
 
     @Override
@@ -80,6 +97,53 @@ public class PaymentDueService implements IPaymentDueService {
         PaymentDueResponse next = dues.stream().filter(d -> !d.getStatus().equals("PAID")).findFirst().orElse(null);
         return new CustomerDuesResponse(s.balance(), planned, s.balance().subtract(planned).max(BigDecimal.ZERO),
                 missed, next, dues);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OwnerDueResponse> ownerDues(UUID ownerId) {
+        List<PaymentDue> all = dueRepository.findByOwnerIdAndIsActiveTrue(ownerId);
+        if (all.isEmpty()) return List.of();
+        Map<UUID, List<PaymentDue>> byCustomer = all.stream().collect(Collectors.groupingBy(PaymentDue::getCustomerId));
+        List<UUID> ids = new ArrayList<>(byCustomer.keySet());
+        Map<UUID, List<Payment>> payments = paymentRepository.findByCustomerIdInAndOwnerId(ids, ownerId).stream()
+                .collect(Collectors.groupingBy(Payment::getCustomerId));
+        Map<UUID, Customer> customers = customerRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Customer::getId, Function.identity()));
+        LocalDate today = today(ownerId);
+        List<OwnerDueResponse> out = new ArrayList<>();
+        byCustomer.forEach((customerId, dues) -> {
+            Map<UUID, BigDecimal> paid = allocate(dues, payments.getOrDefault(customerId, List.of()));
+            Customer c = customers.get(customerId);
+            for (PaymentDue d : dues) {
+                out.add(new OwnerDueResponse(customerId, c == null ? null : c.getName(), c == null ? null : c.getPhone(),
+                        response(d, paid.get(d.getId()), today)));
+            }
+        });
+        out.sort(Comparator.comparing((OwnerDueResponse o) -> o.getDue().getDueDate()).thenComparing(o -> o.getDue().getCreatedAt()));
+        return out;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UpcomingDuesResponse upcoming(UUID ownerId, int days) {
+        if (!ownerId.equals(SecurityUtil.getCurrentUserId())) {
+            throw new BusinessException(ErrorCodes.UNAUTHORIZED, "You can only see your own dues");
+        }
+        LocalDate end = today(ownerId).plusDays(Math.max(0, Math.min(days, 90)));
+        List<OwnerDueResponse> missed = new ArrayList<>(), upcoming = new ArrayList<>();
+        for (OwnerDueResponse o : ownerDues(ownerId)) {
+            String st = o.getDue().getStatus();
+            if (st.equals("MISSED")) missed.add(o);
+            else if (!st.equals("PAID") && !o.getDue().getDueDate().isAfter(end)) upcoming.add(o);
+        }
+        List<OwnerDueResponse> dues = new ArrayList<>(missed);
+        dues.addAll(upcoming);
+        return new UpcomingDuesResponse(sum(upcoming), missed.size(), sum(missed), dues);
+    }
+
+    static BigDecimal sum(List<OwnerDueResponse> dues) {
+        return dues.stream().map(o -> o.getDue().getRemaining()).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     @Override
@@ -96,10 +160,10 @@ public class PaymentDueService implements IPaymentDueService {
         d.setAmount(amount);
         d.setDueDate(r.getDueDate());
         d.setNote(note(r.getNote()));
+        d.setRemindOwner(Boolean.TRUE.equals(r.getRemindOwner()));
         d = dueRepository.save(d);
         // Recorded now, so no earlier payment counts toward it.
-        return new PaymentDueResponse(d.getId(), amount, BigDecimal.ZERO, amount, d.getDueDate(), d.getNote(),
-                DueAllocator.status(amount, BigDecimal.ZERO, d.getDueDate(), s.today()).name(), d.getCreatedAt());
+        return response(d, BigDecimal.ZERO, s.today());
     }
 
     @Override
@@ -121,6 +185,7 @@ public class PaymentDueService implements IPaymentDueService {
             d.setDueDate(r.getDueDate());
         }
         if (r.getNote() != null) d.setNote(note(r.getNote()));
+        if (r.getRemindOwner() != null) d.setRemindOwner(r.getRemindOwner());
         dueRepository.save(d);
         return load(ownerId, customerId).response(d);
     }
@@ -164,7 +229,7 @@ public class PaymentDueService implements IPaymentDueService {
         return t;
     }
 
-    private static String rupees(BigDecimal v) {
+    static String rupees(BigDecimal v) {
         return DueDigest.indian(v.setScale(0, RoundingMode.HALF_UP).longValue());
     }
 

@@ -25,5 +25,11 @@ Status: `PAID` (paid = amount) · `MISSED` (date before today, owner's time zone
 - `PUT /{dueId} {amount?, dueDate?, note?}` → the due
 - `DELETE /{dueId}`
 
+## Owner-wide, reminders, digest (slices 3-5)
+- `GET /api/v1/owners/{ownerId}/dues?days=7` → `{ upcomingAmount, missedCount, missedAmount, dues[] }`; each item `{customerId, customerName, customerPhone, due}`; missed first, then unpaid dues up to `days` ahead (max 90). For Home "Due this week".
+- `remindOwner` on a due (create/edit). At the owner's digest time the day before, an `OWNER_REMINDER` push "Prava pays tomorrow · ₹5,000 due on Thu, 5 Nov", opening that customer (`relatedEntityType=CUSTOMER`). Dedupe key `due-remind:{id}:{date}`, so moving the date re-arms it.
+- Daily digest starts with "2 dues today ₹7,000 · 1 missed ₹3,000" when there are any.
+- Messaging the customer is app-only: the phone's SMS/WhatsApp composer with a ready text; nothing is sent by the server.
+
 ## Later slices
 App Dues card + sheet (slice 2), message the customer from a due (3), owner push + digest by dues (4), Home "Due this week" (5). Optional sale link and a split helper in New sale only if asked.
