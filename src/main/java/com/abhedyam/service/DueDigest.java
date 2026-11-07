@@ -62,6 +62,22 @@ record DueDigest(int customers, BigDecimal total, long oldestDays) {
         return parts.isEmpty() ? null : String.join(" · ", parts);
     }
 
+    /** "Buy soon: Oil (out), Rice (2 kg left) +1 more", or null when no tracked item is out or low. Out first. */
+    static String stockLine(List<com.abhedyam.dto.ItemResponse> items) {
+        List<com.abhedyam.dto.ItemResponse> need = items.stream()
+            .filter(i -> i.getStatus() == com.abhedyam.dto.ItemResponse.Status.OUT || i.getStatus() == com.abhedyam.dto.ItemResponse.Status.LOW)
+            .sorted(java.util.Comparator.comparing((com.abhedyam.dto.ItemResponse i) -> i.getStatus() != com.abhedyam.dto.ItemResponse.Status.OUT)
+                .thenComparing(com.abhedyam.dto.ItemResponse::getName, String.CASE_INSENSITIVE_ORDER))
+            .toList();
+        if (need.isEmpty()) return null;
+        List<String> names = new java.util.ArrayList<>();
+        for (var i : need.subList(0, Math.min(2, need.size()))) {
+            names.add(i.getName() + (i.getStatus() == com.abhedyam.dto.ItemResponse.Status.OUT ? " (out)"
+                : " (" + i.getStock().stripTrailingZeros().toPlainString() + " " + i.getUnit().name().toLowerCase() + " left)"));
+        }
+        return "Buy soon: " + String.join(", ", names) + (need.size() > 2 ? " +" + (need.size() - 2) + " more" : "");
+    }
+
     /** 124000 -> "1,24,000" (Java's en-IN formatter groups in thousands, which Indian owners do not expect). */
     static String indian(long n) {
         String s = Long.toString(Math.abs(n));
