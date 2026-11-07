@@ -36,6 +36,7 @@ class DueDigestJobTest {
     @Mock PaymentRepository payments;
     @Mock NotificationDispatcher dispatcher;
     @Mock com.abhedyam.service.interfaces.IPaymentDueService paymentDues;
+    @Mock com.abhedyam.service.interfaces.IOwnerSettingsService ownerSettings;
     @InjectMocks DueDigestJob job;
 
     final UUID owner = UUID.randomUUID(), customer = UUID.randomUUID();
@@ -91,11 +92,20 @@ class DueDigestJobTest {
     @Test
     void villageVisitIsRemindedTheDayBefore() {
         UUID visit = UUID.randomUUID();
+        when(ownerSettings.villageMode(owner)).thenReturn(true);
         when(paymentDues.ownerVisits(owner)).thenReturn(List.of(new com.abhedyam.dto.CollectionVisitResponse(visit, "Hanamkonda",
             java.time.LocalDate.of(2026, 11, 5), null, "UPCOMING", 6, new java.math.BigDecimal("18400"))));
         job.run(ist(8, 15));
         verify(dispatcher).notify(eq(owner), eq(NotificationCategory.OWNER_REMINDER), any(), eq("Visit Hanamkonda tomorrow"),
             eq("6 customers owe ₹18,400"), eq("VISIT"), eq(visit), eq("visit-remind:" + visit + ":2026-11-05"));
+    }
+
+    @Test
+    void noVillageVisitRemindersWhenVillagesViewIsOff() {
+        when(ownerSettings.villageMode(owner)).thenReturn(false);
+        job.run(ist(8, 15));
+        verify(paymentDues, never()).ownerVisits(any());
+        verify(dispatcher, never()).notify(any(), any(), any(), any(), any(), eq("VISIT"), any(), any());
     }
 
     @Test

@@ -47,6 +47,7 @@ public class DueDigestJob {
     private final PaymentRepository payments;
     private final NotificationDispatcher dispatcher;
     private final IPaymentDueService paymentDues;
+    private final com.abhedyam.service.interfaces.IOwnerSettingsService ownerSettings;
 
     @Scheduled(cron = "0 */15 * * * *")
     public void run() {
@@ -70,7 +71,7 @@ public class DueDigestJob {
         LocalDate today = local.toLocalDate();
         List<OwnerDueResponse> dues = paymentDues.ownerDues(ownerId);
         remindAhead(ownerId, dues, today);
-        remindVisits(ownerId, today);
+        if (ownerSettings.villageMode(ownerId)) remindVisits(ownerId, today); // no village pushes when villages view is off
 
         if (s.getMutedCategories().contains(NotificationCategory.DUE_DIGEST)) return;
         String key = "digest:" + today;

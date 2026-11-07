@@ -14,6 +14,9 @@ public class OwnerSettingsUpdateRequest {
     @Schema(description = "Dark mode enabled", example = "false")
     private Boolean isDarkModeEnabled;
     
+    @Schema(description = "Villages view: group customers by village and plan village visits", example = "false")
+    private Boolean villageModeEnabled;
+    
     @Schema(description = "Other feature flags")
     private Map<String, Object> otherFlags;
 }

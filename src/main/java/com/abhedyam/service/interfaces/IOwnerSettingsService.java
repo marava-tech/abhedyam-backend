@@ -8,5 +8,7 @@ import java.util.UUID;
 public interface IOwnerSettingsService {
     OwnerSettingsResponse getOwnerSettings(UUID ownerId);
     OwnerSettingsResponse updateOwnerSettings(UUID ownerId, OwnerSettingsUpdateRequest request);
+    /** Villages view on for this owner (no caller check; for jobs and other services). */
+    boolean villageMode(UUID ownerId);
 }
 

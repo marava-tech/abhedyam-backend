@@ -59,6 +59,9 @@ public class OwnerSettingsService implements IOwnerSettingsService {
         if (request.getIsDarkModeEnabled() != null) {
             settings.setIsDarkModeEnabled(request.getIsDarkModeEnabled());
         }
+        if (request.getVillageModeEnabled() != null) {
+            settings.setVillageModeEnabled(request.getVillageModeEnabled());
+        }
         if (request.getOtherFlags() != null) {
             settings.setOtherFlags(request.getOtherFlags());
         }
@@ -67,11 +70,19 @@ public class OwnerSettingsService implements IOwnerSettingsService {
         return toResponse(saved);
     }
     
+    /** For jobs and other services (no caller check): is villages view on for this owner? Off when never set. */
+    @Override
+    @Transactional(readOnly = true)
+    public boolean villageMode(UUID ownerId) {
+        return ownerSettingsRepository.findByOwnerId(ownerId).map(s -> Boolean.TRUE.equals(s.getVillageModeEnabled())).orElse(false);
+    }
+
     private OwnerSettingsResponse toResponse(OwnerSettings settings) {
         OwnerSettingsResponse response = new OwnerSettingsResponse();
         response.setId(settings.getId());
         response.setDailyQuoteEnabled(settings.getDailyQuoteEnabled());
         response.setIsDarkModeEnabled(settings.getIsDarkModeEnabled());
+        response.setVillageModeEnabled(Boolean.TRUE.equals(settings.getVillageModeEnabled()));
         response.setOtherFlags(settings.getOtherFlags());
         response.setCreatedAt(settings.getCreatedAt());
         response.setUpdatedAt(settings.getUpdatedAt());

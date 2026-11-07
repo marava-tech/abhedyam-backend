@@ -30,6 +30,10 @@ public class OwnerSettings extends BaseEntity {
     @jakarta.persistence.Convert(converter = com.abhedyam.config.IstInstantConverter.class)
     private java.time.Instant lastExportRequestedAt;
 
+    /** Villages view: group customers by village, plan village visits. null = off (the default). */
+    @Column
+    private Boolean villageModeEnabled;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "json")
     private Map<String, Object> otherFlags;

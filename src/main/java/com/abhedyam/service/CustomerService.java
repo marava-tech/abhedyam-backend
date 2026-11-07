@@ -83,6 +83,7 @@ public class CustomerService implements ICustomerService {
     private final ObjectMapper objectMapper;
     private final StatsService statsService;
     private final LocationDetailsService locationDetailsService;
+    private final com.abhedyam.service.interfaces.IOwnerSettingsService ownerSettings;
     
     @Autowired
     @Qualifier("virtualThreadExecutor")
@@ -303,10 +304,10 @@ public class CustomerService implements ICustomerService {
             }
         }
 
-        // Default ordering is by village (grouped, then by name, blanks last) —
-        // shopkeepers work village-by-village. Any other sortBy keeps the old
-        // Customer-column behaviour.
-        String effectiveSortBy = sortBy != null && !sortBy.trim().isEmpty() ? sortBy.trim() : "village";
+        // Default ordering is by village (grouped, then by name, blanks last) when the owner uses villages view;
+        // otherwise by name, and search ignores the village. Any other sortBy keeps the old Customer-column behaviour.
+        boolean villageMode = ownerSettings.villageMode(ownerId);
+        String effectiveSortBy = sortBy != null && !sortBy.trim().isEmpty() ? sortBy.trim() : (villageMode ? "village" : "name");
         boolean sortByVillage = "village".equalsIgnoreCase(effectiveSortBy);
 
         Page<Customer> customerPage;
@@ -345,13 +346,15 @@ public class CustomerService implements ICustomerService {
                     isNumeric,
                     pageable
                 );
-            } else {
+            } else if (villageMode) {
                 customerPage = customerRepository.searchCustomersWithVillage(
                     ownerId,
                     normalizedSearchText,
                     isNumeric,
                     pageable
                 );
+            } else {
+                customerPage = customerRepository.searchCustomers(ownerId, normalizedSearchText, pageable);
             }
         }
 
