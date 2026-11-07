@@ -15,6 +15,7 @@ import java.util.UUID;
 @Repository
 public interface SaleItemRepository extends JpaRepository<SaleItem, UUID> {
     List<SaleItem> findByOwnerId(UUID ownerId);
+    List<SaleItem> findByOwnerIdAndCreatedAtAfter(UUID ownerId, Instant after);
     List<SaleItem> findByCustomerId(UUID customerId);
     List<SaleItem> findByCustomerIdAndOwnerId(UUID customerId, UUID ownerId);
     List<SaleItem> findByTransactionId(String transactionId);

@@ -369,17 +369,6 @@ public class PaymentService implements IPaymentService {
         
         return payment;
     }
-    
-    @Override
-    @Transactional(readOnly = true)
-    public List<Payment> getByOwnerId(UUID ownerId) {
-        UUID currentOwnerId = SecurityUtil.getCurrentUserId();
-        UUID targetOwnerId = ownerId != null ? ownerId : currentOwnerId;
-        if (!currentOwnerId.equals(targetOwnerId)) {
-            throw new BusinessException(ErrorCodes.UNAUTHORIZED, "You can only access your own payments");
-        }
-        return paymentRepository.findByOwnerId(targetOwnerId);
-    }
 
     @Override
     @Transactional(readOnly = true)

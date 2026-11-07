@@ -318,8 +318,11 @@ public class StatsService implements IStatsService {
 
                 Instant now = Instant.now();
                 Instant sevenDaysAgo = now.minusSeconds(7 * 24 * 60 * 60);
+                Instant fourteenDaysAgo = now.minusSeconds(14 * 24 * 60 * 60);
+                // Only the last two weeks from the DB (was every sale line ever, loaded twice).
+                List<SaleItem> recentSales = saleItemRepository.findByOwnerIdAndCreatedAtAfter(ownerId, fourteenDaysAgo);
 
-                List<SaleItem> lastWeekSales = saleItemRepository.findByOwnerId(ownerId).stream()
+                List<SaleItem> lastWeekSales = recentSales.stream()
                                 .filter(item -> {
                                         Instant createdAt = item.getCreatedAt();
                                         return createdAt != null && createdAt.isAfter(sevenDaysAgo)
@@ -333,9 +336,7 @@ public class StatsService implements IStatsService {
                                                 item.getQuantity() != null ? item.getQuantity() : BigDecimal.ONE))
                                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                Instant fourteenDaysAgo = now.minusSeconds(14 * 24 * 60 * 60);
-
-                List<SaleItem> previousWeekSales = saleItemRepository.findByOwnerId(ownerId).stream()
+                List<SaleItem> previousWeekSales = recentSales.stream()
                                 .filter(item -> {
                                         Instant createdAt = item.getCreatedAt();
                                         return createdAt != null && createdAt.isAfter(fourteenDaysAgo)
