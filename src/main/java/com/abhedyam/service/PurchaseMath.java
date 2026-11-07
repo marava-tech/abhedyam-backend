@@ -25,7 +25,8 @@ final class PurchaseMath {
     /**
      * Unit cost per line. Given costs stay; the rest of [totalPaid] is shared by relative sales value
      * (quantity × selling price), or by quantity when every remaining price is 0.
-     * Throws IllegalArgumentException when the given costs alone exceed the total.
+     * When every line has a cost and the total differs (discount, transport), every cost is scaled to the total.
+     * Throws IllegalArgumentException when the given costs exceed the total and other lines still need a share.
      */
     static List<BigDecimal> unitCosts(List<Line> lines, BigDecimal totalPaid) {
         BigDecimal given = BigDecimal.ZERO;
@@ -40,6 +41,13 @@ final class PurchaseMath {
             }
         }
         BigDecimal rest = totalPaid.subtract(given);
+        if (quantities.signum() == 0 && given.signum() > 0 && rest.signum() != 0) {
+            List<BigDecimal> scaled = new ArrayList<>();
+            for (Line l : lines) {
+                scaled.add(l.given().multiply(totalPaid).divide(given, 4, RoundingMode.HALF_UP));
+            }
+            return scaled;
+        }
         if (rest.signum() < 0) throw new IllegalArgumentException("over");
         boolean byQuantity = weights.signum() == 0;
         List<BigDecimal> out = new ArrayList<>();

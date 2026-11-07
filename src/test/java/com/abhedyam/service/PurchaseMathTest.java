@@ -44,9 +44,20 @@ class PurchaseMathTest {
     }
 
     @Test
-    void givenCostsAboveTheTotalAreRejected() {
+    void givenCostsAboveTheTotalAreRejectedWhileOtherLinesNeedAShare() {
         assertThrows(IllegalArgumentException.class, () -> PurchaseMath.unitCosts(List.of(
-                new PurchaseMath.Line(d("10"), d("60"), d("50"))), d("100")));
+                new PurchaseMath.Line(d("10"), d("60"), d("50")),
+                new PurchaseMath.Line(d("1"), d("60"), null)), d("100")));
+    }
+
+    @Test
+    void allPricedWithADifferentTotalIsSpreadOverEveryLine() {
+        // bill: 3 × 2,500 + 1 × 12,500 = 20,000; paid 19,000 after a discount → every cost × 0.95
+        List<BigDecimal> c = PurchaseMath.unitCosts(List.of(
+                new PurchaseMath.Line(d("3"), d("0"), d("2500")),
+                new PurchaseMath.Line(d("1"), d("0"), d("12500"))), d("19000"));
+        assertEquals(0, d("2375").compareTo(c.get(0)));
+        assertEquals(0, d("11875").compareTo(c.get(1)));
     }
 
     @Test

@@ -168,7 +168,7 @@ class PurchaseServiceTest {
     void invalidPurchasesAreRefused() {
         UUID a = item("A", "10", null);
         assertThrows(BusinessException.class, () -> buy(null, null, line(a, "3", null)), "total needed");
-        assertThrows(BusinessException.class, () -> buy("10", null, line(a, "3", "7")), "given > total");
+        assertDoesNotThrow(() -> buy("10", null, line(a, "3", "7")), "all priced: a lower total is a discount");
         assertThrows(BusinessException.class, () -> buy("10", null, line(a, "0", null)), "quantity");
         assertThrows(BusinessException.class, () -> buy("10", null, line(a, "1", null), line(a, "2", null)), "twice");
         assertThrows(BusinessException.class, () -> buy("10", null), "no items");
@@ -268,5 +268,28 @@ class PurchaseServiceTest {
         var rice = list.get(1);
         assertEquals(com.abhedyam.dto.ToBuyLine.Reason.RUNNING_OUT, rice.getReason());
         assertEquals(0, new BigDecimal("11").compareTo(rice.getSuggestedQuantity()), "14 days × 1 a day − 3 on the shelf");
+    }
+
+    @Test
+    void billStyleNewItemsNeedNoSellingPrice() {
+        PurchaseRequest.Line beeruva = new PurchaseRequest.Line();
+        ItemRequest b = new ItemRequest();
+        b.setName("Beeruva");
+        beeruva.setNewItem(b);
+        beeruva.setQuantity(new BigDecimal("3"));
+        beeruva.setUnitCost(new BigDecimal("2500"));
+        PurchaseRequest.Line wm = new PurchaseRequest.Line();
+        ItemRequest w = new ItemRequest();
+        w.setName("Washing machine");
+        wm.setNewItem(w);
+        wm.setQuantity(BigDecimal.ONE);
+        wm.setUnitCost(new BigDecimal("12500"));
+        PurchaseResponse p = buy(null, "Godrej dealer", beeruva, wm);
+        assertEquals(0, new BigDecimal("20000").compareTo(p.getTotalPaid()));
+        assertEquals(0, new BigDecimal("2500").compareTo(p.getItems().get(0).getUnitCost()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(p.getItems().get(0).getPrice()), "selling price not set yet");
+        var s = items.list(owner, IItemService.Filter.ALL, null, 0, 10).getSummary();
+        assertEquals(0, new BigDecimal("20000").compareTo(s.getStockValue()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(s.getPotentialProfit()), "no selling price, no made-up profit");
     }
 }
