@@ -30,6 +30,16 @@ public class OwnerSettings extends BaseEntity {
     @jakarta.persistence.Convert(converter = com.abhedyam.config.IstInstantConverter.class)
     private java.time.Instant lastExportRequestedAt;
 
+    /** When the owner asked to delete the account; it is deleted 48 hours later unless they cancel. null = no request. */
+    @Column
+    @jakarta.persistence.Convert(converter = com.abhedyam.config.IstInstantConverter.class)
+    private java.time.Instant deletionRequestedAt;
+
+    /** When the data export was emailed because of that request (sent once, ~12 hours after it). */
+    @Column
+    @jakarta.persistence.Convert(converter = com.abhedyam.config.IstInstantConverter.class)
+    private java.time.Instant deletionExportSentAt;
+
     /** Villages view: group customers by village, plan village visits. null = off (the default). */
     @Column
     private Boolean villageModeEnabled;

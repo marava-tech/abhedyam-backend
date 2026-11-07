@@ -78,6 +78,29 @@ public class AccountExportService implements IAccountExportService {
         return mask(email);
     }
 
+    @Override
+    public boolean sendForDeletion(UUID ownerId, Instant deletesAt) {
+        try {
+            String email = ownerRepository.findById(ownerId).map(Owner::getEmail).orElse(null);
+            if (email == null || email.isBlank()) return false;
+            String date = java.time.LocalDate.now(ZoneId.of("Asia/Kolkata")).toString();
+            String when = DateTimeFormatter.ofPattern("d MMM yyyy, h:mm a").withZone(ZoneId.of("Asia/Kolkata")).format(deletesAt);
+            gmailSender.sendGmailWithAttachment(email, "Your Abhedyam data, before your account is deleted",
+                    exportEmailHtml("You asked us to delete your Abhedyam account. It will be deleted on <b>" + when
+                            + "</b>. Changed your mind? Open the app and tap <b>Keep my account</b> before then."),
+                    "abhedyam-export-" + date + ".zip", zip(ownerId), SUPPORT_EMAIL);
+            tx.executeWithoutResult(s -> settingsRepository.findByOwnerId(ownerId).ifPresent(st -> {
+                st.setDeletionExportSentAt(Instant.now());
+                settingsRepository.save(st);
+            }));
+            log.info("Deletion export emailed for owner {}", ownerId);
+            return true;
+        } catch (Exception e) {
+            log.error("Deletion export failed for owner {}: {}", ownerId, e.getMessage());
+            return false;
+        }
+    }
+
     private void buildAndSend(UUID ownerId, String email) {
         try {
             byte[] zip = zip(ownerId);
@@ -108,9 +131,15 @@ public class AccountExportService implements IAccountExportService {
     }
 
     static String exportEmailHtml() {
+        return exportEmailHtml(null);
+    }
+
+    /** note = an extra paragraph under the heading (used for the deletion export), or null. */
+    static String exportEmailHtml(String note) {
         return "<div style=\"font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#0f172a\">"
                 + "<h2 style=\"margin:0 0 16px;color:#4f46e5\">Your Abhedyam data is ready</h2>"
-                + "<p style=\"margin:0 0 12px;line-height:1.5\">As you asked, your data is attached as a zip file.</p>"
+                + (note == null ? "" : "<p style=\"margin:0 0 12px;line-height:1.5\">" + note + "</p>")
+                + "<p style=\"margin:0 0 12px;line-height:1.5\">" + (note == null ? "As you asked, your" : "Your") + " data is attached as a zip file.</p>"
                 + "<p style=\"margin:0 0 6px\">Inside the zip:</p>"
                 + "<ul style=\"margin:0 0 16px;padding-left:20px;line-height:1.7\">"
                 + "<li><b>customers.csv</b> &ndash; names, phones, villages and what each owes</li>"

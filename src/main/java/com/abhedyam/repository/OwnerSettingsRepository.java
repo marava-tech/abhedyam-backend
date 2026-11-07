@@ -10,5 +10,7 @@ import java.util.UUID;
 @Repository
 public interface OwnerSettingsRepository extends JpaRepository<OwnerSettings, UUID> {
     Optional<OwnerSettings> findByOwnerId(UUID ownerId);
+
+    java.util.List<OwnerSettings> findByDeletionRequestedAtNotNull();
 }
 

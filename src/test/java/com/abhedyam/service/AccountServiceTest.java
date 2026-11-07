@@ -18,6 +18,9 @@ import java.util.concurrent.Executor;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 @DataJpaTest
 @AutoConfigureTestDatabase
@@ -33,6 +36,7 @@ class AccountServiceTest {
     @Autowired CustomerRepository customers;
     @Autowired SaleItemRepository sales;
     @Autowired PaymentRepository payments;
+    @Autowired OwnerSettingsRepository settings;
     @Autowired EntityManager em;
 
     private UUID seed(String name) {
@@ -85,5 +89,75 @@ class AccountServiceTest {
         assertTrue(csv.startsWith("Date,Customer,Item"));
         assertTrue(csv.contains("C of Gamma"));
         assertThrows(com.abhedyam.exception.BusinessException.class, () -> service.exportCsv(id, "nope"));
+    }
+
+    private OwnerSettings settingsOf(UUID id) { return settings.findByOwnerId(id).orElseThrow(); }
+
+    private void askedHoursAgo(UUID id, long hours) {
+        OwnerSettings st = settingsOf(id);
+        st.setDeletionRequestedAt(java.time.Instant.now().minus(java.time.Duration.ofHours(hours)));
+        settings.save(st);
+    }
+
+    @Test
+    void deletionIsScheduledNotImmediateAndCanBeCancelled() {
+        UUID id = seed("Eps");
+        java.time.Instant at = service.requestDeletion(id);
+        assertTrue(java.time.Duration.between(java.time.Instant.now().plus(java.time.Duration.ofHours(48)), at).abs().toMinutes() < 1);
+        assertTrue(owners.findById(id).orElseThrow().getIsActive());
+        // asking again must not push the date out
+        assertTrue(java.time.Duration.between(at, service.requestDeletion(id)).abs().toSeconds() < 1);
+        assertTrue(service.deletionScheduledFor(id).isPresent());
+        service.cancelDeletion(id);
+        assertTrue(service.deletionScheduledFor(id).isEmpty());
+    }
+
+    @Test
+    void jobEmailsDataAt12HoursOnceThenDisablesAt48AndFreesTheEmailAndPhones() throws Exception {
+        UUID id = seed("Zeta");
+        Owner o = owners.findById(id).orElseThrow();
+        o.setEmail("zeta@example.com"); o.setFirebaseUid("uid-zeta"); o.setPhoneNormalized("+919000000001");
+        owners.save(o);
+        Customer c = customers.findByOwnerId(id).get(0);
+        c.setPhoneNormalized("+919000000002");
+        customers.save(c);
+        AccountDeletionJob job = new AccountDeletionJob(settings, service, exportService);
+
+        service.requestDeletion(id);
+        job.run(java.time.Instant.now());                       // just asked: nothing yet
+        verify(gmailSender, times(0)).sendGmailWithAttachment(any(), any(), any(), any(), any(), any());
+
+        askedHoursAgo(id, 13);
+        job.run(java.time.Instant.now());
+        job.run(java.time.Instant.now());                       // second tick must not send again
+        verify(gmailSender, times(1)).sendGmailWithAttachment(any(), any(), any(), any(), any(), any());
+        assertNotNull(settingsOf(id).getDeletionExportSentAt());
+        assertTrue(owners.findById(id).orElseThrow().getIsActive());
+
+        askedHoursAgo(id, 49);
+        job.run(java.time.Instant.now());
+
+        Owner gone = owners.findById(id).orElseThrow();         // disabled, not deleted
+        assertFalse(gone.getIsActive());
+        assertNotNull(gone.getDeletedAt());
+        assertEquals("zeta@example.com", gone.getFormerEmail());
+        assertNull(gone.getEmail()); assertNull(gone.getFirebaseUid()); assertNull(gone.getPhoneNormalized());
+        assertTrue(settings.findByOwnerId(id).isEmpty());
+        assertFalse(owners.existsByIdAndIsActiveTrue(id));
+        Customer kept = customers.findByOwnerId(id).get(0);     // ledger and customer rows stay
+        assertFalse(kept.getIsActive());
+        assertNull(kept.getPhoneNormalized());
+        assertNotNull(kept.getPhone());
+        assertEquals(1, sales.findByOwnerId(id).size());
+
+        // The same Gmail and the same customer phone work for a brand new account.
+        Owner again = new Owner();
+        again.setName("Zeta"); again.setType(com.abhedyam.model.enums.UserType.BUSINESS); again.setBusinessName("Zeta again");
+        again.setEmail("zeta@example.com"); again.setFirebaseUid("uid-zeta"); again.setPhoneNormalized("+919000000001");
+        again = owners.saveAndFlush(again);
+        Customer same = new Customer();
+        same.setName("Same customer"); same.setType(com.abhedyam.model.enums.UserType.CUSTOMER);
+        same.setOwnerId(again.getId()); same.setPhoneNormalized("+919000000002");
+        customers.saveAndFlush(same);
     }
 }

@@ -101,7 +101,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 log.debug("Admin user authenticated via JWT");
             } else {
                 try {
-                    boolean userExists = getOwnerRepository().existsById(userId)
+                    // A disabled owner (deleted account) keeps their rows but must not get in with an old token.
+                    boolean userExists = getOwnerRepository().existsByIdAndIsActiveTrue(userId)
                             || getCustomerRepository().existsById(userId);
                     if (!userExists) {
                         log.warn("User not found for token - userId: {}", userId);

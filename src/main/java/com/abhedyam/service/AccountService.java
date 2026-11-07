@@ -45,6 +45,101 @@ public class AccountService implements IAccountService {
     private final PaymentRepository paymentRepository;
     private final ProductRepository productRepository;
     private final LocationDetailsRepository locationDetailsRepository;
+    private final OwnerSettingsRepository settingsRepository;
+
+    @Override
+    public Instant requestDeletion(UUID ownerId) {
+        return tx.execute(s -> {
+            ownerRepository.findById(ownerId).orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+            OwnerSettings st = settingsRepository.findByOwnerId(ownerId).orElseGet(() -> {
+                OwnerSettings n = new OwnerSettings();
+                n.setOwnerId(ownerId);
+                return n;
+            });
+            if (st.getDeletionRequestedAt() == null) { // asking twice must not push the date out
+                st.setDeletionRequestedAt(Instant.now());
+                st.setDeletionExportSentAt(null);
+                settingsRepository.save(st);
+                log.info("Account deletion requested: owner {}", ownerId);
+            }
+            return st.getDeletionRequestedAt().plus(DELETION_GRACE);
+        });
+    }
+
+    @Override
+    public void cancelDeletion(UUID ownerId) {
+        tx.executeWithoutResult(s -> settingsRepository.findByOwnerId(ownerId).ifPresent(st -> {
+            if (st.getDeletionRequestedAt() == null) return;
+            st.setDeletionRequestedAt(null);
+            st.setDeletionExportSentAt(null);
+            settingsRepository.save(st);
+            log.info("Account deletion cancelled: owner {}", ownerId);
+        }));
+    }
+
+    @Override
+    public Optional<Instant> deletionScheduledFor(UUID ownerId) {
+        return settingsRepository.findByOwnerId(ownerId)
+                .map(OwnerSettings::getDeletionRequestedAt)
+                .map(t -> t.plus(DELETION_GRACE));
+    }
+
+    @Override
+    public void disableAccount(UUID ownerId) {
+        String firebaseUid = tx.execute(status -> {
+            Owner owner = ownerRepository.findById(ownerId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+            if (!Boolean.TRUE.equals(owner.getIsActive())) return null; // already disabled
+            Instant now = Instant.now();
+
+            // Nothing may reach this shop's customers any more (reminders, pay links) or be pushed to anyone.
+            for (Class<?> c : List.of(Reminder.class, Notification.class, PaymentLink.class, OwnerSettings.class)) {
+                em.createQuery("delete from " + c.getSimpleName() + " e where e.ownerId = :o")
+                        .setParameter("o", ownerId).executeUpdate();
+            }
+            List<Customer> customers = customerRepository.findByOwnerId(ownerId);
+            List<UUID> customerIds = customers.stream().map(Customer::getId).collect(Collectors.toList());
+            if (!customerIds.isEmpty()) {
+                for (Class<?> c : List.of(FcmDetails.class, Notification.class)) {
+                    em.createQuery("delete from " + c.getSimpleName() + " e where e.userId in :ids")
+                            .setParameter("ids", customerIds).executeUpdate();
+                }
+            }
+            em.createQuery("delete from FcmDetails e where e.userId = :o").setParameter("o", ownerId).executeUpdate();
+
+            // Customer phone numbers are globally unique: free them (the plain phone stays on the row) so the same
+            // person, or another shop, can add that customer again.
+            for (Customer c : customers) {
+                c.setIsActive(false);
+                c.setDeletedAt(now);
+                c.setPhoneNormalized(null);
+            }
+            customerRepository.saveAll(customers);
+
+            String uid = owner.getFirebaseUid();
+            owner.setFormerEmail(owner.getEmail());
+            owner.setEmail(null);
+            owner.setFirebaseUid(null);
+            owner.setPhoneNormalized(null);
+            owner.setPublicSlug(null);
+            owner.setPublicListingEnabled(false);
+            owner.setIsActive(false);
+            owner.setDeletedAt(now);
+            ownerRepository.save(owner);
+            return uid;
+        });
+
+        // The Google sign-in record goes too; a new sign-in with the same Gmail makes a fresh one. A failure only means
+        // the old Firebase user stays, which still works because the database row no longer holds its id.
+        if (firebaseUid != null && !firebaseUid.isBlank()) {
+            try {
+                FirebaseAuth.getInstance().deleteUser(firebaseUid);
+            } catch (Exception e) {
+                log.warn("Firebase user delete failed for disabled owner {}: {}", ownerId, e.getMessage());
+            }
+        }
+        log.info("Account disabled: owner {}", ownerId);
+    }
 
     @Override
     public void deleteAccount(UUID ownerId) {
