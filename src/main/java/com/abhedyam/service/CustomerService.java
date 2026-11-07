@@ -307,7 +307,8 @@ public class CustomerService implements ICustomerService {
         // Default ordering is by village (grouped, then by name, blanks last) when the owner uses villages view;
         // otherwise by name, and search ignores the village. Any other sortBy keeps the old Customer-column behaviour.
         boolean villageMode = ownerSettings.villageMode(ownerId);
-        String effectiveSortBy = sortBy != null && !sortBy.trim().isEmpty() ? sortBy.trim() : (villageMode ? "village" : "name");
+        boolean defaultSort = sortBy == null || sortBy.trim().isEmpty();
+        String effectiveSortBy = !defaultSort ? sortBy.trim() : (villageMode ? "village" : "name");
         boolean sortByVillage = "village".equalsIgnoreCase(effectiveSortBy);
 
         Page<Customer> customerPage;
@@ -331,7 +332,7 @@ public class CustomerService implements ICustomerService {
             }
         } else {
             Sort sort = Sort.by(
-                "DESC".equalsIgnoreCase(sortDirection)
+                !defaultSort && "DESC".equalsIgnoreCase(sortDirection) // the default name order is always A-Z
                     ? Sort.Direction.DESC
                     : Sort.Direction.ASC,
                 effectiveSortBy
