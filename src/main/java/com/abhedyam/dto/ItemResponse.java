@@ -25,4 +25,8 @@ public class ItemResponse {
     private BigDecimal stockValue;
     private String imageUrl;
     private Instant updatedAt;
+    private BigDecimal soldLast30;
+    private Instant lastSoldAt;
+    private Integer daysLeft;
+    private boolean notSelling;
 }

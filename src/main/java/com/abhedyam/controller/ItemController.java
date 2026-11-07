@@ -8,6 +8,8 @@ import com.abhedyam.dto.PageResponse;
 import com.abhedyam.dto.StockChangeRequest;
 import com.abhedyam.dto.StockMovementResponse;
 import com.abhedyam.service.interfaces.IItemService;
+import com.abhedyam.service.interfaces.IPurchaseService;
+import com.abhedyam.dto.ToBuyLine;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -22,15 +24,22 @@ import java.util.UUID;
 public class ItemController {
 
     private final IItemService service;
+    private final IPurchaseService purchases;
 
     @GetMapping
-    @Operation(summary = "Items with stock", description = "Out of stock first, then low, then by name. filter = ALL | LOW | OUT. summary counts every active item and the stock value (stock × buying price).")
+    @Operation(summary = "Items with stock", description = "Out of stock first, then low, then by name. filter = ALL | LOW | OUT | NOT_SELLING (stock not sold in 60 days). summary counts every active item and the stock value (stock × buying price).")
     public ApiResponse<ItemListResponse> list(@PathVariable UUID ownerId,
                                               @RequestParam(defaultValue = "ALL") IItemService.Filter filter,
                                               @RequestParam(required = false) String search,
                                               @RequestParam(defaultValue = "0") int page,
                                               @RequestParam(defaultValue = "30") int size) {
         return ApiResponse.success(service.list(ownerId, filter, search, page, size));
+    }
+
+    @GetMapping("/to-buy")
+    @Operation(summary = "What to buy next", description = "Tracked items that are out, low, or will run out within 7 days at their 30-day sales rate. suggestedQuantity = 14 days of sales minus stock (at least the last purchase quantity for out/low items). Includes the last supplier and buying price.")
+    public ApiResponse<java.util.List<ToBuyLine>> toBuy(@PathVariable UUID ownerId) {
+        return ApiResponse.success(purchases.toBuy(ownerId));
     }
 
     @PostMapping

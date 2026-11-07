@@ -5,6 +5,8 @@ import com.abhedyam.dto.ItemRequest;
 import com.abhedyam.dto.PageResponse;
 import com.abhedyam.dto.PurchaseRequest;
 import com.abhedyam.dto.PurchaseResponse;
+import com.abhedyam.dto.ItemResponse;
+import com.abhedyam.dto.ToBuyLine;
 import com.abhedyam.exception.BusinessException;
 import com.abhedyam.exception.ResourceNotFoundException;
 import com.abhedyam.model.Product;
@@ -32,6 +34,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -168,6 +171,57 @@ public class PurchaseService implements IPurchaseService {
         purchase.setIsActive(false);
         purchases.save(purchase);
         productService.evictOwnerCaches(ownerId);
+    }
+
+    static final int RUNNING_OUT_DAYS = 7;
+    static final int BUY_FOR_DAYS = 14;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ToBuyLine> toBuy(UUID ownerId) {
+        requireSelf(ownerId);
+        Map<UUID, StockPurchaseItem> lastLine = new HashMap<>();
+        Map<UUID, StockPurchase> lastPurchase = new HashMap<>();
+        List<StockPurchase> active = purchases.findByOwnerIdOrderByBoughtOnDescCreatedAtDesc(ownerId).stream()
+                .filter(p -> Boolean.TRUE.equals(p.getIsActive())).toList();
+        Map<UUID, List<StockPurchaseItem>> linesByPurchase = active.isEmpty() ? Map.of()
+                : lines.findByPurchaseIdIn(active.stream().map(StockPurchase::getId).toList()).stream()
+                        .collect(Collectors.groupingBy(StockPurchaseItem::getPurchaseId));
+        for (StockPurchase p : active) {
+            for (StockPurchaseItem l : linesByPurchase.getOrDefault(p.getId(), List.of())) {
+                if (lastLine.putIfAbsent(l.getProductId(), l) == null) lastPurchase.put(l.getProductId(), p);
+            }
+        }
+        List<ToBuyLine> out = new ArrayList<>();
+        for (ItemResponse i : items.all(ownerId)) {
+            if (!i.isTrackStock()) continue;
+            ToBuyLine.Reason reason;
+            if (i.getStatus() == ItemResponse.Status.OUT) reason = ToBuyLine.Reason.OUT;
+            else if (i.getStatus() == ItemResponse.Status.LOW) reason = ToBuyLine.Reason.LOW;
+            else if (i.getDaysLeft() != null && i.getDaysLeft() <= RUNNING_OUT_DAYS) reason = ToBuyLine.Reason.RUNNING_OUT;
+            else continue;
+            StockPurchaseItem last = lastLine.get(i.getId());
+            StockPurchase lastP = lastPurchase.get(i.getId());
+            out.add(new ToBuyLine(i, reason, suggest(i, last == null ? null : last.getQuantity()),
+                    lastP == null ? null : lastP.getSupplier(),
+                    last == null ? null : last.getUnitCost().setScale(2, RoundingMode.HALF_UP),
+                    last == null ? null : last.getQuantity().stripTrailingZeros(),
+                    lastP == null ? null : lastP.getBoughtOn()));
+        }
+        out.sort(Comparator.comparingInt((ToBuyLine l) -> l.getReason().ordinal())
+                .thenComparingInt(l -> l.getItem().getDaysLeft() == null ? Integer.MAX_VALUE : l.getItem().getDaysLeft())
+                .thenComparing(l -> l.getItem().getName().toLowerCase()));
+        return out;
+    }
+
+    /** Two weeks of sales minus what is on the shelf; for out/low items at least what was bought last time. Whole units, at least 1. */
+    static BigDecimal suggest(ItemResponse i, BigDecimal lastQuantity) {
+        BigDecimal stockNow = i.getStock().max(BigDecimal.ZERO);
+        BigDecimal need = i.getSoldLast30().multiply(BigDecimal.valueOf(BUY_FOR_DAYS))
+                .divide(BigDecimal.valueOf(30), 3, RoundingMode.HALF_UP).subtract(stockNow);
+        if (i.getStatus() != ItemResponse.Status.OK && lastQuantity != null) need = need.max(lastQuantity);
+        if (i.getLowStockLevel() != null) need = need.max(i.getLowStockLevel().multiply(BigDecimal.valueOf(2)).subtract(stockNow));
+        return need.setScale(0, RoundingMode.CEILING).max(BigDecimal.ONE);
     }
 
     private Product resolve(UUID ownerId, PurchaseRequest.Line l) {

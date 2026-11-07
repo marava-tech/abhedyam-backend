@@ -51,6 +51,8 @@ class PurchaseServiceTest {
     @Autowired IItemService items;
     @Autowired IStockService stock;
     @Autowired ProductRepository products;
+    @Autowired com.abhedyam.repository.SaleItemRepository saleItems;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @MockBean RedisTemplate<String, String> redis;
     @MockBean IAuditService audit;
     @MockBean IProductService productService;
@@ -206,5 +208,65 @@ class PurchaseServiceTest {
         assertThrows(Exception.class, () -> purchases.create(other, steal));
         Product p = products.findById(a).orElseThrow();
         assertEquals(owner, p.getOwnerId());
+    }
+
+    private void sold(UUID item, String qty, int daysAgo) {
+        com.abhedyam.model.SaleItem si = new com.abhedyam.model.SaleItem();
+        si.setOwnerId(owner); si.setCustomerId(UUID.randomUUID()); si.setProductId(item);
+        si.setPrice(BigDecimal.TEN); si.setQuantity(new BigDecimal(qty)); si.setRemainingAmount(BigDecimal.ZERO);
+        si.setTransactionId("T" + UUID.randomUUID());
+        si = saleItems.save(si);
+        jdbc.update("UPDATE sale_items SET created_at = ? WHERE id = ?",
+                java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata")).minusDays(daysAgo), si.getId().toString());
+    }
+
+    @Test
+    void salesRateGivesDaysLeftAndOldStockIsNotSelling() {
+        UUID fast = item("Fast", "10", "10"), stale = item("Stale", "10", "4");
+        sold(fast, "15", 3);
+        sold(fast, "100", 45);
+        sold(stale, "1", 70);
+        ItemResponse f = itemView(fast);
+        assertEquals(0, new BigDecimal("15").compareTo(f.getSoldLast30()), "only the last 30 days count");
+        assertEquals(20, f.getDaysLeft(), "10 left at 0.5 a day");
+        assertFalse(f.isNotSelling());
+        ItemResponse st = itemView(stale);
+        assertTrue(st.isNotSelling());
+        assertNull(st.getDaysLeft());
+        var list = items.list(owner, IItemService.Filter.NOT_SELLING, null, 0, 10);
+        assertEquals(List.of(stale), list.getItems().getContent().stream().map(ItemResponse::getId).toList());
+        assertEquals(1, list.getSummary().getNotSelling());
+    }
+
+    @Test
+    void summaryShowsProfitInsideTheStock() {
+        UUID a = item("A", "60", null);
+        buy("500", null, line(a, "10", null));
+        var s = items.list(owner, IItemService.Filter.ALL, null, 0, 10).getSummary();
+        assertEquals(0, new BigDecimal("500").compareTo(s.getStockValue()));
+        assertEquals(0, new BigDecimal("100").compareTo(s.getPotentialProfit()), "10 × (60 − 50)");
+    }
+
+    @Test
+    void toBuyListsOutLowAndRunningOutWithSuggestedQuantities() {
+        UUID out = item("Oil", "120", null);
+        buy("1200", "Ramesh traders", line(out, "12", null));
+        stock.saleOut(owner, out, new BigDecimal("12"), "T1");
+        UUID running = item("Rice", "60", "3");
+        sold(running, "30", 2);
+        UUID healthy = item("Salt", "20", "50");
+        sold(healthy, "3", 2);
+        item("Pen", "10", null);
+
+        List<com.abhedyam.dto.ToBuyLine> list = purchases.toBuy(owner);
+        assertEquals(List.of("Oil", "Rice"), list.stream().map(l -> l.getItem().getName()).toList());
+        var oil = list.get(0);
+        assertEquals(com.abhedyam.dto.ToBuyLine.Reason.OUT, oil.getReason());
+        assertEquals("Ramesh traders", oil.getLastSupplier());
+        assertEquals(0, new BigDecimal("12").compareTo(oil.getSuggestedQuantity()), "at least what was bought last time");
+        assertEquals(0, new BigDecimal("100").compareTo(oil.getLastUnitCost()));
+        var rice = list.get(1);
+        assertEquals(com.abhedyam.dto.ToBuyLine.Reason.RUNNING_OUT, rice.getReason());
+        assertEquals(0, new BigDecimal("11").compareTo(rice.getSuggestedQuantity()), "14 days × 1 a day − 3 on the shelf");
     }
 }

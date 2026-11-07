@@ -60,3 +60,14 @@ Only when `canDelete`; writes `REMOVED −quantity` (tagged with the purchase) p
 ## Tests
 Cost split (total only, mixed given/estimated, over-given rejected, zero prices); FIFO across opening stock and two
 purchases, cancel restores, deleted purchase ignored; paidBack/profit; create with a new item; delete rules; other owner.
+
+## Item stats and "To buy" (inventory v2)
+- From `sale_items` (full history, not only since tracking): `soldLast30`, `lastSoldAt`; `daysLeft` = stock ÷
+  (soldLast30 / 30), rounded down, 0 when out, null with no sales in 30 days; `notSelling` = tracked, stock > 0, no
+  sale (or, never sold, created) in 60 days. Items list filter `NOT_SELLING`; summary adds `potentialProfit`
+  (Σ stock × (price − cost) over items with a cost), `notSelling`, `notSellingValue`.
+- `GET /owners/{id}/items/to-buy`: tracked items that are `OUT`, `LOW`, or `RUNNING_OUT` (daysLeft ≤ 7), ordered in
+  that order then by daysLeft. `suggestedQuantity` = 14 days of sales − stock; for out/low items at least the last
+  purchase quantity and at least 2 × lowStockLevel − stock; whole units, ≥ 1. Each line carries the item and its
+  last purchase (`lastSupplier`, `lastUnitCost`, `lastQuantity`, `lastBoughtOn`) so the app can group by supplier
+  and pre-fill a new purchase.

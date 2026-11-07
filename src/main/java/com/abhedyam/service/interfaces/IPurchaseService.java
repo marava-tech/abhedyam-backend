@@ -16,4 +16,7 @@ public interface IPurchaseService {
     PurchaseResponse create(UUID ownerId, PurchaseRequest request);
 
     void delete(UUID ownerId, UUID purchaseId);
+
+    /** Out, low, or running out within a week, with a suggested quantity and the last purchase of each. */
+    java.util.List<com.abhedyam.dto.ToBuyLine> toBuy(UUID ownerId);
 }
