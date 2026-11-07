@@ -37,7 +37,7 @@ public class OwnerCustomerController {
             @RequestParam(value = "village", required = false) String village,
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "20") Integer size,
-            @RequestParam(defaultValue = "village") String sortBy,
+            @RequestParam(required = false) String sortBy, // none = village order in villages view, else name A-Z
             @RequestParam(defaultValue = "DESC") String sortDirection,
             @RequestParam(value = QueryParams.INCLUDE_PENDING_AMOUNT_DETAILS, defaultValue = "false") Boolean includePendingAmountDetails,
             @RequestParam(value = "owesOnly", defaultValue = "false") Boolean owesOnly) {
