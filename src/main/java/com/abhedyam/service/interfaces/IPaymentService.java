@@ -15,7 +15,6 @@ public interface IPaymentService {
 
     com.abhedyam.dto.CollectPaymentResponse collectFromCustomer(java.util.UUID ownerId, com.abhedyam.dto.CollectPaymentRequest request);
     Payment getById(UUID id);
-    List<Payment> getByOwnerId(UUID ownerId);
     PageResponse<PaymentResponse> getMyPayments(Integer page, Integer size);
     List<PaymentResponse> filterPayments(String searchText);
     PageResponse<PaymentResponse> getOwnerPayments(UUID ownerId, String searchText, Integer page, Integer size, String sortBy, String sortDirection);
