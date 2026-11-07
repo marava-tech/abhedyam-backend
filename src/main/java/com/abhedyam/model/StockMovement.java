@@ -44,4 +44,8 @@ public class StockMovement extends BaseEntity {
 
     @Column(length = 64)
     private String saleTransactionId;
+
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(columnDefinition = "VARCHAR(36)")
+    private UUID purchaseId;
 }

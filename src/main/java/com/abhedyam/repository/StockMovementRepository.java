@@ -13,4 +13,6 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, UU
     Page<StockMovement> findByOwnerIdAndProductIdOrderByCreatedAtDesc(UUID ownerId, UUID productId, Pageable pageable);
 
     boolean existsByOwnerIdAndProductId(UUID ownerId, UUID productId);
+
+    java.util.List<StockMovement> findByOwnerIdAndProductIdInOrderByCreatedAtAsc(UUID ownerId, java.util.Collection<UUID> productIds);
 }
