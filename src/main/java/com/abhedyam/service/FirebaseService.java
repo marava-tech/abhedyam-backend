@@ -20,20 +20,7 @@ public class FirebaseService {
             throw new com.abhedyam.exception.BusinessException("INVALID_FIREBASE_TOKEN", "Invalid or expired Firebase token");
         }
     }
-    
-    public String getPhoneNumberFromToken(FirebaseToken token) {
-        Object phoneClaim = token.getClaims().get("phone_number");
-        if (phoneClaim == null) {
-            phoneClaim = token.getClaims().get("phone");
-        }
-        
-        if (phoneClaim == null) {
-            return null;
-        }
-        
-        return phoneClaim.toString();
-    }
-    
+
     public String getEmailFromToken(FirebaseToken token) {
         return token.getEmail();
     }

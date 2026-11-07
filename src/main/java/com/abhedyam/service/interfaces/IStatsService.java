@@ -17,8 +17,6 @@ public interface IStatsService {
 
     List<StatsResponse> getStats(StatsRequest request);
 
-    void recomputeStats(LocalDate startDate, LocalDate endDate);
-
     DashboardStatsResponse getDashboardStats();
 
     Page<RecentActivityResponse> getRecentActivities(Pageable pageable);

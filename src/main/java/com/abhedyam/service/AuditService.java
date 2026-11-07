@@ -51,94 +51,7 @@ public class AuditService implements IAuditService {
     public List<Audit> getByOwnerId(UUID ownerId) {
         return auditRepository.findByOwnerId(ownerId);
     }
-    
-    @Override
-    @Async("virtualThreadExecutor")
-    @Transactional
-    public void logFinancialOperation(AuditType type, AuditAction action, UUID entityId, 
-                                      UUID ownerId, BigDecimal amount, String details) {
-        try {
-            Audit audit = new Audit();
-            audit.setOwnerId(ownerId);
-            audit.setType(type);
-            audit.setAction(action);
-            audit.setEntityId(entityId);
-            audit.setAmount(amount);
-            String headline = formatFinancialOperationHeadline(type, action, amount);
-            audit.setHeadline(headline);
-            audit.setDescription(formatFinancialOperationDescription(type, action, amount, details));
-            audit.setTimestamp(Instant.now());
-            
-            auditRepository.save(audit);
-            log.info("Financial operation logged: type={}, action={}, entityId={}, amount={}", 
-                type, action, entityId, amount);
-        } catch (Exception e) {
-            log.error("Failed to log financial operation: type={}, action={}, entityId={}", 
-                type, action, entityId, e);
-        }
-    }
-    
-    @Override
-    @Async("virtualThreadExecutor")
-    @Transactional
-    public void logStockChange(UUID productId, UUID ownerId, String productName, BigDecimal oldStock, 
-                               BigDecimal newStock, String source, String details) {
-        try {
-            Audit audit = new Audit();
-            audit.setOwnerId(ownerId);
-            audit.setType(AuditType.STOCK);
-            audit.setAction(AuditAction.UPDATE);
-            audit.setEntityId(productId);
-            audit.setAmount(newStock.subtract(oldStock));
-            
-            BigDecimal change = newStock.subtract(oldStock);
-            String changeText = change.compareTo(BigDecimal.ZERO) > 0 ? "increased" : "decreased";
-            String sourceText = getReadableSourceText(source);
-            
-            String formattedOldStock = formatStockValue(oldStock);
-            String formattedNewStock = formatStockValue(newStock);
-            
-            audit.setHeadline(String.format("%s stock %s from %s to %s", productName, changeText, formattedOldStock, formattedNewStock));
-            
-            String description = String.format("Stock %s for product '%s' from %s to %s. Reason: %s", 
-                changeText, productName, formattedOldStock, formattedNewStock, sourceText);
-            if (details != null && !details.trim().isEmpty()) {
-                description += String.format(". %s", details);
-            }
-            audit.setDescription(description);
-            audit.setTimestamp(Instant.now());
-            
-            auditRepository.save(audit);
-            log.info("Stock change logged: productId={}, productName={}, oldStock={}, newStock={}, source={}", 
-                productId, productName, oldStock, newStock, source);
-        } catch (Exception e) {
-            log.error("Failed to log stock change: productId={}, productName={}, oldStock={}, newStock={}", 
-                productId, productName, oldStock, newStock, e);
-        }
-    }
-    
-    private String formatStockValue(BigDecimal stock) {
-        if (stock == null) {
-            return "0";
-        }
-        BigDecimal stripped = stock.stripTrailingZeros();
-        if (stripped.scale() == 0) {
-            return String.valueOf(stripped.intValue());
-        }
-        return stripped.toPlainString();
-    }
-    
-    private String getReadableSourceText(String source) {
-        if (source == null) return "Unknown";
-        return switch (source) {
-            case "PURCHASE_IN" -> "Purchase received";
-            case "SALE_OUT" -> "Sale transaction";
-            case "MANUAL_ADJUSTMENT" -> "Manual adjustment";
-            case "STOCK_UPDATE" -> "Stock update";
-            default -> source;
-        };
-    }
-    
+
     @Override
     @Async("virtualThreadExecutor")
     @Transactional
@@ -476,42 +389,7 @@ public class AuditService implements IAuditService {
         return upperText.startsWith("TXN") || upperText.startsWith("UPI") ||
                upperText.startsWith("PAY") || (text.length() >= 10 && text.matches(".*\\d{10,}.*"));
     }
-    
-    private String formatFinancialOperationHeadline(AuditType type, AuditAction action, BigDecimal amount) {
-        String typeText = type.name().toLowerCase().replace("_", " ");
-        String actionText = action.name().toLowerCase().replace("_", " ");
-        
-        if (amount != null && amount.compareTo(BigDecimal.ZERO) != 0) {
-            return String.format("%s %s - ₹%s", capitalizeFirst(typeText), actionText, amount);
-        }
-        return String.format("%s %s", capitalizeFirst(typeText), actionText);
-    }
-    
-    private String formatFinancialOperationDescription(AuditType type, AuditAction action, BigDecimal amount, String details) {
-        String typeText = type.name().toLowerCase().replace("_", " ");
-        String actionText = action.name().toLowerCase().replace("_", " ");
-        
-        StringBuilder description = new StringBuilder();
-        description.append(String.format("%s operation: %s", capitalizeFirst(typeText), actionText));
-        
-        if (amount != null && amount.compareTo(BigDecimal.ZERO) != 0) {
-            description.append(String.format(" with amount ₹%s", amount));
-        }
-        
-        if (details != null && !details.trim().isEmpty()) {
-            description.append(String.format(". %s", details));
-        }
-        
-        return description.toString();
-    }
-    
-    private String capitalizeFirst(String text) {
-        if (text == null || text.isEmpty()) {
-            return text;
-        }
-        return text.substring(0, 1).toUpperCase() + text.substring(1);
-    }
-    
+
     @Transactional
     public Audit update(UUID id, Audit auditDetails) {
         Audit audit = getById(id);

@@ -13,6 +13,5 @@ import java.util.UUID;
 public interface DailyStatsRepository extends JpaRepository<DailyStats, UUID> {
     Optional<DailyStats> findByOwnerIdAndStatDate(UUID ownerId, LocalDate statDate);
     List<DailyStats> findByOwnerIdAndStatDateBetween(UUID ownerId, LocalDate startDate, LocalDate endDate);
-    List<DailyStats> findByOwnerIdOrderByStatDateDesc(UUID ownerId);
 }
 

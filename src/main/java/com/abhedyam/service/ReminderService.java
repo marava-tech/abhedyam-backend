@@ -92,30 +92,7 @@ public class ReminderService implements IReminderService {
         filtered.forEach(r -> r.getPackages().size());
         return filtered;
     }
-    
-    @Override
-    @Transactional(readOnly = true)
-    public List<Reminder> getPendingReminders() {
-        UUID ownerId = SecurityUtil.getCurrentUserId();
-        List<Reminder> reminders = reminderRepository.findByOwnerId(ownerId).stream()
-            .filter(r -> r.getStatus() == ReminderStatus.PENDING)
-            .filter(r -> r.getTime().isBefore(Instant.now()) || r.getTime().equals(Instant.now()))
-            .toList();
-        reminders.forEach(r -> r.getPackages().size());
-        return reminders;
-    }
-    
-    @Override
-    @Transactional
-    public Reminder markAsSent(UUID id) {
-        Reminder reminder = reminderRepository.findById(id)
-                .orElseThrow(() -> new com.abhedyam.exception.ResourceNotFoundException("Reminder not found"));
-        reminder.setStatus(ReminderStatus.SENT);
-        Reminder savedReminder = reminderRepository.save(reminder);
-        savedReminder.getPackages().size();
-        return savedReminder;
-    }
-    
+
     @Override
     @Transactional
     public void cancel(UUID ownerId, UUID id) {

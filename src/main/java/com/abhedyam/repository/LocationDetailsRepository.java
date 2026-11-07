@@ -16,22 +16,6 @@ import java.util.UUID;
 public interface LocationDetailsRepository extends JpaRepository<LocationDetails, UUID> {
        Optional<LocationDetails> findByUserId(UUID userId);
 
-       @Query("SELECT DISTINCT ld.village FROM LocationDetails ld " +
-                     "INNER JOIN Customer c ON c.id = ld.userId " +
-                     "WHERE c.ownerId = :ownerId " +
-                     "AND ld.village IS NOT NULL " +
-                     "AND LOWER(ld.village) LIKE LOWER(CONCAT('%', :name, '%')) " +
-                     "ORDER BY ld.village ASC")
-       List<String> findDistinctVillagesByNameContainingIgnoreCaseAndOwnerId(@Param("name") String name,
-                     @Param("ownerId") UUID ownerId);
-
-       @Query("SELECT DISTINCT ld.village FROM LocationDetails ld " +
-                     "INNER JOIN Customer c ON c.id = ld.userId " +
-                     "WHERE c.ownerId = :ownerId " +
-                     "AND ld.village IS NOT NULL " +
-                     "ORDER BY ld.village ASC")
-       List<String> findDistinctVillagesByOwnerId(@Param("ownerId") UUID ownerId);
-
        @Query("SELECT ld FROM LocationDetails ld " +
                      "INNER JOIN Customer c ON c.id = ld.userId " +
                      "WHERE c.ownerId = :ownerId " +
@@ -62,15 +46,6 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
 
        // The JPQL must differ from the Pageable version below (no "as customerCount" here): Hibernate 6.4 caches the plan
        // by query text, and when a paged call ran at the same moment this one went out with "limit null,null" and failed (Home summary 500).
-       @Query("SELECT ld.village, COUNT(c.id) " +
-                     "FROM LocationDetails ld " +
-                     "INNER JOIN Customer c ON c.id = ld.userId " +
-                     "WHERE c.ownerId = :ownerId " +
-                     "AND ld.village IS NOT NULL " +
-                     "AND c.isActive = true " +
-                     "GROUP BY ld.village " +
-                     "ORDER BY LOWER(TRIM(ld.village)) ASC")
-       List<Object[]> findVillagesWithCustomerCountByOwnerId(@Param("ownerId") UUID ownerId);
 
        @Query(value = "SELECT ld.village, COUNT(c.id) as customerCount " +
                      "FROM LocationDetails ld " +
@@ -91,19 +66,6 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
                      "WHERE c.ownerId = :ownerId AND ld.village IS NOT NULL AND c.isActive = true")
        long countVillagesByOwnerId(@Param("ownerId") UUID ownerId);
 
-       @Query("SELECT ld.village, COUNT(c.id) " +
-                     "FROM LocationDetails ld " +
-                     "INNER JOIN Customer c ON c.id = ld.userId " +
-                     "WHERE c.ownerId = :ownerId " +
-                     "AND ld.village IS NOT NULL " +
-                     "AND LOWER(ld.village) LIKE LOWER(CONCAT('%', :name, '%')) " +
-                     "AND c.isActive = true " +
-                     "GROUP BY ld.village " +
-                     "ORDER BY LOWER(TRIM(ld.village)) ASC")
-       List<Object[]> findVillagesWithCustomerCountByNameContainingIgnoreCaseAndOwnerId(
-                     @Param("name") String name,
-                     @Param("ownerId") UUID ownerId);
-
        @Query(value = "SELECT ld.village, COUNT(c.id) as customerCount " +
                      "FROM LocationDetails ld " +
                      "INNER JOIN Customer c ON c.id = ld.userId " +
@@ -123,7 +85,6 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
                      @Param("name") String name,
                      @Param("ownerId") UUID ownerId,
                      Pageable pageable);
-
 
        @Query("SELECT c.id, ld.village FROM LocationDetails ld " +
                      "INNER JOIN Customer c ON c.id = ld.userId " +

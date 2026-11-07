@@ -17,16 +17,7 @@ public class SecurityUtil {
         }
         throw new BusinessException("UNAUTHORIZED", "User not authenticated. Please provide a valid token.");
     }
-    
-    public static String getCurrentUserPhone() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal) {
-            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
-            return userPrincipal.getPhone();
-        }
-        throw new BusinessException("UNAUTHORIZED", "User not authenticated. Please provide a valid token.");
-    }
-    
+
     public static boolean isAuthenticated() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication != null && authentication.isAuthenticated() 

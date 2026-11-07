@@ -11,7 +11,6 @@ import java.util.UUID;
 
 @Repository
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
-    List<Document> findByOwnerIdAndIsActiveTrueOrderByOrderIndexAsc(UUID ownerId);
     
     @Query("SELECT d FROM Document d WHERE d.ownerId = :ownerId AND d.isActive = true ORDER BY d.orderIndex ASC")
     List<Document> findActiveDocumentsByOwnerId(@Param("ownerId") UUID ownerId);

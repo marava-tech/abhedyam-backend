@@ -139,29 +139,6 @@ public class StatsService implements IStatsService {
                 return responses;
         }
 
-        @Override
-        @Transactional
-        public void recomputeStats(LocalDate startDate, LocalDate endDate) {
-                UUID ownerId = SecurityUtil.getCurrentUserId();
-                LocalDate currentDate = startDate;
-
-                while (!currentDate.isAfter(endDate)) {
-                        String cacheKey = STATS_CACHE_PREFIX + ownerId + ":" + currentDate;
-                        redisTemplate.delete(cacheKey);
-
-                        dailyStatsRepository.findByOwnerIdAndStatDate(ownerId, currentDate)
-                                        .ifPresent(dailyStatsRepository::delete);
-
-                        topProductRepository.deleteByOwnerIdAndStatDate(ownerId, currentDate);
-
-                        aggregateDailyStatsForOwner(ownerId, currentDate);
-
-                        currentDate = currentDate.plusDays(1);
-                }
-
-                log.info("Stats recomputed for owner {} from {} to {}", ownerId, startDate, endDate);
-        }
-
         @Transactional
         private void aggregateDailyStatsForOwner(UUID ownerId, LocalDate date) {
                 Instant startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant();

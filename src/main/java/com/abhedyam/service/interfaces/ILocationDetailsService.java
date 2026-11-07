@@ -12,8 +12,6 @@ import java.util.UUID;
 public interface ILocationDetailsService {
     LocationDetailsResponse getCustomerLocation(UUID customerId);
     LocationDetailsResponse getLocationByUserId(UUID userId);
-    List<com.abhedyam.dto.VillageResponse> getAllVillages();
-    List<com.abhedyam.dto.VillageResponse> searchVillagesByNameWithCount(String name);
     PageResponse<com.abhedyam.dto.VillageResponse> getVillagesPaginated(String name, Integer page, Integer size);
     LocationDetailsResponse updateCustomerLocation(UUID customerId, LocationDetailsUpdateRequest request);
     LocationDetailsResponse updateLocationForUser(UUID userId, LocationDetailsUpdateRequest request);

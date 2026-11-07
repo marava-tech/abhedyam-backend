@@ -59,8 +59,7 @@ public class PaymentService implements IPaymentService {
     private final CustomerService customerServiceConcrete;
     private final RedisTemplate<String, String> redisTemplate;
     private final StatsService statsService;
-    
-    
+
     @Override
     public Payment create(Payment payment) {
         return paymentRepository.save(payment);
@@ -380,120 +379,6 @@ public class PaymentService implements IPaymentService {
             throw new BusinessException(ErrorCodes.UNAUTHORIZED, "You can only access your own payments");
         }
         return paymentRepository.findByOwnerId(targetOwnerId);
-    }
-    
-    @Override
-    @Transactional(readOnly = true)
-    public PageResponse<PaymentResponse> getMyPayments(Integer page, Integer size) {
-        UUID ownerId = SecurityUtil.getCurrentUserId();
-        
-        if (page == null || page < 0) {
-            page = 0;
-        }
-        if (size == null || size < 1) {
-            size = 10;
-        }
-        
-        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
-        Pageable pageable = PageRequest.of(page, size, sort);
-        
-        Page<Payment> paymentPage = paymentRepository.findByOwnerId(ownerId, pageable);
-        List<Payment> payments = paymentPage.getContent();
-        
-        if (payments.isEmpty()) {
-            return new PageResponse<>(
-                List.of(),
-                paymentPage.getNumber(),
-                paymentPage.getSize(),
-                paymentPage.getTotalElements(),
-                paymentPage.getTotalPages(),
-                paymentPage.hasNext(),
-                paymentPage.hasPrevious()
-            );
-        }
-        
-        List<UUID> customerIds = payments.stream()
-            .map(Payment::getCustomerId)
-            .filter(java.util.Objects::nonNull)
-            .distinct()
-            .toList();
-        List<Customer> customers = customerIds.isEmpty() ? List.of() : 
-            customerRepository.findByIdIn(customerIds);
-        java.util.Map<UUID, String> customerNameMap = customers.stream()
-            .collect(java.util.stream.Collectors.toMap(
-                Customer::getId,
-                Customer::getName,
-                (v1, v2) -> v1
-            ));
-        
-        List<UUID> saleItemIds = payments.stream()
-            .map(Payment::getSaleItemId)
-            .filter(java.util.Objects::nonNull)
-            .distinct()
-            .toList();
-        List<SaleItem> saleItems = saleItemIds.isEmpty() ? List.of() : 
-            saleItemRepository.findByIdIn(saleItemIds);
-        java.util.Map<UUID, UUID> saleItemProductMap = saleItems.stream()
-            .collect(java.util.stream.Collectors.toMap(
-                SaleItem::getId,
-                SaleItem::getProductId,
-                (v1, v2) -> v1
-            ));
-        
-        List<UUID> productIds = saleItems.stream()
-            .map(SaleItem::getProductId)
-            .filter(java.util.Objects::nonNull)
-            .distinct()
-            .toList();
-        List<Product> products = productIds.isEmpty() ? List.of() : 
-            productRepository.findByIdIn(productIds);
-        java.util.Map<UUID, String> productNameMap = products.stream()
-            .collect(java.util.stream.Collectors.toMap(
-                Product::getId,
-                Product::getName,
-                (v1, v2) -> v1
-            ));
-        
-        List<PaymentResponse> responses = payments.stream()
-                .map(payment -> {
-                    String customerName = customerNameMap.getOrDefault(
-                        payment.getCustomerId(), "Unknown");
-                    
-                    String productName = "Unknown";
-                    if (payment.getSaleItemId() != null) {
-                        UUID productId = saleItemProductMap.get(payment.getSaleItemId());
-                        if (productId != null) {
-                            productName = productNameMap.getOrDefault(productId, "Unknown");
-                        }
-                    }
-                    
-                    return new PaymentResponse(
-                            payment.getId(),
-                            payment.getCustomerId(),
-                            customerName,
-                            payment.getOwnerId(),
-                            payment.getSaleItemId(),
-                            productName,
-                            payment.getAmount(),
-                            payment.getMedium(),
-                            payment.getTimestamp(),
-                            payment.getReference(),
-                            payment.getStatus(),
-                            payment.getCreatedAt(),
-                            payment.getUpdatedAt()
-                    );
-                })
-                .toList();
-        
-        return new PageResponse<>(
-            responses,
-            paymentPage.getNumber(),
-            paymentPage.getSize(),
-            paymentPage.getTotalElements(),
-            paymentPage.getTotalPages(),
-            paymentPage.hasNext(),
-            paymentPage.hasPrevious()
-        );
     }
 
     @Override

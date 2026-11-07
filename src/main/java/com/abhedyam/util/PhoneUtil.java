@@ -40,8 +40,5 @@ public class PhoneUtil {
         return phone;
     }
     
-    public static String generateOTP() {
-        return String.valueOf(1000 + (int)(Math.random() * 9000));
-    }
 }
 

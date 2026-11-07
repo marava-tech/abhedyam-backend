@@ -101,47 +101,6 @@ public class LocationDetailsService implements ILocationDetailsService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<VillageResponse> getAllVillages() {
-        UUID ownerId = SecurityUtil.getCurrentUserId();
-
-        List<Object[]> results = locationDetailsRepository.findVillagesWithCustomerCountByOwnerId(ownerId);
-        List<VillageResponse> villages = results.stream()
-                .map(result -> {
-                    String village = (String) result[0];
-                    Long customerCount = ((Number) result[1]).longValue();
-                    return new VillageResponse(village, customerCount);
-                })
-                .toList();
-
-        return villages;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<VillageResponse> searchVillagesByNameWithCount(String name) {
-        UUID ownerId = SecurityUtil.getCurrentUserId();
-        String normalizedName = name != null ? name.trim() : "";
-
-        if (normalizedName.isEmpty()) {
-            return getAllVillages();
-        }
-
-        List<Object[]> results = locationDetailsRepository
-                .findVillagesWithCustomerCountByNameContainingIgnoreCaseAndOwnerId(
-                        normalizedName, ownerId);
-        List<VillageResponse> villages = results.stream()
-                .map(result -> {
-                    String village = (String) result[0];
-                    Long customerCount = ((Number) result[1]).longValue();
-                    return new VillageResponse(village, customerCount);
-                })
-                .toList();
-
-        return villages;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public PageResponse<VillageResponse> getVillagesPaginated(String name, Integer page, Integer size) {
         UUID ownerId = SecurityUtil.getCurrentUserId();
 

@@ -387,14 +387,7 @@ public class InvoiceReceiptService {
         LocalDate date = instant.atZone(ZoneId.systemDefault()).toLocalDate();
         return date.format(DATE_FORMATTER);
     }
-    
-    private String formatDateTime(Instant instant) {
-        if (instant == null) {
-            return "";
-        }
-        return instant.atZone(ZoneId.systemDefault()).format(DATETIME_FORMATTER);
-    }
-    
+
     private String formatPhone(String phone) {
         if (phone == null || phone.isEmpty()) {
             return "";

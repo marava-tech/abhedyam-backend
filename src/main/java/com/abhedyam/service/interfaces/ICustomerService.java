@@ -3,8 +3,6 @@ package com.abhedyam.service.interfaces;
 import com.abhedyam.dto.CustomerCreateRequest;
 import com.abhedyam.dto.CustomerResponse;
 import com.abhedyam.dto.CustomerSearchRequest;
-import com.abhedyam.dto.CustomerSearchResult;
-import com.abhedyam.dto.CustomerUpdateRequest;
 import com.abhedyam.dto.CustomerBasicSummaryResponse;
 import com.abhedyam.dto.CustomerSalesSummaryResponse;
 import com.abhedyam.dto.CustomerPaymentsSummaryResponse;
@@ -23,10 +21,8 @@ public interface ICustomerService {
     Customer create(CustomerCreateRequest request);
     Customer getById(UUID id);
     List<Customer> getByOwnerId(UUID ownerId);
-    PageResponse<CustomerResponse> getMyCustomersWithVillage(Integer page, Integer size);
     List<CustomerResponse> filterCustomers(String searchText);
     PageResponse<Customer> searchCustomers(CustomerSearchRequest request);
-    List<CustomerSearchResult> searchByName(String name);
     PageResponse<CustomerResponse> getOwnerCustomers(UUID ownerId, String searchText, String village, Integer page, Integer size, String sortBy, String sortDirection, boolean includePendingAmountDetails);
 
     /** Same list with optional "owes only" filter; sortBy=pendingAmount sorts by what is owed. */
@@ -36,7 +32,6 @@ public interface ICustomerService {
     CustomerPaymentsSummaryResponse getCustomerPaymentsSummary(UUID ownerId, UUID customerId);
     CustomerNotesSummaryResponse getCustomerNotesSummary(UUID ownerId, UUID customerId);
     CustomerRemindersSummaryResponse getCustomerRemindersSummary(UUID ownerId, UUID customerId);
-    Customer updateCustomer(CustomerUpdateRequest request);
     NearestCustomerResponse findNearestCustomer(NearestCustomerRequest request);
     void invalidateCustomerSummaryCache(UUID ownerId, UUID customerId);
     CustomerSummaryResponse getMySummary();

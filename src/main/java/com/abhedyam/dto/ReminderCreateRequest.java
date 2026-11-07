@@ -1,6 +1,5 @@
 package com.abhedyam.dto;
 
-import com.abhedyam.model.enums.ReminderChannel;
 import com.abhedyam.model.enums.ReminderType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -23,9 +22,6 @@ public class ReminderCreateRequest {
     @NotNull(message = "Reminder type is required")
     @Schema(description = "Type of reminder", example = "FOLLOW_UP", required = true)
     private ReminderType type;
-    
-    @Schema(description = "Delivery channel. Only IN_APP is supported (optional, kept for older app versions)", example = "IN_APP")
-    private ReminderChannel channel;
     
     @NotNull(message = "Due time is required")
     @Schema(description = "Due date and time", example = "2024-12-31T10:00:00Z", required = true)

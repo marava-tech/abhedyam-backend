@@ -41,16 +41,6 @@ public class StatsController {
         return ApiResponse.success(statsService.getStats(request));
     }
 
-    @PostMapping("/recompute")
-    @Operation(summary = "Recompute statistics", description = "Recompute statistics for a date range")
-    public ApiResponse<Void> recomputeStats(@Valid @RequestBody StatsRequest request) {
-        LocalDate startDate = request.getStartDate() != null ? request.getStartDate() : LocalDate.now().minusDays(30);
-        LocalDate endDate = request.getEndDate() != null ? request.getEndDate() : LocalDate.now();
-
-        statsService.recomputeStats(startDate, endDate);
-        return ApiResponse.success(null);
-    }
-
     @GetMapping("/dashboard")
     @Operation(summary = "Get dashboard statistics", description = "Get dashboard statistics including total stock, low stock count, last week sales, and weekly growth")
     public ApiResponse<DashboardStatsResponse> getDashboardStats() {
