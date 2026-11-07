@@ -91,7 +91,7 @@ public class BulkImportService implements IBulkImportService {
 
             for (int rowIndex = 2; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
                 Row row = sheet.getRow(rowIndex);
-                if (isRowEmpty(row, formatter)) {
+                if (isRowEmpty(row, formatter) || isOldTemplateHintRow(row, formatter)) {
                     continue;
                 }
 
@@ -177,6 +177,12 @@ public class BulkImportService implements IBulkImportService {
         if (!originalFilename.endsWith(".xlsx") && !XLSX_CONTENT_TYPE.equalsIgnoreCase(contentType)) {
             throw new BusinessException(ErrorCodes.VALIDATION_ERROR, "Only .xlsx files are supported");
         }
+    }
+
+    /** Templates downloaded before 2026-11-07 had a third header row ("Name of the customer", "10-digit number", ...). */
+    private boolean isOldTemplateHintRow(Row row, DataFormatter formatter) {
+        String first = formatter.formatCellValue(row.getCell(0)).trim().toLowerCase();
+        return first.equals("name of the customer") || first.startsWith("required");
     }
 
     private boolean isRowEmpty(Row row, DataFormatter formatter) {

@@ -226,4 +226,33 @@ class BulkImportDryRunTest {
             }
         }
     }
+
+    @Test
+    void oldTemplateHintRowIsIgnoredSilently() throws Exception {
+        byte[] bytes;
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Import Data");
+            sheet.createRow(0).createCell(0).setCellValue("Customer Name");
+            sheet.createRow(1).createCell(0).setCellValue("Required?");
+            Row hints = sheet.createRow(2);
+            String[] h = {"Name of the customer", "10-digit number", "Village/area", "Item sold", "Amount (numbers only)", "0 if not paid yet", "DD/MM/YYYY", "DD/MM/YYYY"};
+            for (int c = 0; c < h.length; c++) hints.createCell(c).setCellValue(h[c]);
+            Row data = sheet.createRow(3);
+            data.createCell(0).setCellValue("Eve");
+            data.createCell(3).setCellValue("Rice");
+            data.createCell(4).setCellValue(100);
+            data.createCell(5).setCellValue(0);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            workbook.write(bos);
+            bytes = bos.toByteArray();
+        }
+        MockMultipartFile file = new MockMultipartFile("file", "old.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", bytes);
+
+        BulkImportResult result = bulkImportService.importData(ownerId, file, true);
+
+        assertThat(result.getSalesImported()).isEqualTo(1);
+        assertThat(result.getRowsSkipped()).isZero();
+        assertThat(result.getErrors()).isEmpty();
+    }
 }
