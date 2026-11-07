@@ -54,10 +54,11 @@ public class BulkImportController {
     }
 
     @PostMapping(value = "/owners/{ownerId}/bulk-import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "Import owner data from Excel", description = "Import customers, sales, and payments from a filled Excel workbook")
+    @Operation(summary = "Import owner data from Excel", description = "Import customers, sales, and payments from a filled Excel workbook, or dry-run validate if dryRun=true")
     public ApiResponse<BulkImportResult> importData(
             @PathVariable UUID ownerId,
-            @RequestParam("file") MultipartFile file) {
-        return ApiResponse.success(bulkImportService.importData(ownerId, file));
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "dryRun", defaultValue = "false") boolean dryRun) {
+        return ApiResponse.success(bulkImportService.importData(ownerId, file, dryRun));
     }
 }
