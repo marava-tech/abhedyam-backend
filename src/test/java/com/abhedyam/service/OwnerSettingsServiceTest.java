@@ -70,38 +70,15 @@ class OwnerSettingsServiceTest {
         created.setDailyQuoteEnabled(true);
         created.setIsDarkModeEnabled(false);
 
-        when(ownerSettingsRepository.findByOwnerId(ownerId)).thenReturn(Optional.empty());
-        when(ownerSettingsRepository.save(any(OwnerSettings.class))).thenReturn(created);
-
-        OwnerSettingsResponse response = ownerSettingsService.getOwnerSettings(ownerId);
-
-        assertNotNull(response);
-        assertEquals(ownerId, response.getId());
-        verify(ownerSettingsRepository).save(any(OwnerSettings.class));
-    }
-
-    @Test
-    void getOwnerSettings_ConcurrentInsertDuplicateKey_CatchesAndReReads() {
-        OwnerSettings concurrentlyCreated = new OwnerSettings();
-        concurrentlyCreated.setId(ownerId);
-        concurrentlyCreated.setOwnerId(ownerId);
-        concurrentlyCreated.setDailyQuoteEnabled(true);
-        concurrentlyCreated.setIsDarkModeEnabled(false);
-
-        // First findByOwnerId returns empty
-        // save() throws DataIntegrityViolationException (another thread inserted first)
-        // Second findByOwnerId returns the row created by the winning thread
+        // first read empty, insert-ignore (also safe when a parallel request won), second read finds the row
         when(ownerSettingsRepository.findByOwnerId(ownerId))
                 .thenReturn(Optional.empty())
-                .thenReturn(Optional.of(concurrentlyCreated));
-        when(ownerSettingsRepository.save(any(OwnerSettings.class)))
-                .thenThrow(new DataIntegrityViolationException("Duplicate entry for key owner_id"));
+                .thenReturn(Optional.of(created));
 
         OwnerSettingsResponse response = ownerSettingsService.getOwnerSettings(ownerId);
 
-        assertNotNull(response);
         assertEquals(ownerId, response.getId());
-        verify(ownerSettingsRepository, times(2)).findByOwnerId(ownerId);
-        verify(ownerSettingsRepository).save(any(OwnerSettings.class));
+        verify(ownerSettingsRepository).insertDefaultsIfAbsent(ownerId.toString());
+        verify(ownerSettingsRepository, never()).save(any());
     }
 }

@@ -1,8 +1,6 @@
 package com.abhedyam.service;
 
 import com.abhedyam.constants.ErrorCodes;
-import com.abhedyam.dto.StockAdjustmentRequest;
-import com.abhedyam.dto.StockUpdateRequest;
 import com.abhedyam.exception.BusinessException;
 import com.abhedyam.exception.ResourceNotFoundException;
 import com.abhedyam.model.Inventory;
@@ -111,58 +109,6 @@ public class StockService implements IStockService {
     }
 
     @Override
-    @Transactional
-    public void recordPurchaseIn(UUID productId, BigDecimal quantity, String note) {
-        Product product = validateProductAccess(productId);
-        if (quantity == null || quantity.signum() <= 0) {
-            throw new BusinessException(ErrorCodes.INVALID_QUANTITY, "Quantity must be more than 0");
-        }
-        startTracking(product);
-        apply(product.getOwnerId(), product, StockMovementType.RECEIVED, quantity, null, note, null);
-    }
-
-    @Override
-    @Transactional
-    public void recordSaleOut(UUID productId, BigDecimal quantity, UUID saleItemId, String note) {
-        Product product = validateProductAccess(productId);
-        if (!product.tracksStock()) return;
-        apply(product.getOwnerId(), product, StockMovementType.SALE, quantity.negate(), null, note, null);
-    }
-
-    @Override
-    @Transactional
-    public void recordManualAdjustment(StockAdjustmentRequest request) {
-        Product product = validateProductAccess(request.getProductId());
-        BigDecimal change = request.getChangeQty();
-        if (change.signum() == 0) return;
-        startTracking(product);
-        apply(product.getOwnerId(), product,
-                change.signum() > 0 ? StockMovementType.RECEIVED : StockMovementType.REMOVED,
-                change, StockRemovalReason.OTHER, request.getNote(), null);
-    }
-
-    @Override
-    @Transactional
-    public void updateStock(StockUpdateRequest request) {
-        Product product = validateProductAccess(request.getProductId());
-        if (request.getStock().compareTo(BigDecimal.ZERO) < 0) {
-            throw new BusinessException(ErrorCodes.NEGATIVE_STOCK, "Stock cannot be negative");
-        }
-        UUID ownerId = product.getOwnerId();
-        BigDecimal before = currentStock(ownerId, product.getId());
-        BigDecimal after = count(ownerId, product, request.getStock(), request.getNote());
-        auditService.logStockChange(product.getId(), ownerId, product.getName(), before, after,
-                "STOCK_UPDATE", request.getNote() != null ? request.getNote() : "Stock updated to " + after);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public BigDecimal getCurrentStock(UUID productId) {
-        validateProductAccess(productId);
-        return currentStock(SecurityUtil.getCurrentUserId(), productId);
-    }
-
-    @Override
     public BigDecimal currentStock(UUID ownerId, UUID productId) {
         return inventoryRepository.findByOwnerIdAndProductId(ownerId, productId)
                 .map(Inventory::getStock)
@@ -174,15 +120,5 @@ public class StockService implements IStockService {
             product.setTrackStock(true);
             productRepository.save(product);
         }
-    }
-
-    private Product validateProductAccess(UUID productId) {
-        UUID ownerId = SecurityUtil.getCurrentUserId();
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
-        if (!product.getOwnerId().equals(ownerId)) {
-            throw new BusinessException(ErrorCodes.UNAUTHORIZED, "You don't have permission to access this product");
-        }
-        return product;
     }
 }

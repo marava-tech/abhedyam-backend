@@ -44,7 +44,6 @@ public class SecurityConfig {
                     auth.requestMatchers(
                             "/api/v1/auth/**",
                             "/api/v1/bulk-import/template",
-                            "/api/v1/products/owner/*/with-stock",
                             "/api/v1/owners/public",
                             "/api/v1/inventories/owner/*",
                             "/api/v1/app-usage-guide",
