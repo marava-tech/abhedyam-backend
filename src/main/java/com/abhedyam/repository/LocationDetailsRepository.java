@@ -60,7 +60,9 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
        @Query("SELECT ld FROM LocationDetails ld WHERE ld.userId IN :customerIds")
        List<LocationDetails> findByUserIdIn(@Param("customerIds") List<UUID> customerIds);
 
-       @Query("SELECT ld.village, COUNT(c.id) as customerCount " +
+       // The JPQL must differ from the Pageable version below (no "as customerCount" here): Hibernate 6.4 caches the plan
+       // by query text, and when a paged call ran at the same moment this one went out with "limit null,null" and failed (Home summary 500).
+       @Query("SELECT ld.village, COUNT(c.id) " +
                      "FROM LocationDetails ld " +
                      "INNER JOIN Customer c ON c.id = ld.userId " +
                      "WHERE c.ownerId = :ownerId " +
@@ -85,7 +87,11 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
                                    "AND c.isActive = true")
        Page<Object[]> findVillagesWithCustomerCountByOwnerIdPageable(@Param("ownerId") UUID ownerId, Pageable pageable);
 
-       @Query("SELECT ld.village, COUNT(c.id) as customerCount " +
+       @Query("SELECT COUNT(DISTINCT ld.village) FROM LocationDetails ld INNER JOIN Customer c ON c.id = ld.userId " +
+                     "WHERE c.ownerId = :ownerId AND ld.village IS NOT NULL AND c.isActive = true")
+       long countVillagesByOwnerId(@Param("ownerId") UUID ownerId);
+
+       @Query("SELECT ld.village, COUNT(c.id) " +
                      "FROM LocationDetails ld " +
                      "INNER JOIN Customer c ON c.id = ld.userId " +
                      "WHERE c.ownerId = :ownerId " +

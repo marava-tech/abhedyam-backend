@@ -287,8 +287,7 @@ public class OwnerService implements IOwnerService {
             totalPendingAmount = BigDecimal.ZERO;
         }
         
-        List<Object[]> villagesData = locationDetailsRepository.findVillagesWithCustomerCountByOwnerId(ownerId);
-        long totalVillages = villagesData.size();
+        long totalVillages = locationDetailsRepository.countVillagesByOwnerId(ownerId);
         
         java.time.ZoneId zone = java.time.ZoneId.of("Asia/Kolkata");
         java.time.ZonedDateTime monthStart = java.time.LocalDate.now(zone).withDayOfMonth(1).atStartOfDay(zone);
