@@ -1,6 +1,8 @@
 package com.abhedyam.service;
 
+import com.abhedyam.model.Owner;
 import com.abhedyam.model.OwnerSettings;
+import com.abhedyam.repository.OwnerRepository;
 import com.abhedyam.repository.OwnerSettingsRepository;
 import com.abhedyam.service.interfaces.IAccountExportService;
 import com.abhedyam.service.interfaces.IAccountService;
@@ -11,13 +13,14 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 
-/** Runs the two timed steps of a pending account deletion: email the data at 12 hours, disable the account at 48. */
+/** Runs the timed steps of an account deletion: email the data at 12 hours, disable at 48 hours, erase the data 90 days after that. */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class AccountDeletionJob {
 
     private final OwnerSettingsRepository settings;
+    private final OwnerRepository owners;
     private final IAccountService accounts;
     private final IAccountExportService exports;
 
@@ -37,6 +40,13 @@ public class AccountDeletionJob {
                 if (!now.isBefore(deletesAt)) accounts.disableAccount(s.getOwnerId());
             } catch (Exception e) {
                 log.error("Pending deletion failed for owner {}: {}", s.getOwnerId(), e.getMessage(), e);
+            }
+        }
+        for (Owner o : owners.findByIsActiveFalseAndDeletedAtBefore(now.minus(IAccountService.DISABLED_RETENTION))) {
+            try {
+                accounts.deleteAccount(o.getId());
+            } catch (Exception e) {
+                log.error("Purge of disabled owner {} failed: {}", o.getId(), e.getMessage(), e);
             }
         }
     }

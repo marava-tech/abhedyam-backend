@@ -121,7 +121,7 @@ class AccountServiceTest {
         Customer c = customers.findByOwnerId(id).get(0);
         c.setPhoneNormalized("+919000000002");
         customers.save(c);
-        AccountDeletionJob job = new AccountDeletionJob(settings, service, exportService);
+        AccountDeletionJob job = new AccountDeletionJob(settings, owners, service, exportService);
 
         service.requestDeletion(id);
         job.run(java.time.Instant.now());                       // just asked: nothing yet
@@ -149,6 +149,19 @@ class AccountServiceTest {
         assertNull(kept.getPhoneNormalized());
         assertNotNull(kept.getPhone());
         assertEquals(1, sales.findByOwnerId(id).size());
+
+        // Disabled accounts are erased 90 days later, not before.
+        Owner d = owners.findById(id).orElseThrow();
+        d.setDeletedAt(java.time.Instant.now().minus(java.time.Duration.ofDays(89)));
+        owners.save(d);
+        job.run(java.time.Instant.now());
+        assertTrue(owners.findById(id).isPresent());
+        d.setDeletedAt(java.time.Instant.now().minus(java.time.Duration.ofDays(91)));
+        owners.save(d);
+        job.run(java.time.Instant.now());
+        assertTrue(owners.findById(id).isEmpty());
+        assertTrue(customers.findByOwnerId(id).isEmpty());
+        assertTrue(sales.findByOwnerId(id).isEmpty());
 
         // The same Gmail and the same customer phone work for a brand new account.
         Owner again = new Owner();

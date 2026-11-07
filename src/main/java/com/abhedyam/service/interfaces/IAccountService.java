@@ -16,7 +16,10 @@ public interface IAccountService {
      */
     void disableAccount(UUID ownerId);
 
-    /** Hard delete of the owner and everything scoped to them. Not used by the job; for a retention purge if one is ever wanted. */
+    /** A disabled account's data is erased this long after it was disabled. */
+    java.time.Duration DISABLED_RETENTION = java.time.Duration.ofDays(90);
+
+    /** Hard delete of the owner and everything scoped to them. The job calls this once DISABLED_RETENTION has passed. */
     void deleteAccount(UUID ownerId);
 
     /** Starts the grace period (asking again does not restart it). Returns when the account will be deleted. */
