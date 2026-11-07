@@ -17,8 +17,8 @@
 - Same Gmail signs up again as a brand-new owner (login finds no row by uid/email); same customer phones can be added again.
 
 ## Decisions / known limits
-- Data is kept indefinitely. Play's user-data policy and India's DPDP Act expect erasure unless retention is declared and
-  justified: the privacy page, delete-account page and Data safety form must say what is kept and why. `deleteAccount`
-  (hard delete) is still there for a retention purge if one is wanted.
+- Disabled data is kept 90 days (`DISABLED_RETENTION`, owner's decision), then the job calls `deleteAccount` (hard delete of
+  the owner and everything scoped to them; subscription/billing rows stay). Play's user-data policy and India's DPDP Act
+  expect retention to be declared: the privacy page, delete-account page and Data safety form must say what is kept for 90 days and why.
 - Customers of a disabled shop lose customer-app access (their phone number is freed).
 - Old app (1.11.1) calls the same endpoint: it shows 'deleted' and logs out, the deletion proceeds after 48 h; it cannot cancel.
