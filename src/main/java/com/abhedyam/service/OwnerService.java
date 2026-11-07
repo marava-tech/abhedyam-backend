@@ -271,15 +271,11 @@ public class OwnerService implements IOwnerService {
         
         long totalCustomers = customerRepository.countByOwnerId(ownerId);
         
-        List<SaleItem> saleItems = saleItemRepository.findByOwnerId(ownerId);
-        BigDecimal totalSalesAmount = saleItems.stream()
-            .map(item -> item.getPrice().multiply(item.getQuantity() != null ? item.getQuantity() : BigDecimal.ONE))
+        BigDecimal totalSalesAmount = saleItemRepository.sumTotalsByCustomer(ownerId).stream()
+            .map(r -> new BigDecimal(r[1].toString()))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
-        List<Payment> payments = paymentRepository.findByOwnerId(ownerId);
-        BigDecimal totalCollectedAmount = payments.stream()
-            .filter(p -> p.getStatus() == PaymentStatus.SUCCESS)
-            .map(Payment::getAmount)
+        BigDecimal totalCollectedAmount = paymentRepository.sumSuccessfulByCustomer(ownerId).stream()
+            .map(r -> new BigDecimal(r[1].toString()))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         
         BigDecimal totalPendingAmount = totalSalesAmount.subtract(totalCollectedAmount);
