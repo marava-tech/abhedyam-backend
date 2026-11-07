@@ -21,5 +21,6 @@ public interface IProductService {
     List<ProductSearchResult> searchByName(String name);
     Product updateProduct(ProductUpdateRequest request);
     Product toggleActive(UUID id);
-}
 
+    void evictOwnerCaches(UUID ownerId);
+}

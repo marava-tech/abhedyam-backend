@@ -12,6 +12,11 @@ import java.util.UUID;
 public interface InventoryRepository extends JpaRepository<Inventory, UUID> {
     List<Inventory> findByOwnerId(UUID ownerId);
     Optional<Inventory> findByOwnerIdAndProductId(UUID ownerId, UUID productId);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("SELECT i FROM Inventory i WHERE i.ownerId = :ownerId AND i.productId = :productId")
+    Optional<Inventory> lockByOwnerIdAndProductId(@org.springframework.data.repository.query.Param("ownerId") UUID ownerId,
+                                                  @org.springframework.data.repository.query.Param("productId") UUID productId);
     
     @org.springframework.data.jpa.repository.Query("SELECT i FROM Inventory i WHERE i.ownerId = :ownerId AND i.productId IN :productIds")
     List<Inventory> findByOwnerIdAndProductIdIn(@org.springframework.data.repository.query.Param("ownerId") UUID ownerId,
