@@ -138,7 +138,8 @@ public class CustomerService implements ICustomerService {
         LocationDetails existingLocation = locationDetailsRepository.findById(savedCustomer.getId()).orElse(null);
         String villageName = (request.getVillage() != null && !request.getVillage().trim().isEmpty()) 
             ? request.getVillage().trim() 
-            : "No Village";
+            : null;
+        boolean hasPin = request.getLatitude() != null && request.getLongitude() != null;
         
         if (existingLocation != null) {
             existingLocation.setVillage(villageName);
@@ -149,12 +150,12 @@ public class CustomerService implements ICustomerService {
                 existingLocation.setLongitude(request.getLongitude());
             }
             locationDetailsRepository.save(existingLocation);
-        } else {
+        } else if (villageName != null || hasPin) { // nothing to store otherwise; never a fake 0,0 pin
             LocationDetails locationDetails = new LocationDetails();
             locationDetails.setUserId(savedCustomer.getId());
             locationDetails.setVillage(villageName);
-            locationDetails.setLatitude(request.getLatitude() != null ? request.getLatitude() : BigDecimal.ZERO);
-            locationDetails.setLongitude(request.getLongitude() != null ? request.getLongitude() : BigDecimal.ZERO);
+            locationDetails.setLatitude(hasPin ? request.getLatitude() : null);
+            locationDetails.setLongitude(hasPin ? request.getLongitude() : null);
             locationDetailsRepository.save(locationDetails);
         }
         

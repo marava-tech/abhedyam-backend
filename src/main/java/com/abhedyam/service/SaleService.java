@@ -276,17 +276,13 @@ public class SaleService implements ISaleService {
         }
 
         try {
-            String villageName = (request.getCustomerVillage() != null
-                    && !request.getCustomerVillage().trim().isEmpty())
-                            ? request.getCustomerVillage().trim()
-                            : "No Village";
-
-            LocationDetails locationDetails = new LocationDetails();
-            locationDetails.setUserId(customer.getId());
-            locationDetails.setVillage(villageName);
-            locationDetails.setLatitude(BigDecimal.ZERO);
-            locationDetails.setLongitude(BigDecimal.ZERO);
-            locationDetailsRepository.save(locationDetails);
+            // Only a typed village is stored (as a label, no map pin); no "No Village" placeholder.
+            if (request.getCustomerVillage() != null && !request.getCustomerVillage().trim().isEmpty()) {
+                LocationDetails locationDetails = new LocationDetails();
+                locationDetails.setUserId(customer.getId());
+                locationDetails.setVillage(request.getCustomerVillage().trim());
+                locationDetailsRepository.save(locationDetails);
+            }
         } catch (Exception e) {
             log.warn("Location details save failed for customer {}: {}", customer.getId(), e.getMessage());
         }

@@ -233,8 +233,9 @@ public class OwnerService implements IOwnerService {
     private LocationDetailsResponse toLocationResponse(LocationDetails location) {
         LocationDetailsResponse response = new LocationDetailsResponse();
         response.setId(location.getId());
-        response.setLatitude(location.getLatitude());
-        response.setLongitude(location.getLongitude());
+        // same wire contract as LocationDetailsService: no pin goes out as 0
+        response.setLatitude(location.getLatitude() != null ? location.getLatitude() : java.math.BigDecimal.ZERO);
+        response.setLongitude(location.getLongitude() != null ? location.getLongitude() : java.math.BigDecimal.ZERO);
         response.setVillage(location.getVillage());
         response.setCreatedAt(location.getCreatedAt());
         response.setUpdatedAt(location.getUpdatedAt());
