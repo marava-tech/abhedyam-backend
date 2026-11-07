@@ -45,7 +45,7 @@ public class StockService implements IStockService {
     @Override
     @Transactional
     public BigDecimal apply(UUID ownerId, Product product, StockMovementType type, BigDecimal change,
-                            StockRemovalReason reason, String note, String saleTransactionId) {
+                            StockRemovalReason reason, String note, String saleTransactionId, UUID purchaseId) {
         Inventory inventory = inventoryRepository.lockByOwnerIdAndProductId(ownerId, product.getId())
                 .orElseGet(() -> {
                     Inventory inv = new Inventory();
@@ -66,6 +66,7 @@ public class StockService implements IStockService {
         m.setReason(type == StockMovementType.REMOVED ? (reason == null ? StockRemovalReason.OTHER : reason) : null);
         m.setNote(note == null || note.isBlank() ? null : note.trim().substring(0, Math.min(200, note.trim().length())));
         m.setSaleTransactionId(saleTransactionId);
+        m.setPurchaseId(purchaseId);
         movementRepository.save(m);
 
         inventory.setStock(after);

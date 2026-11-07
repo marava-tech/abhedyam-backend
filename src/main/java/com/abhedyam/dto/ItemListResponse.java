@@ -17,6 +17,9 @@ public class ItemListResponse {
         private int out;
         private BigDecimal stockValue;
         private int missingCostPrice;
+        private BigDecimal potentialProfit;
+        private int notSelling;
+        private BigDecimal notSellingValue;
     }
 
     private Summary summary;

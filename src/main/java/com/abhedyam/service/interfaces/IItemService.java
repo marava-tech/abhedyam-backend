@@ -10,9 +10,12 @@ import com.abhedyam.dto.StockMovementResponse;
 import java.util.UUID;
 
 public interface IItemService {
-    enum Filter { ALL, LOW, OUT }
+    enum Filter { ALL, LOW, OUT, NOT_SELLING }
 
     ItemListResponse list(UUID ownerId, Filter filter, String search, int page, int size);
+
+    /** Every active item of the owner with stock and sales stats, unfiltered (for the to-buy list). */
+    java.util.List<ItemResponse> all(UUID ownerId);
 
     ItemResponse create(UUID ownerId, ItemRequest request);
 

@@ -50,5 +50,7 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, UUID> {
     List<Object[]> sumTotalsByCustomer(@Param("ownerId") UUID ownerId);
 
     List<SaleItem> findByCustomerIdAndOwnerIdOrderByCreatedAtAsc(UUID customerId, UUID ownerId);
-}
 
+    @Query("SELECT s.productId, s.quantity, s.createdAt FROM SaleItem s WHERE s.ownerId = :ownerId AND s.isActive = true")
+    List<Object[]> saleLinesByOwner(@Param("ownerId") UUID ownerId);
+}
