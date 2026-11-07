@@ -46,14 +46,15 @@ public class FcmService implements IFcmService {
         fcmDetailsRepository.deleteByUserIdAndTokenAndPackageName(userId, token, packageName);
     }
     
-    public void sendNotificationToUser(UUID userId, String title, String body, String packageName, java.util.Map<String, String> data) {
+    public int sendNotificationToUser(UUID userId, String title, String body, String packageName, java.util.Map<String, String> data) {
         List<FcmDetails> fcmDetailsList = fcmDetailsRepository.findByUserIdAndPackageName(userId, packageName);
         
         if (fcmDetailsList.isEmpty()) {
             log.warn("No FCM tokens found for user {} with package {}", userId, packageName);
-            return;
+            return 0;
         }
         
+        int sent = 0;
         for (FcmDetails fcmDetails : fcmDetailsList) {
             try {
                 Message message = Message.builder()
@@ -68,7 +69,7 @@ public class FcmService implements IFcmService {
                         .setPriority(AndroidConfig.Priority.HIGH)
                         .setNotification(AndroidNotification.builder()
                             .setSound("default")
-                            .setChannelId("reminders")
+                            .setChannelId(channelFor(data))
                             .build())
                         .build())
                     .setApnsConfig(ApnsConfig.builder()
@@ -81,6 +82,7 @@ public class FcmService implements IFcmService {
                 
                 String response = FirebaseMessaging.getInstance().send(message);
                 log.info("FCM notification sent successfully to user {}: {}", userId, response);
+                sent++;
             } catch (FirebaseMessagingException e) {
                 log.error("Failed to send FCM notification to user {} with token {}: {}", 
                     userId, fcmDetails.getToken(), e.getMessage());
@@ -98,5 +100,17 @@ public class FcmService implements IFcmService {
                 log.error("Unexpected error sending FCM notification to user {}: {}", userId, e.getMessage(), e);
             }
         }
+        return sent;
+    }
+
+    /** Android channel per kind, so the owner can silence one kind in phone settings. The app creates these channels;
+     *  a phone on an older build falls back to the manifest default ("reminders"). */
+    static String channelFor(java.util.Map<String, String> data) {
+        String category = data.getOrDefault("category", "");
+        String entity = data.getOrDefault("relatedEntityType", "");
+        if (category.equals("PAYMENT_NEEDS_OK")) return "payments";
+        if (category.equals("DUE_DIGEST")) return "summary";
+        if (entity.equals("DUE") || entity.equals("VISIT")) return "dues";
+        return "reminders";
     }
 }

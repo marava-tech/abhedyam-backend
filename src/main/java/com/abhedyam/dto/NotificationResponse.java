@@ -25,6 +25,8 @@ public class NotificationResponse {
     private Integer retryCount;
     private Instant createdAt;
     private String category;
+    /** Push title ("Prava pays tomorrow"); null on rows from before the dispatcher. */
+    private String title;
     
     public static NotificationResponse fromEntity(Notification notification) {
         return new NotificationResponse(
@@ -40,7 +42,8 @@ public class NotificationResponse {
             notification.getRelatedEntityType(),
             notification.getRetryCount(),
             notification.getCreatedAt(),
-            notification.getCategory() == null ? null : notification.getCategory().name()
+            notification.getCategory() == null ? null : notification.getCategory().name(),
+            notification.getTitle()
         );
     }
 }
