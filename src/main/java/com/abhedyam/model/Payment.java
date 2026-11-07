@@ -47,6 +47,11 @@ public class Payment extends BaseEntity {
     
     @Column
     private String reference;
+
+    /** Due the owner said this pays ("Got paid" on a due); it is filled first. Null = earliest due first. */
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(columnDefinition = "VARCHAR(36)")
+    private UUID dueId;
     
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

@@ -35,6 +35,7 @@ class DueDigestJobTest {
     @Mock SaleItemRepository saleItems;
     @Mock PaymentRepository payments;
     @Mock NotificationDispatcher dispatcher;
+    @Mock com.abhedyam.service.interfaces.IPaymentDueService paymentDues;
     @InjectMocks DueDigestJob job;
 
     final UUID owner = UUID.randomUUID(), customer = UUID.randomUUID();
@@ -53,6 +54,57 @@ class DueDigestJobTest {
         lenient().when(saleItems.sumTotalsByCustomer(owner)).thenReturn(java.util.Collections.singletonList(new Object[] {customer.toString(), new java.math.BigDecimal("500.00")}));
         lenient().when(payments.sumSuccessfulByCustomer(owner)).thenReturn(List.of());
         lenient().when(saleItems.findByOwnerId(owner)).thenReturn(List.of());
+        lenient().when(paymentDues.ownerDues(owner)).thenReturn(List.of());
+    }
+
+    final UUID dueId = UUID.randomUUID();
+
+    com.abhedyam.dto.OwnerDueResponse due(java.time.LocalDate date, String status, Integer remind) {
+        var d = new com.abhedyam.dto.PaymentDueResponse(dueId, new java.math.BigDecimal("5000"), java.math.BigDecimal.ZERO,
+            new java.math.BigDecimal("5000"), date, "after harvest", status, Instant.EPOCH, remind);
+        return new com.abhedyam.dto.OwnerDueResponse(customer, "Prava", null, "Warangal", d);
+    }
+
+    @Test
+    void everyUnpaidDueIsRemindedTheDayBefore() {
+        var tomorrow = java.time.LocalDate.of(2026, 11, 5);
+        when(paymentDues.ownerDues(owner)).thenReturn(List.of(due(tomorrow, "OPEN", null)));
+        job.run(ist(8, 15));
+        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.OWNER_REMINDER), eq(NotificationType.INFO), eq("Prava pays tomorrow"),
+            eq("₹5,000 due on Thu, 5 Nov · after harvest"), eq("DUE"), eq(dueId), eq("due-remind:" + dueId + ":2026-11-05:1"));
+
+        reset(dispatcher);
+        when(paymentDues.ownerDues(owner)).thenReturn(List.of(due(tomorrow, "PAID", null),
+            due(tomorrow.plusDays(1), "OPEN", null), due(tomorrow.plusDays(1), "OPEN", 7)));
+        job.run(ist(8, 15));
+        verify(dispatcher, never()).notify(any(), eq(NotificationCategory.OWNER_REMINDER), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void sevenDaysAheadSaysInSevenDays() {
+        when(paymentDues.ownerDues(owner)).thenReturn(List.of(due(java.time.LocalDate.of(2026, 11, 11), "OPEN", 7)));
+        job.run(ist(8, 15));
+        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.OWNER_REMINDER), any(), eq("Prava pays in 7 days"), any(), any(), any(),
+            eq("due-remind:" + dueId + ":2026-11-11:7"));
+    }
+
+    @Test
+    void villageVisitIsRemindedTheDayBefore() {
+        UUID visit = UUID.randomUUID();
+        when(paymentDues.ownerVisits(owner)).thenReturn(List.of(new com.abhedyam.dto.CollectionVisitResponse(visit, "Hanamkonda",
+            java.time.LocalDate.of(2026, 11, 5), null, "UPCOMING", 6, new java.math.BigDecimal("18400"))));
+        job.run(ist(8, 15));
+        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.OWNER_REMINDER), any(), eq("Visit Hanamkonda tomorrow"),
+            eq("6 customers owe ₹18,400"), eq("VISIT"), eq(visit), eq("visit-remind:" + visit + ":2026-11-05"));
+    }
+
+    @Test
+    void digestLeadsWithTodaysAndOverdueDues() {
+        var today = java.time.LocalDate.of(2026, 11, 4);
+        when(paymentDues.ownerDues(owner)).thenReturn(List.of(due(today, "OPEN", null), due(today.minusDays(3), "OVERDUE", null)));
+        job.run(ist(8, 15));
+        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.DUE_DIGEST), any(), any(),
+            org.mockito.ArgumentMatchers.startsWith("1 due today ₹5,000 · 1 overdue ₹5,000 · 1 customer owes ₹500"), any(), any(), any());
     }
 
     @Test

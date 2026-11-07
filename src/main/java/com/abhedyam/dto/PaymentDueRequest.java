@@ -17,4 +17,7 @@ public class PaymentDueRequest {
 
     @Schema(description = "Optional note, up to 200 characters", example = "After harvest")
     private String note;
+
+    @Schema(description = "Extra, earlier reminder this many days before (2-30); the day-before reminder is always sent. 0 removes it on edit", example = "7")
+    private Integer earlyReminderDays;
 }

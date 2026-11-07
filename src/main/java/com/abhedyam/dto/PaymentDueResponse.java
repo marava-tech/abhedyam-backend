@@ -20,4 +20,6 @@ public class PaymentDueResponse {
     /** OPEN, PARTLY_PAID, PAID or MISSED */
     private String status;
     private Instant createdAt;
+    /** Extra reminder lead time (2-30), null = only the day-before one. */
+    private Integer earlyReminderDays;
 }

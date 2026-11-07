@@ -14,9 +14,12 @@ final class DueAllocator {
 
     record Due(UUID id, BigDecimal amount, LocalDate dueDate, Instant createdAt) {}
 
-    record Paid(BigDecimal amount, Instant recordedAt) {}
+    /** [dueId] = the due the owner said it pays (filled first), or null. */
+    record Paid(BigDecimal amount, Instant recordedAt, UUID dueId) {
+        Paid(BigDecimal amount, Instant recordedAt) { this(amount, recordedAt, null); }
+    }
 
-    enum Status { OPEN, PARTLY_PAID, PAID, MISSED }
+    enum Status { OPEN, PARTLY_PAID, PAID, OVERDUE }
 
     /** Paid amount per due id (every due is present, 0 when nothing reached it). */
     static Map<UUID, BigDecimal> allocate(List<Due> dues, List<Paid> payments) {
@@ -29,7 +32,12 @@ final class DueAllocator {
         byTime.sort(Comparator.comparing(Paid::recordedAt));
         for (Paid p : byTime) {
             BigDecimal left = p.amount();
-            for (Due d : order) {
+            List<Due> targets = order;
+            if (p.dueId() != null) { // the due it was meant for first, then the usual order
+                targets = new ArrayList<>(order);
+                targets.sort(Comparator.comparing((Due d) -> !d.id().equals(p.dueId())));
+            }
+            for (Due d : targets) {
                 if (left.signum() <= 0) break;
                 if (d.createdAt().isAfter(p.recordedAt())) continue;
                 BigDecimal room = d.amount().subtract(paid.get(d.id()));
@@ -44,7 +52,7 @@ final class DueAllocator {
 
     static Status status(BigDecimal amount, BigDecimal paid, LocalDate dueDate, LocalDate today) {
         if (paid.compareTo(amount) >= 0) return Status.PAID;
-        if (dueDate.isBefore(today)) return Status.MISSED;
+        if (dueDate.isBefore(today)) return Status.OVERDUE;
         return paid.signum() > 0 ? Status.PARTLY_PAID : Status.OPEN;
     }
 }

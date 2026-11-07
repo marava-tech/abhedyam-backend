@@ -24,4 +24,7 @@ public class CollectPaymentRequest {
     private PaymentMedium medium;
 
     private String reference;
+
+    @Schema(description = "Optional: the due this payment is for (\"Got paid\" on a due); it is filled first")
+    private UUID dueId;
 }

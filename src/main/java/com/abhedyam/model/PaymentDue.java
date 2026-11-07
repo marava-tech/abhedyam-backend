@@ -33,4 +33,8 @@ public class PaymentDue extends BaseEntity {
 
     @Column(length = 200)
     private String note;
+
+    /** Every due gets a push the day before; this adds one more this many days before (2-30). Null = none. */
+    @Column
+    private Integer earlyReminderDays;
 }
