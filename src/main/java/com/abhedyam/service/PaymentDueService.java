@@ -55,6 +55,7 @@ public class PaymentDueService implements IPaymentDueService {
     /** Its payments summary checks that the owner is the caller and owns the customer, and gives the balance. */
     private final ICustomerService customerService;
     private final INotificationSettingsService notificationSettings;
+    private final com.abhedyam.service.interfaces.IOwnerSettingsService ownerSettings;
 
     /** Dues of one customer with what is paid against each, plus the balance they were checked against. */
     private record State(BigDecimal balance, LocalDate today, List<PaymentDue> dues, Map<UUID, BigDecimal> paid) {
@@ -152,7 +153,7 @@ public class PaymentDueService implements IPaymentDueService {
         }
         List<OwnerDueResponse> dues = new ArrayList<>(overdue);
         dues.addAll(upcoming);
-        List<CollectionVisitResponse> visits = ownerVisits(ownerId).stream()
+        List<CollectionVisitResponse> visits = !ownerSettings.villageMode(ownerId) ? List.of() : ownerVisits(ownerId).stream()
                 .filter(v -> v.getStatus().equals("OVERDUE") || !v.getVisitDate().isAfter(end))
                 .sorted(Comparator.comparing((CollectionVisitResponse v) -> !v.getStatus().equals("OVERDUE"))
                         .thenComparing(CollectionVisitResponse::getVisitDate))
