@@ -389,7 +389,9 @@ public class BulkImportService implements IBulkImportService {
             } else if (digitsOnly.length() == 12 && digitsOnly.startsWith("91")) {
                 sanitized = "+" + digitsOnly;
             } else {
-                return null;
+                // Skip the row with a reason instead of silently importing the customer without a phone.
+                throw new BusinessException(ErrorCodes.VALIDATION_ERROR,
+                        "Phone must be a 10-digit number (got \"" + raw + "\")");
             }
         }
 
