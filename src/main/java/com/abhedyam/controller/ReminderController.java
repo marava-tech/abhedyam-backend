@@ -29,15 +29,6 @@ public class ReminderController {
     public ApiResponse<List<Reminder>> getByCustomerId(@PathVariable UUID customerId) {
         return ApiResponse.success(reminderService.getByCustomerId(customerId));
     }
-    
-    @GetMapping("/pending")
-    public ApiResponse<List<Reminder>> getPendingReminders() {
-        return ApiResponse.success(reminderService.getPendingReminders());
-    }
-    
-    @PatchMapping("/{id}/mark-sent")
-    public ApiResponse<Reminder> markAsSent(@PathVariable UUID id) {
-        return ApiResponse.success(reminderService.markAsSent(id));
-    }
+
 }
 

@@ -33,7 +33,7 @@ public class AccountService implements IAccountService {
     private static final List<Class<?>> OWNER_SCOPED = List.of(
             SaleItem.class, Payment.class, Product.class, Inventory.class, Reminder.class, Note.class,
             Document.class, UPIAccount.class, Audit.class, Notification.class, OwnerSettings.class,
-            DailyStats.class, TopProduct.class, PaymentLink.class);
+            DailyStats.class, TopProduct.class);
 
     @PersistenceContext
     private EntityManager em;
@@ -92,8 +92,8 @@ public class AccountService implements IAccountService {
             if (!Boolean.TRUE.equals(owner.getIsActive())) return null; // already disabled
             Instant now = Instant.now();
 
-            // Nothing may reach this shop's customers any more (reminders, pay links) or be pushed to anyone.
-            for (Class<?> c : List.of(Reminder.class, Notification.class, PaymentLink.class, OwnerSettings.class)) {
+            // Nothing may reach this shop's customers any more (reminders) or be pushed to anyone.
+            for (Class<?> c : List.of(Reminder.class, Notification.class, OwnerSettings.class)) {
                 em.createQuery("delete from " + c.getSimpleName() + " e where e.ownerId = :o")
                         .setParameter("o", ownerId).executeUpdate();
             }

@@ -25,12 +25,7 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
     Page<Customer> searchCustomers(@Param("ownerId") UUID ownerId,
                                    @Param("searchTerm") String searchTerm,
                                    Pageable pageable);
-    
-    @Query("SELECT c FROM Customer c WHERE c.ownerId = :ownerId " +
-           "AND LOWER(c.name) LIKE LOWER(CONCAT('%', :name, '%'))")
-    List<Customer> findByNameContainingIgnoreCaseAndOwnerId(@Param("name") String name, 
-                                                              @Param("ownerId") UUID ownerId);
-    
+
     @Query("SELECT DISTINCT c FROM Customer c " +
            "LEFT JOIN LocationDetails ld ON ld.userId = c.id " +
            "WHERE c.ownerId = :ownerId " +
@@ -117,8 +112,6 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
                                                                  @Param("isNumeric") boolean isNumeric,
                                                                  Pageable pageable);
 
-    Page<Customer> findByOwnerIdOrderByCreatedAtDesc(UUID ownerId, Pageable pageable);
-    
     @Query("SELECT c FROM Customer c WHERE c.id IN :customerIds")
     List<Customer> findByIdIn(@Param("customerIds") List<UUID> customerIds);
     

@@ -1,21 +1,13 @@
 package com.abhedyam.service;
 
-import com.abhedyam.dto.LocationDetailsResponse;
 import com.abhedyam.dto.OwnerPublicResponse;
 import com.abhedyam.dto.OwnerResponse;
-import com.abhedyam.dto.OwnerSettingsResponse;
 import com.abhedyam.dto.OwnerSummaryResponse;
 import com.abhedyam.dto.OwnerUpdateRequest;
-import com.abhedyam.dto.UpiAccountResponse;
 import com.abhedyam.exception.BusinessException;
 import com.abhedyam.exception.ResourceNotFoundException;
 import com.abhedyam.model.LocationDetails;
 import com.abhedyam.model.Owner;
-import com.abhedyam.model.OwnerSettings;
-import com.abhedyam.model.Payment;
-import com.abhedyam.model.SaleItem;
-import com.abhedyam.model.UPIAccount;
-import com.abhedyam.model.enums.PaymentStatus;
 import com.abhedyam.repository.CustomerRepository;
 import com.abhedyam.repository.LocationDetailsRepository;
 import com.abhedyam.repository.OwnerRepository;
@@ -227,40 +219,6 @@ public class OwnerService implements IOwnerService {
         response.setPublicListingEnabled(owner.getPublicListingEnabled());
         response.setCreatedAt(owner.getCreatedAt());
         response.setUpdatedAt(owner.getUpdatedAt());
-        return response;
-    }
-    
-    private LocationDetailsResponse toLocationResponse(LocationDetails location) {
-        LocationDetailsResponse response = new LocationDetailsResponse();
-        response.setId(location.getId());
-        // same wire contract as LocationDetailsService: no pin goes out as 0
-        response.setLatitude(location.getLatitude() != null ? location.getLatitude() : java.math.BigDecimal.ZERO);
-        response.setLongitude(location.getLongitude() != null ? location.getLongitude() : java.math.BigDecimal.ZERO);
-        response.setVillage(location.getVillage());
-        response.setCreatedAt(location.getCreatedAt());
-        response.setUpdatedAt(location.getUpdatedAt());
-        return response;
-    }
-    
-    private OwnerSettingsResponse toSettingsResponse(OwnerSettings settings) {
-        OwnerSettingsResponse response = new OwnerSettingsResponse();
-        response.setId(settings.getId());
-        response.setDailyQuoteEnabled(settings.getDailyQuoteEnabled());
-        response.setIsDarkModeEnabled(settings.getIsDarkModeEnabled());
-        response.setOtherFlags(settings.getOtherFlags());
-        response.setCreatedAt(settings.getCreatedAt());
-        response.setUpdatedAt(settings.getUpdatedAt());
-        return response;
-    }
-    
-    private UpiAccountResponse toUpiAccountResponse(UPIAccount account) {
-        UpiAccountResponse response = new UpiAccountResponse();
-        response.setId(account.getId());
-        response.setVpa(account.getVpa());
-        response.setIsVerified(account.getIsVerified());
-        response.setVerifiedAt(account.getVerifiedAt());
-        response.setCreatedAt(account.getCreatedAt());
-        response.setUpdatedAt(account.getUpdatedAt());
         return response;
     }
 

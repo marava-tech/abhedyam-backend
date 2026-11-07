@@ -11,7 +11,5 @@ import java.util.UUID;
 @Repository
 public interface TopProductRepository extends JpaRepository<TopProduct, UUID> {
     List<TopProduct> findByOwnerIdAndStatDateOrderByRankAsc(UUID ownerId, LocalDate statDate);
-    List<TopProduct> findByOwnerIdAndStatDateBetweenOrderByRankAsc(UUID ownerId, LocalDate startDate, LocalDate endDate);
-    void deleteByOwnerIdAndStatDate(UUID ownerId, LocalDate statDate);
 }
 

@@ -14,11 +14,7 @@ public class EmailUtil {
         }
         return EMAIL_PATTERN.matcher(email.trim().toLowerCase()).matches();
     }
-    
-    public static boolean isEmail(String input) {
-        return isValidEmail(input);
-    }
-    
+
     public static String normalizeEmail(String email) {
         if (email == null) {
             return null;

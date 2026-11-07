@@ -27,11 +27,6 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
                      @Param("isActive") Boolean isActive,
                      Pageable pageable);
 
-       @Query("SELECT p FROM Product p WHERE p.ownerId = :ownerId " +
-                     "AND LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))")
-       List<Product> findByNameContainingIgnoreCaseAndOwnerId(@Param("name") String name,
-                     @Param("ownerId") UUID ownerId);
-
        @Query("SELECT p FROM Product p WHERE p.id IN :productIds")
        List<Product> findByIdIn(@Param("productIds") List<UUID> productIds);
 

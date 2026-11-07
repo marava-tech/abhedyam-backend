@@ -9,18 +9,12 @@ import com.abhedyam.model.Owner;
 import com.abhedyam.model.User;
 import com.abhedyam.model.enums.Subscription;
 import com.abhedyam.model.enums.UserType;
-import com.abhedyam.model.LocationDetails;
 import com.abhedyam.repository.CustomerRepository;
 import com.abhedyam.repository.LocationDetailsRepository;
 import com.abhedyam.repository.OwnerRepository;
 import com.abhedyam.repository.UserRepository;
-import com.abhedyam.service.interfaces.ISmsService;
 import com.abhedyam.util.EmailUtil;
 import com.abhedyam.util.JwtUtil;
-import com.abhedyam.util.PhoneUtil;
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.beans.factory.annotation.Value;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,8 +35,6 @@ public class AuthService {
     private final CustomerRepository customerRepository;
     private final LocationDetailsRepository locationDetailsRepository;
     private final JwtUtil jwtUtil;
-    private final org.springframework.data.redis.core.RedisTemplate<String, String> redisTemplate;
-    private final ISmsService smsService;
 
     @Transactional
     public AuthResponse loginWithGoogle(GoogleLoginRequest request) {
@@ -130,58 +122,13 @@ public class AuthService {
 
     /**
      * Disabled: this issued a customer token from a phone number alone (no proof of
-     * ownership), so anyone could sign in as any customer. Customers must prove the
-     * number via /auth/otp/verify until a free replacement (owner-issued access code) ships.
+     * ownership), so anyone could sign in as any customer. Customer sign-in stays off until a
+     * replacement (owner-issued access code) ships.
      */
     @Transactional
     public AuthResponse loginWithPhone(PhoneLoginRequest request) {
         throw new com.abhedyam.exception.BusinessException("OTP_REQUIRED",
                 "Verify your phone number to sign in");
-    }
-
-    public void sendCustomerOtp(String phone) {
-        String normalizedPhone = PhoneUtil.normalizePhone(phone);
-        if (!PhoneUtil.isValidPhone(normalizedPhone)) {
-            throw new com.abhedyam.exception.BusinessException("INVALID_PHONE", "Invalid phone number format");
-        }
-        String cooldownKey = "otp:cooldown:" + normalizedPhone;
-        if (Boolean.TRUE.equals(redisTemplate.hasKey(cooldownKey))) {
-            throw new com.abhedyam.exception.BusinessException("OTP_COOLDOWN", "Wait 60 seconds before requesting another OTP");
-        }
-        String otp = String.format("%06d", ThreadLocalRandom.current().nextInt(1_000_000));
-        String otpKey = "otp:" + normalizedPhone;
-        redisTemplate.opsForValue().set(otpKey, otp + ":0", Duration.ofMinutes(5));
-        redisTemplate.opsForValue().set(cooldownKey, "1", Duration.ofSeconds(60));
-        smsService.sendOtp(normalizedPhone, otp);
-        log.info("Customer OTP issued for phone {}", normalizedPhone);
-    }
-
-    @Transactional
-    public AuthResponse verifyCustomerOtp(String phone, String otp) {
-        String normalizedPhone = PhoneUtil.normalizePhone(phone);
-        if (!PhoneUtil.isValidPhone(normalizedPhone)) {
-            throw new com.abhedyam.exception.BusinessException("INVALID_PHONE", "Invalid phone number format");
-        }
-        String otpKey = "otp:" + normalizedPhone;
-        String stored = redisTemplate.opsForValue().get(otpKey);
-        if (stored == null) {
-            throw new com.abhedyam.exception.BusinessException("OTP_EXPIRED", "OTP expired. Request a new one");
-        }
-        String[] parts = stored.split(":");
-        String expected = parts[0];
-        int attempts = parts.length > 1 ? Integer.parseInt(parts[1]) : 0;
-        if (attempts >= 5) {
-            redisTemplate.delete(otpKey);
-            throw new com.abhedyam.exception.BusinessException("OTP_LOCKED", "Too many attempts. Request a new OTP");
-        }
-        if (!expected.equals(otp == null ? "" : otp.trim())) {
-            redisTemplate.opsForValue().set(otpKey, expected + ":" + (attempts + 1), Duration.ofMinutes(5));
-            throw new com.abhedyam.exception.BusinessException("INVALID_OTP", "Incorrect OTP");
-        }
-        redisTemplate.delete(otpKey);
-        PhoneLoginRequest request = new PhoneLoginRequest();
-        request.setPhone(normalizedPhone);
-        return loginWithPhone(request);
     }
 
     @Transactional

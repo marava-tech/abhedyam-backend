@@ -27,16 +27,7 @@ public class UpiAccountManagementService implements IUpiAccountManagementService
     private final UPIAccountRepository upiAccountRepository;
     private final UserRepository userRepository;
     private final CustomerRepository customerRepository;
-    
-    @Override
-    @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public UpiAccountResponse getCurrentUserUpiAccount() {
-        UUID ownerId = SecurityUtil.getCurrentUserId();
-        UPIAccount account = upiAccountRepository.findByOwnerId(ownerId)
-                .orElseThrow(() -> new ResourceNotFoundException("UPI Account not found for current user"));
-        return toResponse(account);
-    }
-    
+
     @Override
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public UpiAccountResponse getUpiAccountByOwnerId(UUID ownerId) {
@@ -97,21 +88,7 @@ public class UpiAccountManagementService implements IUpiAccountManagementService
         validateOwnerAccess(ownerId);
         return updateCurrentUserUpiAccount(request);
     }
-    
-    @Override
-    @Transactional
-    public UpiAccountResponse setPrimaryUpiAccount(UUID id) {
-        UUID ownerId = SecurityUtil.getCurrentUserId();
-        UPIAccount account = upiAccountRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("UPI Account not found"));
-        
-        if (!account.getOwnerId().equals(ownerId)) {
-            throw new BusinessException("UNAUTHORIZED", "You don't have permission to access this UPI account");
-        }
-        
-        return toResponse(account);
-    }
-    
+
     @Override
     @Transactional
     public UpiAccountResponse verifyCurrentUserVpa() {

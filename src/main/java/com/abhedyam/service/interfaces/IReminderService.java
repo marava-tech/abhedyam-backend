@@ -9,8 +9,6 @@ import java.util.UUID;
 public interface IReminderService {
     Reminder create(ReminderCreateRequest request);
     List<Reminder> getByCustomerId(UUID customerId);
-    List<Reminder> getPendingReminders();
-    Reminder markAsSent(UUID id);
     /** Cancels a not-yet-sent reminder so it is never delivered. Only its owner may cancel it. */
     void cancel(UUID ownerId, UUID id);
 }

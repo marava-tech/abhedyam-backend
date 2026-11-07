@@ -21,12 +21,7 @@ public class SaleController {
     public ApiResponse<SaleDetailResponse> createSale(@Valid @RequestBody SaleCreateRequest request) {
         return ApiResponse.success(saleService.createSale(request));
     }
-    
-    @GetMapping("/transaction/{transactionId}")
-    public ApiResponse<SaleDetailResponse> getSaleByTransactionId(@PathVariable String transactionId) {
-        return ApiResponse.success(saleService.getSaleByTransactionId(transactionId));
-    }
-    
+
     @PostMapping("/transaction/{transactionId}/cancel")
     public ApiResponse<SaleDetailResponse> cancelSale(@PathVariable String transactionId) {
         return ApiResponse.success(saleService.cancelSale(transactionId));

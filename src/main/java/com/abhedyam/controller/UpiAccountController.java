@@ -28,12 +28,7 @@ public class UpiAccountController {
             @Valid @RequestBody UpiAccountCreateRequest request) {
         return ApiResponse.success(upiAccountManagementService.updateUpiAccountForOwner(ownerId, request));
     }
-    
-    @PutMapping("/{id}/primary")
-    public ApiResponse<UpiAccountResponse> setPrimaryUpiAccount(@PathVariable UUID id) {
-        return ApiResponse.success(upiAccountManagementService.setPrimaryUpiAccount(id));
-    }
-    
+
     @PostMapping("/owner/{ownerId}/verify")
     public ApiResponse<UpiAccountResponse> verifyOwnerVpa(@PathVariable UUID ownerId) {
         return ApiResponse.success(upiAccountManagementService.verifyVpaForOwner(ownerId));

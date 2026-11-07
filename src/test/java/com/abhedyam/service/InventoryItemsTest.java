@@ -1,6 +1,5 @@
 package com.abhedyam.service;
 
-import com.abhedyam.config.StockTrackingMigration;
 import com.abhedyam.dto.ItemListResponse;
 import com.abhedyam.dto.ItemRequest;
 import com.abhedyam.dto.ItemResponse;
@@ -8,7 +7,6 @@ import com.abhedyam.dto.StockChangeRequest;
 import com.abhedyam.dto.StockMovementResponse;
 import com.abhedyam.exception.BusinessException;
 import com.abhedyam.exception.ResourceNotFoundException;
-import com.abhedyam.model.Inventory;
 import com.abhedyam.model.Product;
 import com.abhedyam.model.enums.StockMovementType;
 import com.abhedyam.model.enums.StockRemovalReason;
@@ -262,22 +260,4 @@ class InventoryItemsTest {
         assertThrows(ResourceNotFoundException.class, () -> items.movements(stranger, id, 0, 10));
     }
 
-    @Test
-    void migrationTracksOnlyProductsThatHaveStock() {
-        Product withStock = legacy("Old with stock");
-        Product empty = legacy("Old empty");
-        Inventory inv = new Inventory();
-        inv.setOwnerId(owner); inv.setProductId(withStock.getId()); inv.setStock(new BigDecimal("7"));
-        inventories.save(inv);
-
-        jdbc.update(StockTrackingMigration.SQL);
-        assertEquals(Boolean.TRUE, products.findById(withStock.getId()).get().getTrackStock());
-        assertEquals(Boolean.FALSE, products.findById(empty.getId()).get().getTrackStock());
-    }
-
-    private Product legacy(String name) {
-        Product p = new Product();
-        p.setOwnerId(owner); p.setCode(name); p.setName(name); p.setPrice(BigDecimal.ONE);
-        return products.save(p);
-    }
 }

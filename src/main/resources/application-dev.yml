@@ -94,9 +94,6 @@ app:
     secret: ${JWT_SECRET}
     expiration: 1296000000
     customer-expiration: 2592000000
-  twofactor:
-    api-key: 
-    otp-template: Abhedyam_OTP_Template
   firebase:
     credentials: 
   email:
@@ -116,9 +113,6 @@ app:
     key-id: ${RAZORPAY_KEY_ID}
     key-secret: ${RAZORPAY_KEY_SECRET}
     custom-payment-page-url: 
-  features:
-    global:
-      dailyQuote: true
   cors:
     allowed-origins: http://localhost:3000,http://localhost:4000,http://localhost:4321,http://localhost:4322,http://localhost:8080,http://127.0.0.1:3000,http://127.0.0.1:8080,https://abhedyam-dashboard.marava.tech
   cache:

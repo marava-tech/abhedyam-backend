@@ -8,9 +8,7 @@ import com.abhedyam.dto.CustomerPaymentsSummaryResponse;
 import com.abhedyam.dto.CustomerRemindersSummaryResponse;
 import com.abhedyam.dto.CustomerSalesSummaryResponse;
 import com.abhedyam.dto.CustomerSearchRequest;
-import com.abhedyam.dto.CustomerSearchResult;
 import com.abhedyam.dto.CustomerSummaryResponse;
-import com.abhedyam.dto.CustomerUpdateRequest;
 import com.abhedyam.dto.NearestCustomerRequest;
 import com.abhedyam.dto.NearestCustomerResponse;
 import com.abhedyam.dto.PageResponse;
@@ -40,7 +38,6 @@ import com.abhedyam.util.PhoneUtil;
 import com.abhedyam.util.SecurityUtil;
 import com.abhedyam.constants.CacheKeys;
 import com.abhedyam.constants.ErrorCodes;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -63,7 +60,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -197,78 +193,6 @@ public class CustomerService implements ICustomerService {
             throw new BusinessException(ErrorCodes.UNAUTHORIZED, "You can only access your own customers");
         }
         return customerRepository.findByOwnerId(targetOwnerId);
-    }
-    
-    @Override
-    @Transactional(readOnly = true)
-    public PageResponse<CustomerResponse> getMyCustomersWithVillage(Integer page, Integer size) {
-        UUID ownerId = SecurityUtil.getCurrentUserId();
-        
-        if (page == null || page < 0) {
-            page = 0;
-        }
-        if (size == null || size < 1) {
-            size = 10;
-        }
-        
-        String cacheKey = CacheKeys.CUSTOMERS_MY_PREFIX + ownerId + ":" + page + ":" + size;
-        
-        try {
-            String cached = redisTemplate.opsForValue().get(cacheKey);
-            if (cached != null) {
-                PageResponse<CustomerResponse> cachedResponse = objectMapper.readValue(
-                    cached, 
-                    new TypeReference<PageResponse<CustomerResponse>>() {}
-                );
-                log.debug("Returning cached customers for owner {} page {} size {}", ownerId, page, size);
-                return cachedResponse;
-            }
-        } catch (Exception e) {
-            log.warn("Error reading from cache for key: {}", cacheKey, e);
-        }
-        
-        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
-        Pageable pageable = PageRequest.of(page, size, sort);
-        
-        Page<Customer> customerPage = customerRepository.findByOwnerIdOrderByCreatedAtDesc(ownerId, pageable);
-        List<Customer> customers = customerPage.getContent();
-        
-        List<UUID> customerIds = customers.stream().map(Customer::getId).toList();
-        List<LocationDetails> locations = locationDetailsRepository.findByUserIdIn(customerIds);
-        java.util.Map<UUID, String> villageMap = locations.stream()
-            .filter(l -> l.getVillage() != null) // toMap rejects null values; no village = absent
-            .collect(java.util.stream.Collectors.toMap(
-                LocationDetails::getUserId,
-                LocationDetails::getVillage,
-                (v1, v2) -> v1
-            ));
-        
-        List<CustomerResponse> responses = customers.stream()
-            .map(customer -> {
-                String village = villageMap.get(customer.getId());
-                return CustomerResponse.fromEntity(customer, village);
-            })
-            .toList();
-        
-        PageResponse<CustomerResponse> response = new PageResponse<>(
-            responses,
-            customerPage.getNumber(),
-            customerPage.getSize(),
-            customerPage.getTotalElements(),
-            customerPage.getTotalPages(),
-            customerPage.hasNext(),
-            customerPage.hasPrevious()
-        );
-        
-        try {
-            String jsonResponse = objectMapper.writeValueAsString(response);
-            redisTemplate.opsForValue().set(cacheKey, jsonResponse, CACHE_TTL_MINUTES, TimeUnit.MINUTES);
-            log.debug("Cached customers for owner {} page {} size {}", ownerId, page, size);
-        } catch (Exception e) {
-            log.warn("Error caching customers for key: {}", cacheKey, e);
-        }
-        
-        return response;
     }
 
     @Override
@@ -536,41 +460,6 @@ public class CustomerService implements ICustomerService {
             page.hasNext(),
             page.hasPrevious()
         );
-    }
-    
-    @Override
-    @Transactional(readOnly = true)
-    public List<CustomerSearchResult> searchByName(String name) {
-        UUID ownerId = SecurityUtil.getCurrentUserId();
-        List<Customer> customers = customerRepository.findByNameContainingIgnoreCaseAndOwnerId(name, ownerId);
-        
-        if (customers.isEmpty()) {
-            return List.of();
-        }
-        
-        List<UUID> customerIds = customers.stream().map(Customer::getId).toList();
-        List<LocationDetails> locations = locationDetailsRepository.findByUserIdIn(customerIds);
-        java.util.Map<UUID, String> villageMap = locations.stream()
-            .filter(l -> l.getVillage() != null) // toMap rejects null values; no village = absent
-            .collect(java.util.stream.Collectors.toMap(
-                LocationDetails::getUserId,
-                LocationDetails::getVillage,
-                (v1, v2) -> v1
-            ));
-        
-        return customers.stream()
-            .map(customer -> {
-                String village = villageMap.get(customer.getId());
-                return new CustomerSearchResult(customer.getId(), customer.getName(), customer.getPhone(), village);
-            })
-            .toList();
-    }
-    
-    @Override
-    @Transactional
-    public Customer updateCustomer(CustomerUpdateRequest request) {
-        Customer customer = getById(request.getId());
-        return updateCustomerInternal(customer, request);
     }
 
     public void invalidateOwnerCaches(UUID ownerId) {
@@ -886,27 +775,6 @@ public class CustomerService implements ICustomerService {
         public double getDistance() {
             return distance;
         }
-    }
-
-    private Customer updateCustomerInternal(Customer customer, CustomerUpdateRequest request) {
-        UUID ownerId = customer.getOwnerId();
-        
-        if (request.getName() != null && !request.getName().trim().isEmpty()) {
-            customer.setName(request.getName());
-        }
-        if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
-            String normalizedPhone = PhoneUtil.normalizePhone(request.getPhone());
-            customer.setPhone(PhoneUtil.extractPhoneWithoutCountryCode(normalizedPhone));
-            customer.setPhoneNormalized(normalizedPhone);
-        }
-        
-        Customer updatedCustomer = customerRepository.save(customer);
-        
-        if (ownerId != null) {
-            invalidateAllRelatedCachesOnCustomerChange(ownerId);
-        }
-        
-        return updatedCustomer;
     }
 
     private void validateOwnerAccess(UUID ownerId) {

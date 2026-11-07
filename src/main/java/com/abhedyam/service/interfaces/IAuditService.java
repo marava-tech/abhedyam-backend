@@ -1,8 +1,6 @@
 package com.abhedyam.service.interfaces;
 
 import com.abhedyam.model.Audit;
-import com.abhedyam.model.enums.AuditAction;
-import com.abhedyam.model.enums.AuditType;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -15,10 +13,6 @@ public interface IAuditService {
     List<Audit> getAll();
     List<Audit> getByOwnerId(UUID ownerId);
     Audit update(UUID id, Audit auditDetails);
-    void logFinancialOperation(AuditType type, AuditAction action, UUID entityId, 
-                              UUID ownerId, BigDecimal amount, String details);
-    void logStockChange(UUID productId, UUID ownerId, String productName, BigDecimal oldStock, 
-                       BigDecimal newStock, String source, String details);
     void logSaleCreation(UUID saleId, UUID ownerId, UUID customerId, String customerName, BigDecimal amount, String transactionId, String itemsSummary, BigDecimal paid);
     void logSaleCancellation(UUID saleId, UUID ownerId, UUID customerId, String customerName, BigDecimal amount, String transactionId);
     void logProductCreation(UUID productId, UUID ownerId, String productName, String productCode);
