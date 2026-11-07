@@ -27,5 +27,7 @@ public interface OwnerRepository extends JpaRepository<Owner, UUID> {
     java.util.Optional<Owner> findByPublicSlug(String publicSlug);
 
     List<Owner> findByPublicListingEnabledTrueAndIsActiveTrue();
+
+    boolean existsByIdAndIsActiveTrue(UUID id);
 }
 

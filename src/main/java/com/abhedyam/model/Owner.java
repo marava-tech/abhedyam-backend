@@ -40,5 +40,9 @@ public class Owner extends User {
 
     @Column(nullable = false)
     private Boolean publicListingEnabled = false;
+
+    /** The Gmail this shop signed in with, kept after the account is disabled (email itself is freed so the person can sign up again). */
+    @Column
+    private String formerEmail;
 }
 
