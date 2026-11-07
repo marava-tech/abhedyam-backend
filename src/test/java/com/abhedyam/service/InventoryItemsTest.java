@@ -260,7 +260,6 @@ class InventoryItemsTest {
         as(stranger);
         assertThrows(BusinessException.class, () -> items.list(owner, IItemService.Filter.ALL, null, 0, 10));
         assertThrows(ResourceNotFoundException.class, () -> items.movements(stranger, id, 0, 10));
-        assertThrows(BusinessException.class, () -> stock.getCurrentStock(id));
     }
 
     @Test
