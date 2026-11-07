@@ -55,7 +55,7 @@ class DueDigestJobTest {
         lenient().when(notifications.findByOwnerIdAndDedupeKey(any(), any())).thenReturn(Optional.empty());
         lenient().when(saleItems.sumTotalsByCustomer(owner)).thenReturn(java.util.Collections.singletonList(new Object[] {customer.toString(), new java.math.BigDecimal("500.00")}));
         lenient().when(payments.sumSuccessfulByCustomer(owner)).thenReturn(List.of());
-        lenient().when(saleItems.findByOwnerId(owner)).thenReturn(List.of());
+        lenient().when(saleItems.oldestUnpaidSaleByCustomer(owner)).thenReturn(List.of());
         lenient().when(paymentDues.ownerDues(owner)).thenReturn(List.of());
     }
 

@@ -1,7 +1,5 @@
 package com.abhedyam.service;
 
-import com.abhedyam.model.SaleItem;
-import com.abhedyam.model.enums.SaleItemStatus;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -22,7 +20,7 @@ record DueDigest(int customers, BigDecimal total, long oldestDays) {
 
     /** @return null when nobody owes anything (no digest is sent). */
     static DueDigest of(Map<UUID, BigDecimal> salesByCustomer, Map<UUID, BigDecimal> paidByCustomer,
-                        List<SaleItem> saleItems, Instant now) {
+                        Map<UUID, Instant> oldestUnpaidByCustomer, Instant now) {
         Set<UUID> owing = new HashSet<>();
         BigDecimal total = BigDecimal.ZERO;
         for (var e : salesByCustomer.entrySet()) {
@@ -33,9 +31,9 @@ record DueDigest(int customers, BigDecimal total, long oldestDays) {
             }
         }
         if (owing.isEmpty()) return null;
-        Instant oldest = saleItems.stream()
-            .filter(i -> owing.contains(i.getCustomerId()) && i.getStatus() != SaleItemStatus.FULLY_PAID && i.getCreatedAt() != null)
-            .map(SaleItem::getCreatedAt)
+        Instant oldest = owing.stream()
+            .map(oldestUnpaidByCustomer::get)
+            .filter(java.util.Objects::nonNull)
             .min(Instant::compareTo)
             .orElse(now);
         return new DueDigest(owing.size(), total.setScale(0, RoundingMode.HALF_UP), Math.max(0, Duration.between(oldest, now).toDays()));
