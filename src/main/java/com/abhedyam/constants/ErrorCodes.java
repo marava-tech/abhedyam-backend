@@ -33,6 +33,7 @@ public final class ErrorCodes {
     public static final String WALK_IN_MUST_BE_PAID = "WALK_IN_MUST_BE_PAID";
     public static final String PAYMENT_EXCEEDS_DUE = "PAYMENT_EXCEEDS_DUE";
     public static final String NEGATIVE_STOCK = "NEGATIVE_STOCK";
+    public static final String ITEM_EXISTS = "ITEM_EXISTS";
     public static final String INVALID_EMAIL = "INVALID_EMAIL";
     public static final String NO_PAYMENTS_FOUND = "NO_PAYMENTS_FOUND";
     public static final String TRIAL_ALREADY_USED = "TRIAL_ALREADY_USED";

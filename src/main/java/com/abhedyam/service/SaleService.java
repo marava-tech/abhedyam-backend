@@ -127,13 +127,7 @@ public class SaleService implements ISaleService {
                 saleItems.add(savedItem);
                 activityLines.add(new ActivityText.Line(product.getName(), quantity));
 
-                try {
-                    stockService.recordSaleOut(productId, quantity, savedItem.getId(),
-                            "Sale transaction: " + transactionId);
-                } catch (Exception e) {
-                    log.error("Stock update failed for product {} in transaction {}, continuing sale: {}",
-                            productId, transactionId, e.getMessage());
-                }
+                stockService.saleOut(ownerId, productId, quantity, transactionId);
             }
 
             boolean walkIn = Boolean.TRUE.equals(request.getWalkIn()) && request.getCustomerId() == null;
@@ -386,6 +380,7 @@ public class SaleService implements ISaleService {
         product.setPrice(price);
         product.setOwnerId(ownerId);
         product.setIsActive(true);
+        product.setTrackStock(false);
         product = productRepository.save(product);
 
         Inventory inventory = new Inventory();
@@ -542,17 +537,8 @@ public class SaleService implements ISaleService {
         }
 
         for (SaleItem saleItem : saleItems) {
-            productRepository.findById(saleItem.getProductId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Product could not be found"));
-
             BigDecimal quantity = saleItem.getQuantity() != null ? saleItem.getQuantity() : BigDecimal.ONE;
-
-            com.abhedyam.dto.StockAdjustmentRequest adjustmentRequest = new com.abhedyam.dto.StockAdjustmentRequest();
-            adjustmentRequest.setProductId(saleItem.getProductId());
-            adjustmentRequest.setChangeQty(quantity);
-            adjustmentRequest.setNote("Sale cancellation - Transaction: " + transactionId);
-
-            stockService.recordManualAdjustment(adjustmentRequest);
+            stockService.saleCancelled(ownerId, saleItem.getProductId(), quantity, transactionId);
 
             saleItem.setDeletedAt(Instant.now());
             saleItem.setIsActive(false);

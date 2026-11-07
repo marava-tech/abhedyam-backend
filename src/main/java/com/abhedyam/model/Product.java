@@ -6,6 +6,8 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import com.abhedyam.model.enums.StockUnit;
+
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -33,5 +35,22 @@ public class Product extends BaseEntity {
     
     @Column
     private String imageUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 16)
+    private StockUnit unit;
+
+    @Column(precision = 15, scale = 2)
+    private BigDecimal costPrice;
+
+    @Column
+    private Boolean trackStock;
+
+    @Column(precision = 18, scale = 3)
+    private BigDecimal lowStockLevel;
+
+    public boolean tracksStock() {
+        return Boolean.TRUE.equals(trackStock);
+    }
 }
 

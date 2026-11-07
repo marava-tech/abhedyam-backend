@@ -410,4 +410,15 @@ public class ProductService implements IProductService {
         }
         return new ArrayList<>(seen.values());
     }
+
+    @Override
+    public void evictOwnerCaches(UUID ownerId) {
+        try {
+            redisTemplate.delete(PRODUCTS_CACHE_PREFIX + ownerId);
+            redisTemplate.delete(PRODUCTS_WITH_STOCK_CACHE_PREFIX + ownerId);
+        } catch (Exception e) {
+            log.warn("Error invalidating product cache for owner {}: {}", ownerId, e.getMessage());
+        }
+        inventoryService.invalidateOwnerCaches(ownerId);
+    }
 }
