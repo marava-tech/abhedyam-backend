@@ -9,6 +9,7 @@ import com.abhedyam.util.SecurityUtil;
 import com.abhedyam.exception.BusinessException;
 import com.abhedyam.constants.ErrorCodes;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,19 +22,26 @@ public class OwnerSettingsService implements IOwnerSettingsService {
     private final OwnerSettingsRepository ownerSettingsRepository;
     
     @Override
-    @Transactional
     public OwnerSettingsResponse getOwnerSettings(UUID ownerId) {
         validateOwnerAccess(ownerId);
         
-        OwnerSettings settings = ownerSettingsRepository.findByOwnerId(ownerId)
-                .orElseGet(() -> {
-                OwnerSettings newSettings = new OwnerSettings();
-                newSettings.setId(ownerId);
-                newSettings.setOwnerId(ownerId);
-                newSettings.setDailyQuoteEnabled(true);
-                newSettings.setIsDarkModeEnabled(false);
-                return ownerSettingsRepository.save(newSettings);
-                });
+        OwnerSettings settings;
+        try {
+            settings = ownerSettingsRepository.findByOwnerId(ownerId)
+                    .orElseGet(() -> {
+                        OwnerSettings newSettings = new OwnerSettings();
+                        newSettings.setId(ownerId);
+                        newSettings.setOwnerId(ownerId);
+                        newSettings.setDailyQuoteEnabled(true);
+                        newSettings.setIsDarkModeEnabled(false);
+                        return ownerSettingsRepository.save(newSettings);
+                    });
+        } catch (DataIntegrityViolationException e) {
+            // Concurrent first-time GET requests can both attempt to insert default settings.
+            // When one wins, the other hits duplicate key; catch and re-read.
+            settings = ownerSettingsRepository.findByOwnerId(ownerId)
+                    .orElseThrow(() -> e);
+        }
         
         return toResponse(settings);
     }
