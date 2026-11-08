@@ -62,7 +62,7 @@ public class AdminController {
     }
     
     @PostMapping("/owners/{ownerId}/subscription/upgrade")
-    @Operation(summary = "Upgrade owner subscription", description = "Upgrade owner subscription from GO to PRO. Requires X-Admin-Key header.")
+    @Operation(summary = "Upgrade owner subscription", description = "Gives the owner 365 more days of full access. Requires X-Admin-Key header.")
     @SecurityRequirement(name = "AdminKey")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public ApiResponse<Void> upgradeSubscription(
@@ -73,7 +73,7 @@ public class AdminController {
     }
     
     @PostMapping("/owners/{ownerId}/subscription/downgrade")
-    @Operation(summary = "Downgrade owner subscription", description = "Downgrade owner subscription from PRO to GO. Requires X-Admin-Key header.")
+    @Operation(summary = "Downgrade owner subscription", description = "Ends the owner's full access now (app becomes read-only). Requires X-Admin-Key header.")
     @SecurityRequirement(name = "AdminKey")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public ApiResponse<Void> downgradeSubscription(

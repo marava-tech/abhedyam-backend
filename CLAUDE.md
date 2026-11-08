@@ -6,14 +6,14 @@ MySQL 8 (primary DB) + Redis 7 (cache only).
 CI/CD: GitHub Actions → ghcr.io/marava-tech/abhedyam-backend:latest → auto-deploy on merge to main.
 
 ## Product context
-Abhedyam helps small shopkeepers manage customers, sales, inventory, and payments digitally. Owners sign in with Google (Firebase); customer sign-in is currently off. Subscription tiers: GO (free), PRO, PLUS — payments via Razorpay. Push notifications via Firebase FCM.
+Abhedyam helps small shopkeepers manage customers, sales, inventory, and payments digitally. Owners sign in with Google (Firebase); customer sign-in is currently off. Billing: 30-day free trial, then a Google Play subscription via RevenueCat (one plan; read-only after access ends) — see specs/billing.md. Push notifications via Firebase FCM.
 
 ## Stack
 - Java 21, Spring Boot 3.x
-- MySQL 8 (primary DB — customers, products, sales, payments, subscriptions)
+- MySQL 8 (primary DB — customers, products, sales, payments, referrals)
 - Redis 7 (cache only — never primary store)
 - Firebase Admin SDK (auth token verification)
-- Razorpay SDK (subscription payments)
+- RevenueCat webhook (Google Play subscriptions)
 - Gmail SMTP (account export emails)
 - Port: 8600 → domain: abhedyam-backend.marava.tech
 

@@ -7,15 +7,13 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+/** One shop that joined with another shop's code. The referrer is rewarded only when the friend pays. */
 @Entity
 @Table(name = "referrals", indexes = {
-    @Index(name = "idx_referrals_referrer", columnList = "referrer_owner_id"),
-    @Index(name = "idx_referrals_referee", columnList = "referee_owner_id", unique = true),
-    @Index(name = "idx_referrals_status", columnList = "status")
+    @Index(name = "idx_referrals_referrer", columnList = "referrer_owner_id")
 })
 @Getter
 @Setter
@@ -30,27 +28,14 @@ public class Referral extends BaseEntity {
     private UUID refereeOwnerId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
-    private ReferralStatus status = ReferralStatus.PENDING;
+    @Column(nullable = false, length = 20, columnDefinition = "VARCHAR(20)")
+    private ReferralStatus status = ReferralStatus.JOINED;
 
-    @Column(nullable = false)
-    private Integer customerCount = 0;
-
-    @Column(nullable = false)
-    private Integer activeDaysCount = 0;
-
-    @Column(nullable = false)
-    private Integer transactionCount = 0;
-
-    @Column(nullable = false, precision = 15, scale = 2)
-    private BigDecimal totalVolume = BigDecimal.ZERO;
-
-    @Column(nullable = false)
-    private Integer billsSharedCount = 0;
-
+    /** When the friend paid and the reward was given. */
     @Column
     private Instant rewardedAt;
 
+    /** true: the referrer already pays on Play, so the reward is ₹200 by UPI (paid by hand) instead of free days. */
     @Column(nullable = false)
-    private Integer rewardDaysGranted = 30;
+    private Boolean rewardCash = false;
 }

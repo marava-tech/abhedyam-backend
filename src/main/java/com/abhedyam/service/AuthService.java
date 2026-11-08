@@ -7,8 +7,6 @@ import com.abhedyam.service.GoogleOAuthService.GoogleUserInfo;
 import com.abhedyam.model.Customer;
 import com.abhedyam.model.Owner;
 import com.abhedyam.model.User;
-import com.abhedyam.model.enums.Subscription;
-import com.abhedyam.model.enums.SubscriptionStatus;
 import com.abhedyam.model.enums.UserType;
 import com.abhedyam.repository.CustomerRepository;
 import com.abhedyam.repository.LocationDetailsRepository;
@@ -96,9 +94,7 @@ public class AuthService {
             newOwner.setEmail(normalizedEmail);
             newOwner.setFirebaseUid(googleUser.getFirebaseUid());
             newOwner.setType(UserType.BUSINESS);
-            newOwner.setSubscription(Subscription.SAAS);
-            newOwner.setSubscriptionStatus(SubscriptionStatus.ACTIVE);
-            newOwner.setValidTill(Instant.now().plus(90, ChronoUnit.DAYS));
+            newOwner.setAccessUntil(Instant.now().plus(BillingService.TRIAL_DAYS, ChronoUnit.DAYS));
             newOwner.setIsVerified(false);
 
             if (googleUser.getPicture() != null && !googleUser.getPicture().trim().isEmpty()) {

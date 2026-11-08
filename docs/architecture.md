@@ -35,10 +35,9 @@ config/     ← Spring beans (SecurityConfig, CorsConfig, CloudinaryConfig, etc.
 - **Interface + impl for services**: Every service has `IXxxService` interface and `XxxServiceImpl`. Enables easy mocking in tests.
 - **`PageResponse<T>` wrapper**: All paginated endpoints return this with `totalElements`, `totalPages`, `hasNext`, `hasPrevious`
 - **`ApiResponse<T>` envelope**: All responses wrapped for consistent structure
-- **Idempotency for payments**: payment verify is safe on retry
 
-## Subscriptions
-Three tiers: GO (free), PRO, PLUS. Payments via Razorpay. Subscription state checked on feature access.
+## Billing
+One plan. 30-day trial from signup, then a Google Play subscription (RevenueCat webhook moves `owners.access_until`). After access ends the app is read-only; the backend does not block writes. Details: specs/billing.md.
 
 ## File uploads
 Files go to MinIO storage via the upload-api service (https://s3.marava.tech/upload). Abhedyam backend doesn't handle file storage directly.

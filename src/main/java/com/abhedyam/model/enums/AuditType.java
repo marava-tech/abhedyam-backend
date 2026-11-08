@@ -6,7 +6,6 @@ public enum AuditType {
     STOCK,
     REMINDER,
     NOTE,
-    PRODUCT,
-    SUBSCRIPTION
+    PRODUCT
 }
 

@@ -51,7 +51,7 @@ public class Notification extends BaseEntity {
 
     /** Why this was sent (null on rows created before the dispatcher existed). */
     @Enumerated(EnumType.STRING)
-    @Column(length = 40)
+    @Column(length = 40, columnDefinition = "VARCHAR(40)")
     private NotificationCategory category;
 
     /** Push title; the in-app message is {@link #message}. */

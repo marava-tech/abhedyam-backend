@@ -1,6 +1,5 @@
 package com.abhedyam.dto;
 
-import com.abhedyam.model.enums.Subscription;
 import com.abhedyam.model.enums.UserType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -35,8 +34,6 @@ public class OwnerResponse {
     @Schema(description = "Verification status", example = "false")
     private Boolean isVerified;
     
-    @Schema(description = "Subscription plan", example = "SAAS")
-    private Subscription subscription;
 
     @Schema(description = "Public shop URL slug")
     private String publicSlug;

@@ -1,6 +1,5 @@
 package com.abhedyam.dto;
 
-import com.abhedyam.model.enums.Subscription;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -23,8 +22,6 @@ public class AdminOwnerDetailResponse {
     @Schema(description = "Creation timestamp", example = "2025-11-15T10:51:15.325Z")
     private Instant createdAt;
     
-    @Schema(description = "Subscription plan", example = "SAAS")
-    private Subscription subscription;
     
     @Schema(description = "Total number of sales in date range")
     private Long totalSales;
@@ -34,5 +31,10 @@ public class AdminOwnerDetailResponse {
     
     @Schema(description = "List of feedbacks")
     private List<AdminFeedbackResponse> feedbacks;
-}
 
+    @Schema(description = "Full access until (trial, paid period or referral days)")
+    private java.time.Instant accessUntil;
+
+    @Schema(description = "Google Play product paid for; null = not paying")
+    private String playProductId;
+}

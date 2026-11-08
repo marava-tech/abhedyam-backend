@@ -3,14 +3,10 @@ package com.abhedyam.controller;
 import com.abhedyam.dto.ApiResponse;
 import com.abhedyam.dto.InvoiceResponse;
 import com.abhedyam.dto.ReceiptResponse;
-import com.abhedyam.repository.OwnerRepository;
 import com.abhedyam.service.InvoiceReceiptService;
-import com.abhedyam.service.interfaces.ISubscriptionService;
-import com.abhedyam.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -22,21 +18,6 @@ import java.util.UUID;
 public class InvoiceReceiptController {
 
     private final InvoiceReceiptService invoiceReceiptService;
-    private final ISubscriptionService subscriptionService;
-    private final OwnerRepository ownerRepository;
-
-    @Value("${app.subscription.enforce:false}")
-    private boolean enforcePro;
-
-    private void maybeEnsurePro() {
-        if (!enforcePro) {
-            return;
-        }
-        UUID userId = SecurityUtil.getCurrentUserId();
-        if (ownerRepository.existsById(userId)) {
-            subscriptionService.ensureProSubscription(userId);
-        }
-    }
 
     @GetMapping("/invoices/customer/{customerId}")
     @Operation(
@@ -46,7 +27,6 @@ public class InvoiceReceiptController {
     public ApiResponse<InvoiceResponse> getInvoiceByCustomerId(
             @PathVariable UUID customerId,
             @RequestParam(required = false) UUID saleItemId) {
-        maybeEnsurePro();
         return ApiResponse.success(invoiceReceiptService.getInvoiceByCustomerId(customerId, saleItemId));
     }
 
@@ -58,7 +38,6 @@ public class InvoiceReceiptController {
     public ApiResponse<ReceiptResponse> getReceiptByCustomerId(
             @PathVariable UUID customerId,
             @RequestParam(required = false) UUID saleItemId) {
-        maybeEnsurePro();
         return ApiResponse.success(invoiceReceiptService.getReceiptByCustomerId(customerId, saleItemId));
     }
 }

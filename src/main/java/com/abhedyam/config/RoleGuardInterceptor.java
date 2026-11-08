@@ -30,7 +30,7 @@ public class RoleGuardInterceptor implements HandlerInterceptor {
             "* /api/v1/owners/*/members", "* /api/v1/owners/*/members/**",
             "GET /api/v1/owners/*/sessions", "DELETE /api/v1/owners/*/sessions/*", "POST /api/v1/owners/*/sessions/logout-others",
             "DELETE /api/v1/owner/account", "POST /api/v1/owner/account/**",
-            "POST /api/v1/subscription/**", "POST /api/v1/payment/verify",
+            "POST /api/v1/referrals/apply",
             "POST /api/v1/owners/*/bulk-import",
             "POST /api/v1/documents/**", "PUT /api/v1/documents/**", "DELETE /api/v1/documents/**",
             "PATCH /api/v1/location-details/users/*",

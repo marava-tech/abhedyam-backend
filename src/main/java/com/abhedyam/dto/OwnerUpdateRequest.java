@@ -1,6 +1,5 @@
 package com.abhedyam.dto;
 
-import com.abhedyam.model.enums.Subscription;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -22,8 +21,6 @@ public class OwnerUpdateRequest {
     @Schema(description = "Profile image URL", example = "https://example.com/image.jpg")
     private String imageUrl;
     
-    @Schema(description = "Subscription plan", example = "SAAS")
-    private Subscription subscription;
     
     @Schema(description = "Verification status", example = "false")
     private Boolean isVerified;

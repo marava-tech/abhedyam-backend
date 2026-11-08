@@ -29,7 +29,7 @@ public class AccountService implements IAccountService {
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
     private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(IST);
 
-    /** Tables keyed by owner_id that are removed with the owner (subscriptions are kept: billing records). */
+    /** Tables keyed by owner_id that are removed with the owner. */
     private static final List<Class<?>> OWNER_SCOPED = List.of(
             SaleItem.class, Payment.class, Product.class, Inventory.class, Reminder.class, Note.class,
             Document.class, UPIAccount.class, Audit.class, Notification.class, OwnerSettings.class,

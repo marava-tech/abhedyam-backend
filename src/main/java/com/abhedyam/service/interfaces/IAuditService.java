@@ -19,6 +19,5 @@ public interface IAuditService {
     void logReminderCreation(UUID reminderId, UUID ownerId, UUID customerId, String customerName, String reminderName, String reminderText, Instant reminderTime);
     void logPaymentSuccess(UUID paymentId, UUID ownerId, UUID customerId, String customerName, UUID saleItemId, String productName, BigDecimal amount, String reference, String medium);
     void logPaymentCreation(UUID paymentId, UUID ownerId, UUID customerId, String customerName, UUID saleItemId, String productName, BigDecimal amount, String reference, String status, String medium);
-    void logSubscriptionChange(UUID ownerId, String oldPlan, String newPlan, String oldStatus, String newStatus, String subscriptionId, Instant validTill);
 }
 

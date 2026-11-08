@@ -168,10 +168,6 @@ public class OwnerService implements IOwnerService {
             owner.setIsVerified(request.getIsVerified());
         }
         
-        if (request.getSubscription() != null) {
-            owner.setSubscription(request.getSubscription());
-        }
-
         if (request.getPublicListingEnabled() != null) {
             owner.setPublicListingEnabled(request.getPublicListingEnabled());
         }
@@ -214,7 +210,6 @@ public class OwnerService implements IOwnerService {
         response.setType(owner.getType());
         response.setImageUrl(owner.getImageUrl());
         response.setIsVerified(owner.getIsVerified());
-        response.setSubscription(owner.getSubscription());
         response.setPublicSlug(owner.getPublicSlug());
         response.setPublicListingEnabled(owner.getPublicListingEnabled());
         response.setCreatedAt(owner.getCreatedAt());

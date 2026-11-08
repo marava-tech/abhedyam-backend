@@ -17,14 +17,6 @@ public final class ErrorCodes {
     public static final String DUPLICATE_UPI_VPA = "DUPLICATE_UPI_VPA";
     public static final String DUPLICATE_RECORD = "DUPLICATE_RECORD";
     public static final String VALIDATION_ERROR = "VALIDATION_ERROR";
-    public static final String SUBSCRIPTION_REQUIRED = "SUBSCRIPTION_REQUIRED";
-    public static final String ORDER_CREATE_FAILED = "ORDER_CREATE_FAILED";
-    public static final String SIGNATURE_GENERATION_FAILED = "SIGNATURE_GENERATION_FAILED";
-    public static final String INVALID_SIGNATURE = "INVALID_SIGNATURE";
-    public static final String PAYMENT_NOT_CAPTURED = "PAYMENT_NOT_CAPTURED";
-    public static final String PAYMENT_FETCH_FAILED = "PAYMENT_FETCH_FAILED";
-    public static final String INVALID_WEBHOOK_SIGNATURE = "INVALID_WEBHOOK_SIGNATURE";
-    public static final String WEBHOOK_PROCESSING_FAILED = "WEBHOOK_PROCESSING_FAILED";
     public static final String NO_DUE_AMOUNT = "NO_DUE_AMOUNT";
     public static final String INVALID_AMOUNT = "INVALID_AMOUNT";
     public static final String MISSING_LOCATION = "MISSING_LOCATION";
@@ -38,7 +30,5 @@ public final class ErrorCodes {
     public static final String ITEM_EXISTS = "ITEM_EXISTS";
     public static final String INVALID_EMAIL = "INVALID_EMAIL";
     public static final String NO_PAYMENTS_FOUND = "NO_PAYMENTS_FOUND";
-    public static final String TRIAL_ALREADY_USED = "TRIAL_ALREADY_USED";
-    public static final String TRIAL_NOT_ELIGIBLE = "TRIAL_NOT_ELIGIBLE";
 }
 
