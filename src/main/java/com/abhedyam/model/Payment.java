@@ -41,6 +41,10 @@ public class Payment extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PaymentMedium medium;
+
+    /** Written off by the owner (money that will not come back): lowers the balance, never counts as collected. */
+    @Column(name = "write_off")
+    private Boolean writeOff;
     
     @Column(nullable = false)
     private Instant timestamp;

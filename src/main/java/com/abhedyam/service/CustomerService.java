@@ -796,6 +796,20 @@ public class CustomerService implements ICustomerService {
         }
     }
 
+    /** Old dues: stop (or start again) chasing this customer. No money changes. */
+    @Override
+    @Transactional
+    public CustomerResponse setChasePaused(UUID ownerId, UUID customerId, boolean paused) {
+        validateOwnerAccess(ownerId);
+        Customer customer = customerRepository.findById(customerId)
+            .filter(c -> ownerId.equals(c.getOwnerId()))
+            .orElseThrow(() -> new ResourceNotFoundException("Customer could not be found"));
+        customer.setChasePaused(paused ? Boolean.TRUE : null);
+        customerRepository.save(customer);
+        invalidateAllRelatedCachesOnCustomerChange(ownerId);
+        return CustomerResponse.fromEntity(customer, null);
+    }
+
     private void validateOwnerAccess(UUID ownerId) {
         UUID currentOwnerId = SecurityUtil.getCurrentUserId();
         if (ownerId == null || !ownerId.equals(currentOwnerId)) {

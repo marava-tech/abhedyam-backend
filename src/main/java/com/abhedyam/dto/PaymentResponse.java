@@ -54,5 +54,8 @@ public class PaymentResponse {
     
     @Schema(description = "Updated timestamp")
     private Instant updatedAt;
+
+    @Schema(description = "Written off by the owner: closes the due, not money received", example = "false")
+    private boolean writeOff;
 }
 

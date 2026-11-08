@@ -14,6 +14,10 @@ public interface IPaymentService {
     PaymentResponse createManualPayment(PaymentCreateRequest request);
 
     com.abhedyam.dto.CollectPaymentResponse collectFromCustomer(java.util.UUID ownerId, com.abhedyam.dto.CollectPaymentRequest request);
+
+    com.abhedyam.dto.CollectPaymentResponse writeOffCustomer(java.util.UUID ownerId, java.util.UUID customerId);
+
+    int undoWriteOff(java.util.UUID ownerId, java.util.UUID customerId);
     Payment getById(UUID id);
     List<PaymentResponse> filterPayments(String searchText);
     PageResponse<PaymentResponse> getOwnerPayments(UUID ownerId, String searchText, Integer page, Integer size, String sortBy, String sortDirection);

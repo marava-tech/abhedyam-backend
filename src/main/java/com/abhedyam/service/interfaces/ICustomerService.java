@@ -35,5 +35,5 @@ public interface ICustomerService {
     NearestCustomerResponse findNearestCustomer(NearestCustomerRequest request);
     void invalidateCustomerSummaryCache(UUID ownerId, UUID customerId);
     CustomerSummaryResponse getMySummary();
+    com.abhedyam.dto.CustomerResponse setChasePaused(java.util.UUID ownerId, java.util.UUID customerId, boolean paused);
 }
-

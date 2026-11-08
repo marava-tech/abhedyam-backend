@@ -53,7 +53,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
                                                 @Param("ownerId") UUID ownerId);
     
     @Query("SELECT COUNT(p) FROM Payment p WHERE p.ownerId = :ownerId " +
-           "AND p.status = 'SUCCESS' " +
+           "AND p.status = 'SUCCESS' AND (p.writeOff IS NULL OR p.writeOff = false) " +
            "AND (:startDate IS NULL OR p.createdAt >= :startDate) " +
            "AND (:endDate IS NULL OR p.createdAt <= :endDate)")
     long countSuccessfulPaymentsByOwnerIdAndDateRange(@Param("ownerId") UUID ownerId,
@@ -64,18 +64,23 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
            "WHERE p.ownerId = :ownerId AND p.status = 'SUCCESS' GROUP BY p.customerId")
     List<Object[]> sumSuccessfulByCustomer(@Param("ownerId") UUID ownerId);
 
+    /** Money actually received (write-offs left out): the owner summary's "collected in total". */
+    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.ownerId = :ownerId AND p.status = 'SUCCESS' " +
+           "AND (p.writeOff IS NULL OR p.writeOff = false)")
+    BigDecimal sumCollected(@Param("ownerId") UUID ownerId);
+
     /** customerId, date of that customer's latest successful payment. */
     @Query("SELECT p.customerId, MAX(p.timestamp) FROM Payment p " +
-           "WHERE p.ownerId = :ownerId AND p.status = 'SUCCESS' GROUP BY p.customerId")
+           "WHERE p.ownerId = :ownerId AND p.status = 'SUCCESS' AND (p.writeOff IS NULL OR p.writeOff = false) GROUP BY p.customerId")
     List<Object[]> lastSuccessfulPaymentByCustomer(@Param("ownerId") UUID ownerId);
 
-    @Query("SELECT COUNT(p) FROM Payment p WHERE p.ownerId = :ownerId AND p.status = 'SUCCESS' " +
+    @Query("SELECT COUNT(p) FROM Payment p WHERE p.ownerId = :ownerId AND p.status = 'SUCCESS' AND (p.writeOff IS NULL OR p.writeOff = false) " +
            "AND p.timestamp >= :from AND p.timestamp < :to")
     long countSuccessfulBetween(@Param("ownerId") UUID ownerId, @Param("from") java.time.Instant from,
                                 @Param("to") java.time.Instant to);
 
     @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p " +
-           "WHERE p.ownerId = :ownerId AND p.status = 'SUCCESS' " +
+           "WHERE p.ownerId = :ownerId AND p.status = 'SUCCESS' AND (p.writeOff IS NULL OR p.writeOff = false) " +
            "AND p.timestamp >= :from AND p.timestamp < :to")
     BigDecimal sumSuccessfulBetween(@Param("ownerId") UUID ownerId,
                                     @Param("from") java.time.Instant from,
