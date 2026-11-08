@@ -14,9 +14,9 @@
 
 ## Database
 
-- MongoDB queries on single fields won't use compound indexes. Add `@Indexed` on individual fields that are queried alone, even if a compound index exists.
+- MySQL uses a compound index only from its leftmost column. Add an `@Index` on columns queried alone, even if a compound index contains them.
 - For village-specific customer filtering: exact match (case-insensitive, trimmed) with `village` query param vs generic search are different repository methods. Don't conflate them.
-- LEFT JOIN in MongoDB queries (via native query): use `searchCustomersWithVillageFilter()` pattern in repository when joining with LocationDetails.
+- LEFT JOIN in JPQL queries: use `searchCustomersWithVillageFilter()` pattern in repository when joining with LocationDetails.
 - Redis is cache only — never use as primary data store. If Redis is down, the app should degrade gracefully.
 
 ## API Design

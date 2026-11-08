@@ -57,7 +57,6 @@
 | Method | Endpoint |
 |---|---|
 | GET | `/stats` |
-| GET | `/daily-quotes/today` |
 | GET | `/stats/recent-activities` |
 | POST | `/stats/analytics` |
 | GET | `/owners/{ownerId}/summary` |
@@ -156,20 +155,13 @@
 | PATCH | `/payments/{id}/status` | Abhedyam, Connect |
 | GET | `/documents` | Abhedyam, Connect |
 
-> Unused endpoint audit: see review-apis.md
 
-## Web app (CustomerDues / customerdues.com) — additive
-
-These endpoints are new. Android apps do not need them.
+## Session
 
 | Method | Endpoint | Notes |
 |---|---|---|
-| POST | `/auth/otp/send` | SMS OTP for web customers. Does not replace `/auth/phone/login`. |
-| POST | `/auth/otp/verify` | Verify OTP → customer JWT |
 | POST | `/auth/refresh` | Fresh JWT from a still-valid Bearer token |
-| POST | `/payment-links` | Owner creates a shareable pay link |
-| GET | `/public/payment-links/{token}` | Public pay-link payload |
-| GET | `/public/shops` | Opt-in public shop listing |
-| GET | `/public/shops/{slug}` | Public shop page + catalog |
+
+Customer sign-in is off: `/auth/phone/login` returns `OTP_REQUIRED` (phone alone proved nothing) until a replacement ships.
 
 `POST /files/upload` now also accepts `application/pdf`. `app.subscription.enforce` (default false) gates invoices, receipts, and nearest-customer behind PRO.

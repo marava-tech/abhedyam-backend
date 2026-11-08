@@ -6,7 +6,7 @@ MySQL 8 (primary DB) + Redis 7 (cache only).
 CI/CD: GitHub Actions → ghcr.io/marava-tech/abhedyam-backend:latest → auto-deploy on merge to main.
 
 ## Product context
-Abhedyam helps small shopkeepers manage customers, sales, inventory, and payments digitally. OTP auth via email (primary) + SMS via 2Factor API (fallback). Google Sign-in via Firebase. Subscription tiers: GO (free), PRO, PLUS — payments via Razorpay. Push notifications via Firebase FCM.
+Abhedyam helps small shopkeepers manage customers, sales, inventory, and payments digitally. Owners sign in with Google (Firebase); customer sign-in is currently off. Subscription tiers: GO (free), PRO, PLUS — payments via Razorpay. Push notifications via Firebase FCM.
 
 ## Stack
 - Java 21, Spring Boot 3.x
@@ -14,8 +14,7 @@ Abhedyam helps small shopkeepers manage customers, sales, inventory, and payment
 - Redis 7 (cache only — never primary store)
 - Firebase Admin SDK (auth token verification)
 - Razorpay SDK (subscription payments)
-- Gmail SMTP (email OTP)
-- 2Factor API (SMS OTP fallback)
+- Gmail SMTP (account export emails)
 - Port: 8600 → domain: abhedyam-backend.marava.tech
 
 ## Project structure
@@ -23,7 +22,7 @@ Abhedyam helps small shopkeepers manage customers, sales, inventory, and payment
 src/main/java/com/abhedyam/
 ├── controller/     ← REST controllers (@RestController)
 ├── service/        ← business logic (@Service, interface + impl pattern)
-├── repository/     ← Spring Data MongoDB + JPA repos
+├── repository/     ← Spring Data JPA repos
 ├── model/          ← DB entities
 ├── dto/            ← request/response DTOs
 ├── exception/      ← custom exceptions (ResourceNotFoundException, etc.)
@@ -62,4 +61,3 @@ src/main/java/com/abhedyam/
 - learnings.md — gotchas and lessons learned
 - memory/context.md — current focus / active work
 - specs/ — feature specifications
-- review-apis.md — audit of which endpoints are used vs unused
