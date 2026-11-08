@@ -158,6 +158,69 @@ public class CustomerService implements ICustomerService {
         
         return savedCustomer;
     }
+
+    @Override
+    @Transactional
+    public Customer update(UUID customerId, com.abhedyam.dto.CustomerUpdateRequest request) {
+        UUID ownerId = SecurityUtil.getCurrentUserId();
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer could not be found"));
+        if (!ownerId.equals(customer.getOwnerId())) {
+            throw new BusinessException(ErrorCodes.UNAUTHORIZED, "You don't have access to this customer");
+        }
+
+        if (request.getName() != null && !request.getName().trim().isEmpty()) {
+            customer.setName(request.getName().trim());
+        }
+
+        if (request.getPhone() != null) {
+            String p = request.getPhone().trim();
+            if (p.isEmpty()) {
+                customer.setPhone(null);
+                customer.setPhoneNormalized(null);
+            } else {
+                String normalizedPhone = PhoneUtil.normalizePhone(p);
+                Optional<Customer> existing = customerRepository.findByPhoneNormalized(normalizedPhone);
+                if (existing.isPresent() && !existing.get().getId().equals(customerId)) {
+                    throw new BusinessException(ErrorCodes.CUSTOMER_EXISTS,
+                        "Customer with this phone number already exists");
+                }
+                customer.setPhone(PhoneUtil.extractPhoneWithoutCountryCode(normalizedPhone));
+                customer.setPhoneNormalized(normalizedPhone);
+            }
+        }
+
+        Customer savedCustomer = customerRepository.save(customer);
+
+        String villageName = (request.getVillage() != null && !request.getVillage().trim().isEmpty())
+            ? request.getVillage().trim()
+            : null;
+        boolean hasPin = request.getLatitude() != null && request.getLongitude() != null;
+
+        LocationDetails existingLocation = locationDetailsRepository.findById(customerId).orElse(null);
+        if (existingLocation != null) {
+            if (request.getVillage() != null) {
+                existingLocation.setVillage(villageName);
+            }
+            if (request.getLatitude() != null) {
+                existingLocation.setLatitude(request.getLatitude());
+            }
+            if (request.getLongitude() != null) {
+                existingLocation.setLongitude(request.getLongitude());
+            }
+            locationDetailsRepository.save(existingLocation);
+        } else if (villageName != null || hasPin) {
+            LocationDetails locationDetails = new LocationDetails();
+            locationDetails.setUserId(customerId);
+            locationDetails.setVillage(villageName);
+            locationDetails.setLatitude(hasPin ? request.getLatitude() : null);
+            locationDetails.setLongitude(hasPin ? request.getLongitude() : null);
+            locationDetailsRepository.save(locationDetails);
+        }
+
+        invalidateAllRelatedCachesOnCustomerChange(ownerId);
+        return savedCustomer;
+    }
     
     @Override
     @Transactional(readOnly = true)

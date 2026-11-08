@@ -41,6 +41,12 @@ public class CustomerController {
     public ApiResponse<Customer> getById(@PathVariable UUID id) {
         return ApiResponse.success(customerService.getById(id));
     }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Update customer details", description = "Update customer name, phone, or village")
+    public ApiResponse<Customer> update(@PathVariable UUID id, @RequestBody com.abhedyam.dto.CustomerUpdateRequest request) {
+        return ApiResponse.success(customerService.update(id, request));
+    }
     
     @GetMapping("/me/summary")
     @Operation(summary = "Get customer summary", description = "Get customer's own summary including sales, payments, and dues. Only accessible by the customer themselves.")

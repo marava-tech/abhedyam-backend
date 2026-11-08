@@ -19,6 +19,7 @@ import java.util.UUID;
 
 public interface ICustomerService {
     Customer create(CustomerCreateRequest request);
+    Customer update(UUID customerId, com.abhedyam.dto.CustomerUpdateRequest request);
     Customer getById(UUID id);
     List<Customer> getByOwnerId(UUID ownerId);
     List<CustomerResponse> filterCustomers(String searchText);
