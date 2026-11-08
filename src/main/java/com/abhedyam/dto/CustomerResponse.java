@@ -28,6 +28,12 @@ public class CustomerResponse {
     @Schema(description = "Pending amount (only when includePendingAmountDetails=true)")
     private BigDecimal pendingAmount;
 
+    @Schema(description = "Latest sale (owesOnly / sortBy=pendingAmount lists only)")
+    private Instant lastSaleAt;
+
+    @Schema(description = "Latest successful payment (owesOnly / sortBy=pendingAmount lists only)")
+    private Instant lastPaymentAt;
+
     public static CustomerResponse fromEntity(Customer customer, String village) {
         CustomerResponse response = new CustomerResponse();
         response.setId(customer.getId());

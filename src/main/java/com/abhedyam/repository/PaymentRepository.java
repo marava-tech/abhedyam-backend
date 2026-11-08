@@ -64,6 +64,11 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
            "WHERE p.ownerId = :ownerId AND p.status = 'SUCCESS' GROUP BY p.customerId")
     List<Object[]> sumSuccessfulByCustomer(@Param("ownerId") UUID ownerId);
 
+    /** customerId, date of that customer's latest successful payment. */
+    @Query("SELECT p.customerId, MAX(p.timestamp) FROM Payment p " +
+           "WHERE p.ownerId = :ownerId AND p.status = 'SUCCESS' GROUP BY p.customerId")
+    List<Object[]> lastSuccessfulPaymentByCustomer(@Param("ownerId") UUID ownerId);
+
     @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p " +
            "WHERE p.ownerId = :ownerId AND p.status = 'SUCCESS' " +
            "AND p.timestamp >= :from AND p.timestamp < :to")
