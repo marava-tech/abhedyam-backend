@@ -22,8 +22,6 @@ public class NotificationResponse {
     private Instant readAt;
     private UUID relatedEntityId;
     private String relatedEntityType;
-    /** Always 0. App 1.11.1 parses it as required; drop once 1.12+ is what owners run. */
-    private Integer retryCount;
     private Instant createdAt;
     private String category;
     /** Push title ("Prava pays tomorrow"); null on rows from before the dispatcher. */
@@ -41,7 +39,6 @@ public class NotificationResponse {
             notification.getReadAt(),
             notification.getRelatedEntityId(),
             notification.getRelatedEntityType(),
-            0,
             notification.getCreatedAt(),
             notification.getCategory() == null ? null : notification.getCategory().name(),
             notification.getTitle()
