@@ -79,7 +79,6 @@ public class ReminderSchedulerService implements IReminderSchedulerService {
         notification.setIsRead(false);
         notification.setRelatedEntityId(reminder.getId());
         notification.setRelatedEntityType("REMINDER");
-        notification.setRetryCount(0);
         notificationService.create(notification);
 
         List<String> packages = reminder.getPackages();
