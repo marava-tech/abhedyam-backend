@@ -7,6 +7,14 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private SyncPushInterceptor syncPushInterceptor;
+
+    @Override
+    public void addInterceptors(org.springframework.web.servlet.config.annotation.InterceptorRegistry registry) {
+        registry.addInterceptor(syncPushInterceptor).addPathPatterns("/api/v1/**");
+    }
     
     @Value("${app.cors.allowed-origins:*}")
     private String allowedOrigins;

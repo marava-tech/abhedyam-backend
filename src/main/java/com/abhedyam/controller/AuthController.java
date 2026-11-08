@@ -20,8 +20,10 @@ public class AuthController {
 
     @PostMapping("/google/login")
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<AuthResponse> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
-        AuthResponse response = authService.loginWithGoogle(request);
+    public ApiResponse<AuthResponse> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request,
+            @RequestHeader(value = "X-Device-Id", required = false) String deviceId,
+            @RequestHeader(value = "X-Device-Name", required = false) String deviceName) {
+        AuthResponse response = authService.loginWithGoogle(request, deviceId, deviceName);
         return ApiResponse.success(response);
     }
 
@@ -42,10 +44,12 @@ public class AuthController {
     @PostMapping("/refresh")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<AuthResponse> refresh(
-            @RequestHeader(value = "Authorization", required = false) String authorization) {
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestHeader(value = "X-Device-Id", required = false) String deviceId,
+            @RequestHeader(value = "X-Device-Name", required = false) String deviceName) {
         if (authorization == null || !authorization.startsWith("Bearer ")) {
             throw new com.abhedyam.exception.BusinessException("MISSING_TOKEN", "Authorization bearer token is required");
         }
-        return ApiResponse.success(authService.refresh(authorization.substring(7)));
+        return ApiResponse.success(authService.refresh(authorization.substring(7), deviceId, deviceName));
     }
 }

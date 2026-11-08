@@ -9,6 +9,13 @@ import java.util.UUID;
 
 public class SecurityUtil {
     
+    /** This phone's session (JWT "sid"); null for old tokens. */
+    public static UUID getCurrentSessionId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal p) return p.getSessionId();
+        return null;
+    }
+
     public static UUID getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal) {

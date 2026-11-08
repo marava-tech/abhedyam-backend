@@ -65,7 +65,9 @@ public class GlobalExceptionHandler {
                 ? HttpStatus.TOO_MANY_REQUESTS
                 : "STALE_EDIT".equals(ex.getErrorCode())
                     ? HttpStatus.CONFLICT
-                    : HttpStatus.BAD_REQUEST;
+                    : "SESSION_REVOKED".equals(ex.getErrorCode())
+                        ? HttpStatus.UNAUTHORIZED // logged out from another phone: the app goes to sign in
+                        : HttpStatus.BAD_REQUEST;
         
         log.warn("Business error [{}]: {}", ex.getErrorCode(), ex.getMessage());
         return ResponseEntity.status(status).body(error);

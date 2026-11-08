@@ -102,6 +102,33 @@ public class FcmService implements IFcmService {
         return sent;
     }
 
+    /**
+     * Silent "something changed" ping to the owner's other phones (data only: nothing is shown, apps before 1.13 ignore it).
+     * The open app reloads its lists. [exceptDeviceId]: the phone that made the change.
+     */
+    public void sendSync(UUID userId, String exceptDeviceId) {
+        for (FcmDetails d : fcmDetailsRepository.findByUserIdAndPackageName(userId, com.abhedyam.util.PackageConstants.BUSINESS_APP_PACKAGE)) {
+            if (exceptDeviceId != null && exceptDeviceId.equals(d.getDeviceId())) continue;
+            try {
+                FirebaseMessaging.getInstance().send(Message.builder()
+                        .setToken(d.getToken())
+                        .putData("type", "sync")
+                        .setAndroidConfig(AndroidConfig.builder()
+                                .setPriority(AndroidConfig.Priority.NORMAL)
+                                .setCollapseKey("sync")
+                                .setTtl(60_000)
+                                .build())
+                        .build());
+            } catch (FirebaseMessagingException e) {
+                var code = e.getMessagingErrorCode();
+                if (code == com.google.firebase.messaging.MessagingErrorCode.UNREGISTERED) fcmDetailsRepository.delete(d);
+                else log.warn("Sync ping failed for user {}: {}", userId, e.getMessage());
+            } catch (Exception e) {
+                log.warn("Sync ping failed for user {}: {}", userId, e.getMessage());
+            }
+        }
+    }
+
     /** Android channel per kind, so the owner can silence one kind in phone settings. The app creates these channels;
      *  a phone on an older build falls back to the manifest default ("reminders"). */
     static String channelFor(java.util.Map<String, String> data) {
