@@ -322,10 +322,15 @@ public class CustomerService implements ICustomerService {
                     Payment::getCustomerId,
                     Collectors.reducing(BigDecimal.ZERO, Payment::getAmount, BigDecimal::add)
                 ));
+            // Same last-entry dates as the pending-sorted path, so every customer list can say "Paid 25 Jun".
+            Map<UUID, Instant> lastSale = latestByCustomer(saleItemRepository.lastSaleByCustomer(ownerId));
+            Map<UUID, Instant> lastPayment = latestByCustomer(paymentRepository.lastSuccessfulPaymentByCustomer(ownerId));
             for (CustomerResponse r : responses) {
                 BigDecimal total = totalByCustomer.getOrDefault(r.getId(), BigDecimal.ZERO);
                 BigDecimal paid = paidByCustomer.getOrDefault(r.getId(), BigDecimal.ZERO);
                 r.setPendingAmount(total.subtract(paid));
+                r.setLastSaleAt(lastSale.get(r.getId()));
+                r.setLastPaymentAt(lastPayment.get(r.getId()));
             }
         }
 
