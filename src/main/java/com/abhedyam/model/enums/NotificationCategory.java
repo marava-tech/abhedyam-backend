@@ -4,5 +4,6 @@ package com.abhedyam.model.enums;
 public enum NotificationCategory {
     PAYMENT_NEEDS_OK,
     DUE_DIGEST,
-    OWNER_REMINDER
+    OWNER_REMINDER,
+    BILLING
 }

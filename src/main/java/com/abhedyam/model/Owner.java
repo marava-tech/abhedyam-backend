@@ -1,7 +1,5 @@
 package com.abhedyam.model;
 
-import com.abhedyam.model.enums.Subscription;
-import com.abhedyam.model.enums.SubscriptionStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -21,19 +19,17 @@ public class Owner extends User {
     @Column(nullable = false)
     private Boolean isVerified = false;
     
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Subscription subscription = Subscription.SAAS;
-    
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private SubscriptionStatus subscriptionStatus = SubscriptionStatus.ACTIVE;
-    
+    /** Full access until this time: the free trial, a Play subscription period, or referral days. After it the app is read-only. */
     @Column
-    private String subscriptionId;
-    
+    private Instant accessUntil;
+
+    /** Google Play product the owner pays for; null while on trial or after it lapsed. */
+    @Column(length = 80)
+    private String playProductId;
+
+    /** First real Play payment (not a trial). Counts founding seats and triggers the referrer's reward. */
     @Column
-    private Instant validTill;
+    private Instant firstPaidAt;
 
     @Column(unique = true, length = 80)
     private String publicSlug;
@@ -50,8 +46,5 @@ public class Owner extends User {
 
     @Column(length = 36)
     private String referredBy;
-
-    @Column(length = 100)
-    private String deviceHardwareId;
 }
 

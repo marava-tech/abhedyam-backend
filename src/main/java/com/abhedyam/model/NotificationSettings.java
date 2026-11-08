@@ -40,6 +40,6 @@ public class NotificationSettings extends BaseEntity {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "notification_muted_categories", joinColumns = @JoinColumn(name = "settings_id"))
     @Enumerated(EnumType.STRING)
-    @Column(name = "category", length = 40)
+    @Column(name = "category", length = 40, columnDefinition = "VARCHAR(40)")
     private Set<NotificationCategory> mutedCategories = new HashSet<>();
 }

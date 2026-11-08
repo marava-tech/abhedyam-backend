@@ -15,7 +15,6 @@ import com.abhedyam.repository.OwnerRepository;
 import com.abhedyam.repository.UserRepository;
 import com.abhedyam.repository.PaymentRepository;
 import com.abhedyam.repository.SaleItemRepository;
-import com.abhedyam.service.interfaces.ISubscriptionService;
 import com.abhedyam.util.PageUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +39,7 @@ public class AdminService {
     private final PaymentRepository paymentRepository;
     private final FeedbackRepository feedbackRepository;
     private final UserRepository userRepository;
-    private final ISubscriptionService subscriptionService;
+    private final BillingService billingService;
     
     @Transactional(readOnly = true)
     public PageResponse<AdminOwnerListResponse> listOwners(String username, String email, 
@@ -58,7 +57,8 @@ public class AdminService {
                 response.setName(owner.getName());
                 response.setEmail(owner.getEmail());
                 response.setCreatedAt(owner.getCreatedAt());
-                response.setSubscription(owner.getSubscription());
+                response.setAccessUntil(owner.getAccessUntil());
+                response.setPlayProductId(owner.getPlayProductId());
                 
                 long customerCount = customerRepository.countByOwnerId(owner.getId());
                 response.setTotalCustomers(customerCount);
@@ -88,7 +88,8 @@ public class AdminService {
         response.setName(owner.getName());
         response.setEmail(owner.getEmail());
         response.setCreatedAt(owner.getCreatedAt());
-        response.setSubscription(owner.getSubscription());
+        response.setAccessUntil(owner.getAccessUntil());
+        response.setPlayProductId(owner.getPlayProductId());
         
         long salesCount = saleItemRepository.countDistinctSalesByOwnerIdAndDateRange(
             ownerId, startDate, endDate);
@@ -134,20 +135,12 @@ public class AdminService {
     
     @Transactional
     public void upgradeSubscription(UUID ownerId) {
-        Owner owner = ownerRepository.findById(ownerId)
-            .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
-        
-        subscriptionService.activateProPlanForTesting(ownerId);
-        log.info("Activated SaaS subscription for owner {}", ownerId);
+        billingService.grantDays(ownerId, 365);
     }
     
     @Transactional
     public void downgradeSubscription(UUID ownerId) {
-        Owner owner = ownerRepository.findById(ownerId)
-            .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
-        
-        subscriptionService.downgradeToGoForTesting(ownerId);
-        log.info("Expired SaaS subscription for owner {}", ownerId);
+        billingService.endAccess(ownerId);
     }
     
     @Transactional(readOnly = true)

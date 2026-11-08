@@ -77,14 +77,13 @@
 | GET | `/location-details/users/{userId}` |
 | PATCH | `/location-details/users/{userId}` |
 
-### Subscriptions
+### Billing & referrals (specs/billing.md)
 | Method | Endpoint |
 |---|---|
-| GET | `/payment/razorpay-config` |
-| POST | `/subscription/create` |
-| POST | `/payment/verify` |
-| GET | `/subscription/{ownerId}` |
-| POST | `/subscription/trial` |
+| GET | `/billing/me` |
+| POST | `/billing/revenuecat` (RevenueCat webhook, Authorization header) |
+| GET | `/referrals` |
+| POST | `/referrals/apply` |
 
 ### Notifications & Support
 | Method | Endpoint |
@@ -164,4 +163,4 @@
 
 Customer sign-in is off: `/auth/phone/login` returns `OTP_REQUIRED` (phone alone proved nothing) until a replacement ships.
 
-`POST /files/upload` now also accepts `application/pdf`. `app.subscription.enforce` (default false) gates invoices, receipts, and nearest-customer behind PRO.
+`POST /files/upload` now also accepts `application/pdf`.

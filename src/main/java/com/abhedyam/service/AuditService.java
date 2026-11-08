@@ -281,53 +281,6 @@ public class AuditService implements IAuditService {
         }
     }
     
-    @Override
-    @Async("virtualThreadExecutor")
-    @Transactional
-    public void logSubscriptionChange(UUID ownerId, String oldPlan, String newPlan, String oldStatus, String newStatus, String subscriptionId, Instant validTill) {
-        try {
-            Audit audit = new Audit();
-            audit.setOwnerId(ownerId);
-            audit.setType(AuditType.SUBSCRIPTION);
-            audit.setAction(AuditAction.UPDATE);
-            audit.setEntityId(ownerId);
-            
-            String headline;
-            String description;
-            
-            if ("ACTIVE".equalsIgnoreCase(newStatus)) {
-                headline = "SaaS subscription activated / renewed";
-                description = String.format("Subscription active. Status: %s. Subscription ID: %s", 
-                    newStatus, subscriptionId != null ? subscriptionId : "N/A");
-                if (validTill != null) {
-                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' hh:mm a", Locale.ENGLISH)
-                        .withZone(ZoneId.systemDefault());
-                    description += String.format(". Valid until: %s", formatter.format(validTill));
-                }
-            } else if ("EXPIRED".equalsIgnoreCase(newStatus)) {
-                headline = "SaaS subscription expired";
-                description = String.format("Subscription expired. Previous status: %s, New status: %s.", 
-                    oldStatus != null ? oldStatus : "Unknown", newStatus);
-            } else {
-                headline = String.format("Subscription status changed to %s", newStatus != null ? newStatus : "None");
-                description = String.format("Subscription status changed from %s to %s. Subscription ID: %s", 
-                    oldStatus != null ? oldStatus : "Unknown",
-                    newStatus != null ? newStatus : "Unknown",
-                    subscriptionId != null ? subscriptionId : "N/A");
-            }
-            
-            audit.setHeadline(headline);
-            audit.setDescription(description);
-            audit.setTimestamp(Instant.now());
-            
-            auditRepository.save(audit);
-            log.info("Subscription change logged: ownerId={}, oldPlan={}, newPlan={}, oldStatus={}, newStatus={}", 
-                ownerId, oldPlan, newPlan, oldStatus, newStatus);
-        } catch (Exception e) {
-            log.error("Failed to log subscription change: ownerId={}, oldPlan={}, newPlan={}", 
-                ownerId, oldPlan, newPlan, e);
-        }
-    }
     
     private String formatPaymentMedium(String medium) {
         if (medium == null || medium.trim().isEmpty()) {

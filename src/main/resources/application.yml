@@ -109,18 +109,16 @@ app:
           auth: ${EMAIL_SMTP_AUTH:true}
           starttls:
             enable: ${EMAIL_STARTTLS_ENABLE:true}
-  razorpay:
-    key-id: ${RAZORPAY_KEY_ID}
-    key-secret: ${RAZORPAY_KEY_SECRET}
-    custom-payment-page-url: ${RAZORPAY_CUSTOM_PAYMENT_PAGE_URL:}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:4000,http://localhost:4321,http://localhost:4322,http://localhost:8080,http://127.0.0.1:3000,http://127.0.0.1:8080,https://abhedyam-dashboard.marava.tech}
   cache:
     invalidate:
       key: ${CACHE_INVALIDATE_KEY}
+  billing:
+    # RevenueCat → Integrations → Webhooks → Authorization header value. Blank = webhook rejects everything.
+    revenuecat-webhook-auth: ${REVENUECAT_WEBHOOK_AUTH:}
   subscription:
     admin-key: ${SUBSCRIPTION_ADMIN_KEY:}
-    enforce: ${SUBSCRIPTION_ENFORCE:false}
   admin:
     key-prefix: ${ADMIN_KEY_PREFIX}
     email: ${ADMIN_EMAIL:kinneramadhu123@gmail.com}

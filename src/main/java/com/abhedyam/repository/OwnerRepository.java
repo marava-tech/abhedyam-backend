@@ -1,7 +1,6 @@
 package com.abhedyam.repository;
 
 import com.abhedyam.model.Owner;
-import com.abhedyam.model.enums.SubscriptionStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -22,7 +21,9 @@ public interface OwnerRepository extends JpaRepository<Owner, UUID> {
                               @Param("email") String email,
                               Pageable pageable);
 
-    List<Owner> findBySubscriptionStatusAndValidTillBefore(SubscriptionStatus subscriptionStatus, Instant validTill);
+    long countByFirstPaidAtIsNotNull();
+
+    List<Owner> findByPlayProductIdIsNullAndAccessUntilBetween(Instant from, Instant to);
 
     java.util.Optional<Owner> findByPublicSlug(String publicSlug);
 
