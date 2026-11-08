@@ -10,7 +10,7 @@ Production stable. No active sprint items known.
 - Pagination for GET /api/v1/location-details/villages endpoint
 
 ## Next up
-- Check review-apis.md for endpoints that can be cleaned up (unused endpoints)
+- Unused endpoint cleanup done 2026-11-07 (PR #45); customer sign-in needs a replacement (phone login is off)
 
 ## Notes
 Update this file at the start of each working session.

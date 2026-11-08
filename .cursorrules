@@ -16,13 +16,13 @@
 14. Never expose secrets or credentials in code — use env/config placeholders only.
 15. Validate and sanitize all incoming data; reject malformed or unsafe input.
 16. Use structured JSON logs; include `requestId`/`correlationId` where available; never log sensitive fields.
-17. Design APIs and flows with idempotency for payment/OTP endpoints.
+17. Design APIs and flows with idempotency for payment endpoints.
 18. Use a message queue only if needed. Generate worker scaffolds only when explicitly requested.
 19. During development, DB schema changes can fully overwrite old versions — latest schema is truth.
 20. Generate proper API contracts and specs (OpenAPI must always match code).
 21. Until MVP: no PR flow needed — just build and commit clean.
 22. If any ambiguity or assumption arises, ask first before generating code.
-23. Minimal metrics: expose only core counters (sales_created, otp_sent, payment_attempts).
+23. Minimal metrics: expose only core counters (sales_created, payment_attempts).
 24. CI-ready structure: include tests, OpenAPI validation, lint.
 25. Maintain small, focused prompt templates in `/.ai/prompts.md`.
 26. When generating code, list affected files + brief purpose (1–2 lines), no code explanations.

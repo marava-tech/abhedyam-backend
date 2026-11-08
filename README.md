@@ -86,10 +86,6 @@ EMAIL_USERNAME=marava.technologies@gmail.com
 EMAIL_PASSWORD=REDACTED_GMAIL_PASSWORD
 EMAIL_SMTP_AUTH=true
 EMAIL_STARTTLS_ENABLE=true
-
-# 2Factor SMS (Fallback)
-TWO_FACTOR_API_KEY=3f77c89e-c18d-11f0-a6b2-0200cd936042
-TWO_FACTOR_OTP_TEMPLATE=Abhedyam_OTP_Template
 ```
 
 **Optional:**
@@ -113,18 +109,11 @@ All configuration is in `src/main/resources/application.yml`. Key settings:
 
 ### Email Configuration
 
-Email is the **primary notification method** for OTP and reminders. SMS is used as fallback.
+Email is used for account data exports.
 
 - **Gmail SMTP**: Pre-configured with Marava Technologies credentials
 - **From Address**: `marava.technologies@gmail.com`
 - **HTML Support**: Enabled via `GmailSender` service
-
-### SMS Configuration
-
-- **Provider**: 2Factor.in
-- **API Key**: Pre-configured in `application.yml`
-- **Template**: `Abhedyam_OTP_Template` (approved)
-- **Template Text**: "XXXX is your Abhedyam App OTP."
 
 ### JWT Configuration
 
@@ -144,9 +133,7 @@ All endpoints are versioned under `/api/v1/`
 ### Authentication
 
 - `POST /api/v1/auth/google/login` - Owner login with Firebase ID token
-- `POST /api/v1/auth/phone/login` - Customer login (Connect app, no OTP)
-- `POST /api/v1/auth/otp/send` - Send SMS OTP for web customer login
-- `POST /api/v1/auth/otp/verify` - Verify OTP and get customer JWT
+- `POST /api/v1/auth/phone/login` - Customer login: disabled, returns `OTP_REQUIRED` until a replacement ships
 - `POST /api/v1/auth/refresh` - Issue a fresh JWT from a still-valid token
 
 ### Key Endpoints
@@ -187,7 +174,7 @@ src/main/java/com/abhedyam/
 
 ### ✅ Implemented
 
-- **Authentication**: OTP-based auth with JWT (email primary, SMS fallback)
+- **Authentication**: Google Sign-in (owners) → JWT
 - **Product Management**: CRUD, search, stock management
 - **Customer Management**: CRUD, search, profile summary
 - **Sales Flow**: Multi-item sales, stock deduction, idempotency
@@ -277,11 +264,6 @@ final response = await api.getCustomers();
 - Verify Gmail credentials in `application.yml`
 - Check logs for SMTP errors
 - Ensure 2FA is enabled and App Password is used
-
-### OTP Not Sending
-- Email is tried first, then SMS fallback
-- Check email service logs
-- Verify 2Factor API key is configured
 
 ---
 

@@ -1,6 +1,7 @@
 # Architecture Decisions — Abhedyam Backend
 
-## 2026-04-01 — MongoDB as primary DB
+## 2026-04-01 — MongoDB as primary DB (superseded)
+**Superseded (checked 2026-11-08):** the code uses MySQL through JPA for all data; there is no MongoDB dependency or repository.
 **Decision:** Use MongoDB for main business data (customers, products, sales, payments).
 **Why:** Flexible document model fits the varied data structures of a khata book. Shopkeepers have different product types, payment modes, and customer data shapes.
 **Alternatives considered:** MySQL only (too rigid for flexible product/customer data)
