@@ -35,7 +35,7 @@ public class OwnerResponse {
     @Schema(description = "Verification status", example = "false")
     private Boolean isVerified;
     
-    @Schema(description = "Subscription plan", example = "GO")
+    @Schema(description = "Subscription plan", example = "SAAS")
     private Subscription subscription;
 
     @Schema(description = "Public shop URL slug")

@@ -84,7 +84,7 @@ public class RevenueCatWebhookController {
         log.info("Processing RevenueCat event type: {} for owner: {}, productId: {}", type, ownerId, productId);
 
         if ("EXPIRATION".equals(type)) {
-            owner.setSubscription(com.abhedyam.model.enums.Subscription.GO);
+            owner.setSubscription(com.abhedyam.model.enums.Subscription.SAAS);
             owner.setSubscriptionStatus(SubscriptionStatus.EXPIRED);
             owner.setValidTill(Instant.now());
             ownerRepository.save(owner);
@@ -94,7 +94,7 @@ public class RevenueCatWebhookController {
         } else if (GRANT_EVENTS.contains(type) && expMs != null) {
             Instant expiry = Instant.ofEpochMilli(expMs.longValue());
 
-            owner.setSubscription(com.abhedyam.model.enums.Subscription.PRO);
+            owner.setSubscription(com.abhedyam.model.enums.Subscription.SAAS);
             owner.setSubscriptionStatus(SubscriptionStatus.ACTIVE);
             owner.setValidTill(expiry);
             if (productId != null) {

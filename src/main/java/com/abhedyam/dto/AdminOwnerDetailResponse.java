@@ -23,7 +23,7 @@ public class AdminOwnerDetailResponse {
     @Schema(description = "Creation timestamp", example = "2025-11-15T10:51:15.325Z")
     private Instant createdAt;
     
-    @Schema(description = "Subscription plan", example = "GO")
+    @Schema(description = "Subscription plan", example = "SAAS")
     private Subscription subscription;
     
     @Schema(description = "Total number of sales in date range")

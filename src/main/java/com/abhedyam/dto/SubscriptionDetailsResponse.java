@@ -15,7 +15,7 @@ public class SubscriptionDetailsResponse {
     @Schema(description = "Owner ID", example = "123e4567-e89b-12d3-a456-426614174000")
     private UUID ownerId;
     
-    @Schema(description = "Subscription plan", example = "PRO")
+    @Schema(description = "Subscription plan", example = "SAAS")
     private Subscription plan;
     
     @Schema(description = "Subscription status", example = "ACTIVE")

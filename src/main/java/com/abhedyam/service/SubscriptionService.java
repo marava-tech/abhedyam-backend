@@ -336,27 +336,28 @@ public class SubscriptionService implements ISubscriptionService {
     }
 
     public void ensureProSubscription(UUID ownerId) {
-        log.debug("Checking PRO subscription requirement - ownerId: {}", ownerId);
+        log.debug("Checking subscription requirement - ownerId: {}", ownerId);
 
         Owner owner = ownerRepository.findById(ownerId)
                 .orElseThrow(() -> {
-                    log.error("Owner not found for PRO subscription check - ownerId: {}", ownerId);
+                    log.error("Owner not found for subscription check - ownerId: {}", ownerId);
                     return new ResourceNotFoundException("Your account could not be found");
                 });
 
-        boolean isValid = owner.getSubscription() == com.abhedyam.model.enums.Subscription.PRO &&
+        boolean isValid = (owner.getSubscription() == com.abhedyam.model.enums.Subscription.SAAS ||
+                           owner.getSubscription() == com.abhedyam.model.enums.Subscription.PRO) &&
                 owner.getSubscriptionStatus() == SubscriptionStatus.ACTIVE &&
                 owner.getValidTill() != null &&
                 !owner.getValidTill().isBefore(Instant.now());
 
         if (!isValid) {
-            log.warn("PRO subscription check failed - ownerId: {}, plan: {}, status: {}, validTill: {}",
+            log.warn("Subscription check failed - ownerId: {}, plan: {}, status: {}, validTill: {}",
                     ownerId, owner.getSubscription(), owner.getSubscriptionStatus(), owner.getValidTill());
             throw new BusinessException(ErrorCodes.SUBSCRIPTION_REQUIRED,
-                    "PRO subscription is required for this feature. Please upgrade to PRO plan.");
+                    "An active subscription is required to use this feature. Please subscribe to continue.");
         }
 
-        log.debug("PRO subscription check passed - ownerId: {}, validTill: {}", ownerId, owner.getValidTill());
+        log.debug("Subscription check passed - ownerId: {}, validTill: {}", ownerId, owner.getValidTill());
     }
 
     @Override
@@ -365,12 +366,11 @@ public class SubscriptionService implements ISubscriptionService {
         UUID ownerId = SecurityUtil.getCurrentUserId();
         Owner owner = ownerRepository.findById(ownerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Your account could not be found"));
-        if (owner.getSubscription() == com.abhedyam.model.enums.Subscription.PRO
-                && owner.getSubscriptionStatus() == SubscriptionStatus.ACTIVE
+        if (owner.getSubscriptionStatus() == SubscriptionStatus.ACTIVE
                 && owner.getValidTill() != null
                 && !owner.getValidTill().isBefore(Instant.now())) {
             throw new BusinessException(ErrorCodes.TRIAL_NOT_ELIGIBLE,
-                    "You already have an active PRO subscription");
+                    "You already have an active subscription");
         }
         if (subscriptionRepository.existsByOwnerIdAndRazorpayOrderIdStartingWith(ownerId, "TRIAL_")) {
             throw new BusinessException(ErrorCodes.TRIAL_ALREADY_USED,
@@ -381,9 +381,9 @@ public class SubscriptionService implements ISubscriptionService {
         subscription.setRazorpayOrderId("TRIAL_" + ownerId);
         subscription.setStatus(SubscriptionStatus.PENDING);
         subscriptionRepository.save(subscription);
-        Instant validTill = Instant.now().plus(45, ChronoUnit.DAYS);
+        Instant validTill = Instant.now().plus(90, ChronoUnit.DAYS);
         activateProPlanWithValidTill(owner, subscription, validTill);
-        log.info("45-day free trial started - ownerId: {}, validTill: {}", ownerId, validTill);
+        log.info("90-day free trial started - ownerId: {}, validTill: {}", ownerId, validTill);
         return getSubscriptionStatus();
     }
 
@@ -446,7 +446,7 @@ public class SubscriptionService implements ISubscriptionService {
         String oldStatus = owner.getSubscriptionStatus() != null ? owner.getSubscriptionStatus().toString() : null;
         String subscriptionId = subscription != null ? subscription.getRazorpayOrderId() : null;
 
-        owner.setSubscription(com.abhedyam.model.enums.Subscription.GO);
+        owner.setSubscription(com.abhedyam.model.enums.Subscription.SAAS);
         owner.setSubscriptionStatus(SubscriptionStatus.EXPIRED);
         owner.setValidTill(null);
         owner.setSubscriptionId(null);
@@ -466,13 +466,13 @@ public class SubscriptionService implements ISubscriptionService {
         auditService.logSubscriptionChange(
                 ownerId,
                 oldPlan,
-                "GO",
+                "SAAS",
                 oldStatus,
                 "EXPIRED",
                 subscriptionId,
                 null);
 
-        log.warn("GO plan activated for testing - ownerId: {}, plan: {}", ownerId, owner.getSubscription());
+        log.warn("Subscription expired for testing - ownerId: {}, plan: {}", ownerId, owner.getSubscription());
     }
 
     private void activateProPlan(Owner owner, Subscription subscription) {
@@ -486,13 +486,13 @@ public class SubscriptionService implements ISubscriptionService {
         UUID ownerId = owner.getId();
         String razorpayOrderId = subscription.getRazorpayOrderId();
 
-        log.info("Activating PRO plan - ownerId: {}, razorpayOrderId: {}, validTill: {}",
+        log.info("Activating subscription - ownerId: {}, razorpayOrderId: {}, validTill: {}",
                 ownerId, razorpayOrderId, validTill);
 
         String oldPlan = owner.getSubscription() != null ? owner.getSubscription().toString() : null;
         String oldStatus = owner.getSubscriptionStatus() != null ? owner.getSubscriptionStatus().toString() : null;
 
-        owner.setSubscription(com.abhedyam.model.enums.Subscription.PRO);
+        owner.setSubscription(com.abhedyam.model.enums.Subscription.SAAS);
         owner.setSubscriptionStatus(SubscriptionStatus.ACTIVE);
         owner.setSubscriptionId(razorpayOrderId);
         owner.setValidTill(validTill);
@@ -508,13 +508,13 @@ public class SubscriptionService implements ISubscriptionService {
         auditService.logSubscriptionChange(
                 ownerId,
                 oldPlan,
-                "PRO",
+                "SAAS",
                 oldStatus,
                 "ACTIVE",
                 razorpayOrderId,
                 validTill);
 
-        log.info("PRO plan activated successfully - ownerId: {}, razorpayOrderId: {}, validTill: {}",
+        log.info("Subscription activated successfully - ownerId: {}, razorpayOrderId: {}, validTill: {}",
                 ownerId, razorpayOrderId, validTill);
     }
 
@@ -531,7 +531,7 @@ public class SubscriptionService implements ISubscriptionService {
 
         Instant newExpiry = currentExpiry.plus(days, ChronoUnit.DAYS);
 
-        owner.setSubscription(com.abhedyam.model.enums.Subscription.PRO);
+        owner.setSubscription(com.abhedyam.model.enums.Subscription.SAAS);
         owner.setSubscriptionStatus(SubscriptionStatus.ACTIVE);
         owner.setValidTill(newExpiry);
         ownerRepository.save(owner);

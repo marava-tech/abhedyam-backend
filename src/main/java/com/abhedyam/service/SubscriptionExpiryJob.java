@@ -34,7 +34,7 @@ public class SubscriptionExpiryJob {
         log.info("Expiring {} subscription(s) with validTill before {}", eligible.size(), now);
         for (Owner owner : eligible) {
             try {
-                owner.setSubscription(com.abhedyam.model.enums.Subscription.GO);
+                owner.setSubscription(com.abhedyam.model.enums.Subscription.SAAS);
                 owner.setSubscriptionStatus(SubscriptionStatus.EXPIRED);
                 owner.setValidTill(null);
                 owner.setSubscriptionId(null);

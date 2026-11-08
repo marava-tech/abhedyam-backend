@@ -11,7 +11,7 @@ import java.time.Instant;
 @Schema(description = "Current subscription status for the user")
 public class SubscriptionStatusResponse {
     
-    @Schema(description = "Subscription plan", example = "PRO")
+    @Schema(description = "Subscription plan", example = "SAAS")
     private Subscription plan;
     
     @Schema(description = "Subscription status", example = "ACTIVE")

@@ -23,7 +23,7 @@ public class Owner extends User {
     
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Subscription subscription = Subscription.GO;
+    private Subscription subscription = Subscription.SAAS;
     
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

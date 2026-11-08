@@ -8,6 +8,7 @@ import com.abhedyam.model.Customer;
 import com.abhedyam.model.Owner;
 import com.abhedyam.model.User;
 import com.abhedyam.model.enums.Subscription;
+import com.abhedyam.model.enums.SubscriptionStatus;
 import com.abhedyam.model.enums.UserType;
 import com.abhedyam.repository.CustomerRepository;
 import com.abhedyam.repository.LocationDetailsRepository;
@@ -21,6 +22,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -93,7 +96,9 @@ public class AuthService {
             newOwner.setEmail(normalizedEmail);
             newOwner.setFirebaseUid(googleUser.getFirebaseUid());
             newOwner.setType(UserType.BUSINESS);
-            newOwner.setSubscription(Subscription.GO);
+            newOwner.setSubscription(Subscription.SAAS);
+            newOwner.setSubscriptionStatus(SubscriptionStatus.ACTIVE);
+            newOwner.setValidTill(Instant.now().plus(90, ChronoUnit.DAYS));
             newOwner.setIsVerified(false);
 
             if (googleUser.getPicture() != null && !googleUser.getPicture().trim().isEmpty()) {

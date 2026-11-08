@@ -295,25 +295,22 @@ public class AuditService implements IAuditService {
             String headline;
             String description;
             
-            if (StatusConstants.PRO.equalsIgnoreCase(newPlan) && !StatusConstants.PRO.equalsIgnoreCase(oldPlan)) {
-                headline = String.format("Subscription upgraded to PRO plan");
-                description = String.format("Subscription upgraded from %s to PRO plan. Status: %s. Subscription ID: %s", 
-                    oldPlan != null ? oldPlan : "None", newStatus, subscriptionId != null ? subscriptionId : "N/A");
+            if ("ACTIVE".equalsIgnoreCase(newStatus)) {
+                headline = "SaaS subscription activated / renewed";
+                description = String.format("Subscription active. Status: %s. Subscription ID: %s", 
+                    newStatus, subscriptionId != null ? subscriptionId : "N/A");
                 if (validTill != null) {
                     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' hh:mm a", Locale.ENGLISH)
                         .withZone(ZoneId.systemDefault());
                     description += String.format(". Valid until: %s", formatter.format(validTill));
                 }
-            } else if (StatusConstants.GO.equalsIgnoreCase(newPlan) && StatusConstants.PRO.equalsIgnoreCase(oldPlan)) {
-                headline = String.format("Subscription downgraded to GO plan");
-                description = String.format("Subscription downgraded from PRO to GO plan. Previous status: %s, New status: %s. Subscription ID: %s", 
-                    oldStatus != null ? oldStatus : "Unknown", newStatus, subscriptionId != null ? subscriptionId : "N/A");
+            } else if ("EXPIRED".equalsIgnoreCase(newStatus)) {
+                headline = "SaaS subscription expired";
+                description = String.format("Subscription expired. Previous status: %s, New status: %s.", 
+                    oldStatus != null ? oldStatus : "Unknown", newStatus);
             } else {
-                headline = String.format("Subscription changed from %s to %s", 
-                    oldPlan != null ? oldPlan : "None", newPlan != null ? newPlan : "None");
-                description = String.format("Subscription plan changed from %s to %s. Status changed from %s to %s. Subscription ID: %s", 
-                    oldPlan != null ? oldPlan : "None", 
-                    newPlan != null ? newPlan : "None",
+                headline = String.format("Subscription status changed to %s", newStatus != null ? newStatus : "None");
+                description = String.format("Subscription status changed from %s to %s. Subscription ID: %s", 
                     oldStatus != null ? oldStatus : "Unknown",
                     newStatus != null ? newStatus : "Unknown",
                     subscriptionId != null ? subscriptionId : "N/A");

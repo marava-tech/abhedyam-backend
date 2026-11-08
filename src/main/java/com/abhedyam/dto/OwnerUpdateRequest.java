@@ -22,7 +22,7 @@ public class OwnerUpdateRequest {
     @Schema(description = "Profile image URL", example = "https://example.com/image.jpg")
     private String imageUrl;
     
-    @Schema(description = "Subscription plan", example = "GO")
+    @Schema(description = "Subscription plan", example = "SAAS")
     private Subscription subscription;
     
     @Schema(description = "Verification status", example = "false")

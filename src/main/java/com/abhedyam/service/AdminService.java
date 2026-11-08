@@ -137,14 +137,8 @@ public class AdminService {
         Owner owner = ownerRepository.findById(ownerId)
             .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
         
-        com.abhedyam.model.enums.Subscription currentSubscription = owner.getSubscription();
-        
-        if (currentSubscription == com.abhedyam.model.enums.Subscription.GO) {
-            subscriptionService.activateProPlanForTesting(ownerId);
-            log.info("Upgraded owner {} from GO to PRO", ownerId);
-        } else if (currentSubscription == com.abhedyam.model.enums.Subscription.PRO) {
-            log.info("Owner {} already has the highest subscription tier (PRO)", ownerId);
-        }
+        subscriptionService.activateProPlanForTesting(ownerId);
+        log.info("Activated SaaS subscription for owner {}", ownerId);
     }
     
     @Transactional
@@ -152,14 +146,8 @@ public class AdminService {
         Owner owner = ownerRepository.findById(ownerId)
             .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
         
-        com.abhedyam.model.enums.Subscription currentSubscription = owner.getSubscription();
-        
-        if (currentSubscription == com.abhedyam.model.enums.Subscription.PRO) {
-            subscriptionService.downgradeToGoForTesting(ownerId);
-            log.info("Downgraded owner {} from PRO to GO", ownerId);
-        } else if (currentSubscription == com.abhedyam.model.enums.Subscription.GO) {
-            log.info("Owner {} already has the lowest subscription tier (GO)", ownerId);
-        }
+        subscriptionService.downgradeToGoForTesting(ownerId);
+        log.info("Expired SaaS subscription for owner {}", ownerId);
     }
     
     @Transactional(readOnly = true)
