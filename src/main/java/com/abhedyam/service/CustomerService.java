@@ -182,8 +182,14 @@ public class CustomerService implements ICustomerService {
                 String normalizedPhone = PhoneUtil.normalizePhone(p);
                 Optional<Customer> existing = customerRepository.findByPhoneNormalized(normalizedPhone);
                 if (existing.isPresent() && !existing.get().getId().equals(customerId)) {
-                    throw new BusinessException(ErrorCodes.CUSTOMER_EXISTS,
-                        "Customer with this phone number already exists");
+                    Customer exCust = existing.get();
+                    if (exCust.getOwnerId() == null) {
+                        customerRepository.delete(exCust);
+                        customerRepository.flush();
+                    } else {
+                        throw new BusinessException(ErrorCodes.CUSTOMER_EXISTS,
+                            "Customer with this phone number already exists");
+                    }
                 }
                 customer.setPhone(PhoneUtil.extractPhoneWithoutCountryCode(normalizedPhone));
                 customer.setPhoneNormalized(normalizedPhone);
@@ -197,7 +203,7 @@ public class CustomerService implements ICustomerService {
             : null;
         boolean hasPin = request.getLatitude() != null && request.getLongitude() != null;
 
-        LocationDetails existingLocation = locationDetailsRepository.findById(customerId).orElse(null);
+        LocationDetails existingLocation = locationDetailsRepository.findByUserId(customerId).orElse(null);
         if (existingLocation != null) {
             if (request.getVillage() != null) {
                 existingLocation.setVillage(villageName);
