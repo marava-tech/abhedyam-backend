@@ -13,6 +13,7 @@ import java.util.UUID;
 import java.util.function.Function;
 
 @Component
+@lombok.extern.slf4j.Slf4j
 public class JwtUtil {
     
     @Value("${app.jwt.secret}")
@@ -92,7 +93,11 @@ public class JwtUtil {
         try {
             getAllClaimsFromToken(token);
             return !isTokenExpired(token);
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            return false; // normal: the app renews and retries
         } catch (Exception e) {
+            // Logged: the first requests after a restart were rejected here with no trace (2026-11-08).
+            log.warn("JWT rejected: {}: {}", e.getClass().getName(), e.getMessage());
             return false;
         }
     }
