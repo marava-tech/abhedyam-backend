@@ -49,6 +49,18 @@ class LastActivityQueriesTest {
         assertTrue(payments.lastSuccessfulPaymentByCustomer(UUID.randomUUID()).isEmpty()); // other owner sees nothing
     }
 
+    @Test
+    void todaysSuccessfulPaymentsCountAndSum() {
+        UUID owner = UUID.randomUUID(), customer = UUID.randomUUID();
+        Instant from = Instant.parse("2026-11-07T18:30:00Z"), to = Instant.parse("2026-11-08T18:30:00Z"); // 8 Nov in IST
+        pay(owner, customer, Instant.parse("2026-11-07T18:30:00Z"), PaymentStatus.SUCCESS); // 00:00 IST: counts
+        pay(owner, customer, Instant.parse("2026-11-08T10:00:00Z"), PaymentStatus.SUCCESS);
+        pay(owner, customer, Instant.parse("2026-11-08T11:00:00Z"), PaymentStatus.PENDING);  // not in yet
+        pay(owner, customer, Instant.parse("2026-11-07T18:29:59Z"), PaymentStatus.SUCCESS); // yesterday IST
+        assertEquals(2, payments.countSuccessfulBetween(owner, from, to));
+        assertEquals(0, new BigDecimal("2").compareTo(payments.sumSuccessfulBetween(owner, from, to)));
+    }
+
     private static Instant toInstant(Object o) {
         return o instanceof Instant i ? i : ((java.sql.Timestamp) o).toInstant();
     }
