@@ -57,6 +57,7 @@ public class StatsService implements IStatsService {
         private final SaleItemRepository saleItemRepository;
         private final ProductRepository productRepository;
         private final AuditRepository auditRepository;
+        private final com.abhedyam.repository.ShopMemberRepository memberRepository;
         private final InventoryRepository inventoryRepository;
         private final RedisTemplate<String, String> redisTemplate;
         private final ObjectMapper objectMapper;
@@ -403,13 +404,15 @@ public class StatsService implements IStatsService {
 
                 Page<Audit> audits = auditRepository.findRecentActivities(ownerId, types, actions, pageable);
 
+                java.util.Map<UUID, String> memberNames = new java.util.HashMap<>();
+                memberRepository.findByOwnerId(ownerId).forEach(m -> memberNames.put(m.getId(), m.getName()));
                 List<RecentActivityResponse> activities = audits.getContent().stream()
                                 .map(audit -> {
                                         BigDecimal amount = audit.getAmount();
                                         if (amount != null && amount.compareTo(BigDecimal.ZERO) == 0) {
                                                 amount = null;
                                         }
-                                        return new RecentActivityResponse(
+                                        RecentActivityResponse r = new RecentActivityResponse(
                                                         audit.getId(),
                                                         audit.getType(),
                                                         audit.getAction(),
@@ -421,6 +424,8 @@ public class StatsService implements IStatsService {
                                                         audit.getCustomerName(),
                                                         audit.getDetail(),
                                                         audit.getTimestamp());
+                                        if (audit.getAddedBy() != null) r.setAddedBy(memberNames.get(audit.getAddedBy()));
+                                        return r;
                                 })
                                 .collect(Collectors.toList());
 

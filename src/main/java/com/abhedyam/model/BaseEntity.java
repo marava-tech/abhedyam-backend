@@ -40,5 +40,15 @@ public abstract class BaseEntity {
 
     @Column(nullable = false)
     private Boolean isActive = true;
+
+    /** Family member / helper who created this row ("by Ravi"); null = the owner or the system. */
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "added_by", updatable = false, columnDefinition = "VARCHAR(36)")
+    private UUID addedBy;
+
+    @PrePersist
+    void stampAddedBy() {
+        if (addedBy == null) addedBy = com.abhedyam.util.SecurityUtil.getCurrentMemberId();
+    }
 }
 

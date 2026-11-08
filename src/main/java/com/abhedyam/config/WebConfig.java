@@ -11,8 +11,12 @@ public class WebConfig implements WebMvcConfigurer {
     @org.springframework.beans.factory.annotation.Autowired
     private SyncPushInterceptor syncPushInterceptor;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private RoleGuardInterceptor roleGuardInterceptor;
+
     @Override
     public void addInterceptors(org.springframework.web.servlet.config.annotation.InterceptorRegistry registry) {
+        registry.addInterceptor(roleGuardInterceptor).addPathPatterns("/api/v1/**");
         registry.addInterceptor(syncPushInterceptor).addPathPatterns("/api/v1/**");
     }
     

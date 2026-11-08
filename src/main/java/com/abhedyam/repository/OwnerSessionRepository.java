@@ -13,4 +13,6 @@ public interface OwnerSessionRepository extends JpaRepository<OwnerSession, UUID
     List<OwnerSession> findByOwnerIdAndRevokedAtIsNullOrderByLastSeenAtDesc(UUID ownerId);
 
     Optional<OwnerSession> findFirstByOwnerIdAndDeviceIdAndRevokedAtIsNull(UUID ownerId, String deviceId);
+
+    List<OwnerSession> findByMemberIdAndRevokedAtIsNull(UUID memberId);
 }

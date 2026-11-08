@@ -27,6 +27,11 @@ public class OwnerSession extends BaseEntity {
     @Column(length = 100)
     private String deviceName;
 
+    /** Family member / helper signed in on this phone; null = the owner. */
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "member_id", columnDefinition = "VARCHAR(36)")
+    private UUID memberId;
+
     private Instant lastSeenAt;
 
     private Instant revokedAt;

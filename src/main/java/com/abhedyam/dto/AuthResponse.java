@@ -37,5 +37,19 @@ public class AuthResponse {
     
     @Schema(description = "Account creation timestamp", example = "2024-01-15T10:30:00Z")
     private Instant accountCreatedAt;
+
+    @Schema(description = "Family member / helper signed in (userId is then the shop owner's id); null = the owner")
+    private UUID memberId;
+
+    @Schema(description = "FAMILY or HELPER; null = the owner")
+    private String memberRole;
+
+    @Schema(description = "Shop name, for a member's app")
+    private String shopName;
+
+    public AuthResponse(String token, String userId, String phone, String name, Boolean isNewUser, UserType userType,
+                        UUID ownerId, Instant accountCreatedAt) {
+        this(token, userId, phone, name, isNewUser, userType, ownerId, accountCreatedAt, null, null, null);
+    }
 }
 

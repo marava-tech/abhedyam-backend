@@ -57,5 +57,11 @@ public class PaymentResponse {
 
     @Schema(description = "Written off by the owner: closes the due, not money received", example = "false")
     private boolean writeOff;
-}
 
+    @Schema(description = "Family member / helper who took this payment (by Ravi); null = the owner")
+    private String addedByName;
+
+    public PaymentResponse(UUID id, UUID customerId, String customerName, UUID ownerId, UUID saleItemId, String productName, BigDecimal amount, PaymentMedium medium, Instant timestamp, String reference, PaymentStatus status, Instant createdAt, Instant updatedAt, boolean writeOff) {
+        this(id, customerId, customerName, ownerId, saleItemId, productName, amount, medium, timestamp, reference, status, createdAt, updatedAt, writeOff, null);
+    }
+}
