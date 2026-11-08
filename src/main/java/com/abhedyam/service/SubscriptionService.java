@@ -518,6 +518,46 @@ public class SubscriptionService implements ISubscriptionService {
                 ownerId, razorpayOrderId, validTill);
     }
 
+    @Override
+    @Transactional
+    public void grantPromotionalDays(UUID ownerId, int days) {
+        Owner owner = ownerRepository.findById(ownerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
+
+        Instant now = Instant.now();
+        Instant currentExpiry = (owner.getValidTill() != null && owner.getValidTill().isAfter(now))
+                ? owner.getValidTill()
+                : now;
+
+        Instant newExpiry = currentExpiry.plus(days, ChronoUnit.DAYS);
+
+        owner.setSubscription(com.abhedyam.model.enums.Subscription.PRO);
+        owner.setSubscriptionStatus(SubscriptionStatus.ACTIVE);
+        owner.setValidTill(newExpiry);
+        ownerRepository.save(owner);
+
+        List<Subscription> subs = subscriptionRepository.findAllByOwnerIdOrderByCreatedAtDesc(ownerId);
+        Optional<Subscription> activeSub = subs.stream()
+                .filter(s -> s.getStatus() == SubscriptionStatus.ACTIVE)
+                .findFirst();
+
+        if (activeSub.isPresent()) {
+            Subscription s = activeSub.get();
+            s.setValidTill(newExpiry);
+            subscriptionRepository.save(s);
+        } else {
+            Subscription newSub = new Subscription();
+            newSub.setOwnerId(ownerId);
+            newSub.setRazorpayOrderId("PROMO_" + UUID.randomUUID().toString().substring(0, 8));
+            newSub.setStatus(SubscriptionStatus.ACTIVE);
+            newSub.setActivatedAt(now);
+            newSub.setValidTill(newExpiry);
+            subscriptionRepository.save(newSub);
+        }
+
+        log.info("Granted {} promotional PRO days to owner {}. New validTill: {}", days, ownerId, newExpiry);
+    }
+
     private String generateSignature(String data, String secret) {
         try {
             if (data == null) {

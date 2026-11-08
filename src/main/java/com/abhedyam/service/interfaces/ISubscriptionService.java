@@ -18,5 +18,6 @@ public interface ISubscriptionService {
     SubscriptionStatusResponse startTrial();
     void activateProPlanForTesting(UUID ownerId);
     void downgradeToGoForTesting(UUID ownerId);
+    void grantPromotionalDays(UUID ownerId, int days);
 }
 

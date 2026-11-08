@@ -44,5 +44,14 @@ public class Owner extends User {
     /** The Gmail this shop signed in with, kept after the account is disabled (email itself is freed so the person can sign up again). */
     @Column
     private String formerEmail;
+
+    @Column(unique = true, length = 16)
+    private String referralCode;
+
+    @Column(length = 36)
+    private String referredBy;
+
+    @Column(length = 100)
+    private String deviceHardwareId;
 }
 

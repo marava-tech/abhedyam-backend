@@ -26,6 +26,10 @@ public interface OwnerRepository extends JpaRepository<Owner, UUID> {
 
     java.util.Optional<Owner> findByPublicSlug(String publicSlug);
 
+    java.util.Optional<Owner> findByReferralCode(String referralCode);
+
+    boolean existsByReferralCode(String referralCode);
+
     boolean existsByIdAndIsActiveTrue(UUID id);
 
     /** Owners disabled (account deleted) before the given time. Only disableAccount sets these two fields on an owner. */
