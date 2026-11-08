@@ -46,9 +46,6 @@ public class Notification extends BaseEntity {
     @Column
     private String relatedEntityType;
     
-    @Column(nullable = false)
-    private Integer retryCount = 0;
-    
     @Column
     private Instant readAt;
 

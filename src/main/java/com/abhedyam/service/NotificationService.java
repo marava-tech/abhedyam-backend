@@ -29,9 +29,6 @@ public class NotificationService implements INotificationService {
         if (notification.getUserId() == null) {
             throw new BusinessException("INVALID_NOTIFICATION", "Notification userId cannot be null");
         }
-        if (notification.getRetryCount() == null) {
-            notification.setRetryCount(0);
-        }
         if (notification.getIsRead() == null) {
             notification.setIsRead(false);
         }
