@@ -20,8 +20,12 @@ public class OwnerSettingsService implements IOwnerSettingsService {
     
     private final OwnerSettingsRepository ownerSettingsRepository;
     
+    /**
+     * No transaction on purpose: a new owner's Home asks for settings several times at once. Inside one
+     * MySQL REPEATABLE READ transaction the read after INSERT IGNORE still saw the snapshot from before the
+     * parallel insert, so it found nothing → 500 "No value present". Each call on its own sees the row.
+     */
     @Override
-    @Transactional
     public OwnerSettingsResponse getOwnerSettings(UUID ownerId) {
         validateOwnerAccess(ownerId);
         

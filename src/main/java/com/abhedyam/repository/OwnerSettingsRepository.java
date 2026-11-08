@@ -12,6 +12,7 @@ public interface OwnerSettingsRepository extends JpaRepository<OwnerSettings, UU
     Optional<OwnerSettings> findByOwnerId(UUID ownerId);
 
     /** Race-safe create: parallel first requests both insert, the loser is ignored. */
+    @org.springframework.transaction.annotation.Transactional // own short transaction: committed before the read-back
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.data.jpa.repository.Query(nativeQuery = true, value =
         "INSERT IGNORE INTO owner_settings (id, owner_id, is_dark_mode_enabled, is_active, created_at, updated_at) "
