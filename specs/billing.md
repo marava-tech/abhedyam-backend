@@ -26,5 +26,10 @@ When the friend first pays: the referrer gets +30 days, or, if the referrer alre
 ## Reminders
 10:30 IST daily, owners not paying: push (category `BILLING`) at 3 days left, last day, and the day access ended. Dedupe key `access-end-<days>-<accessUntil epoch>`.
 
-## Migration
-`BillingResetMigration` (startup, idempotent): drops `owners.subscription/subscription_status/subscription_id/valid_till/device_hardware_id`, the `subscriptions` table, `SUBSCRIPTION` audits and the old referral score columns; makes enum columns VARCHAR; owners with no `access_until` get a fresh 30-day trial. Delete the class after it has run in production.
+## Founder calls (admin)
+`GET /api/v1/admin/trial-calls`: non-paying shops from the last 60 days that are due a call. Stage (day 1 = signup day): `ENDED` (access ended ≤7 days ago), `ENDING` (≤3 days left), `DAY_3` (days 3–5), `DAY_20` (days 20–22). Row: name, shop, phone, email, trial day, days left, customers, sales, `calledAt` for this stage, latest note. Not-yet-called first.
+`POST /api/v1/admin/owners/{id}/calls {stage, note}` logs a call (`founder_calls`).
+
+## Partners (admin)
+Agents / accountants / distributor salesmen. `partners` (name, phone, UPI id, code `ABH…`, same namespace as owner codes). A shop that uses a partner code gets the same +15 days; `owners.partner_id` is set (a shop has either a referrer or a partner, never both). On the shop's first Play payment: `partner_earnings` row, ₹250 (`ReferralService.PARTNER_RUPEES`), one per shop.
+`GET /api/v1/admin/partners` (joined, paid, ₹ owed, ₹ paid), `POST /api/v1/admin/partners {name, phone, upiId}`, `POST /api/v1/admin/partners/{id}/payout` (after paying by UPI: marks all unpaid as paid, returns ₹ total).

@@ -23,6 +23,10 @@ public interface OwnerRepository extends JpaRepository<Owner, UUID> {
 
     long countByFirstPaidAtIsNotNull();
 
+    List<Owner> findByPlayProductIdIsNullAndIsActiveTrueAndCreatedAtAfter(Instant after);
+
+    long countByPartnerId(String partnerId);
+
     List<Owner> findByPlayProductIdIsNullAndAccessUntilBetween(Instant from, Instant to);
 
     java.util.Optional<Owner> findByPublicSlug(String publicSlug);

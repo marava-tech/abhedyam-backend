@@ -132,6 +132,11 @@
 | GET | `/admin/owners/{ownerId}` | |
 | POST | `/admin/owners/{ownerId}/subscription/upgrade` | |
 | POST | `/admin/owners/{ownerId}/subscription/downgrade` | |
+| GET | `/admin/trial-calls` | |
+| POST | `/admin/owners/{ownerId}/calls` | |
+| GET | `/admin/partners` | |
+| POST | `/admin/partners` | |
+| POST | `/admin/partners/{partnerId}/payout` | |
 | GET | `/admin/feedbacks` | |
 | GET | `/admin/image-store` | |
 | POST | `/admin/image-store` | |

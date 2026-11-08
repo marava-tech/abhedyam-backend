@@ -2,9 +2,13 @@ package com.abhedyam.service;
 
 import com.abhedyam.exception.BusinessException;
 import com.abhedyam.model.Owner;
+import com.abhedyam.model.Partner;
+import com.abhedyam.model.PartnerEarning;
 import com.abhedyam.model.Referral;
 import com.abhedyam.model.enums.ReferralStatus;
 import com.abhedyam.repository.OwnerRepository;
+import com.abhedyam.repository.PartnerEarningRepository;
+import com.abhedyam.repository.PartnerRepository;
 import com.abhedyam.repository.ReferralRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +22,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 /** The money paths: Play webhook → access, first payment → referral reward, code rules. */
@@ -25,7 +30,9 @@ class BillingServiceTest {
 
     private final OwnerRepository owners = mock(OwnerRepository.class);
     private final ReferralRepository referrals = mock(ReferralRepository.class);
-    private final ReferralService referralService = new ReferralService(owners, referrals);
+    private final PartnerRepository partners = mock(PartnerRepository.class);
+    private final PartnerEarningRepository earnings = mock(PartnerEarningRepository.class);
+    private final ReferralService referralService = new ReferralService(owners, referrals, partners, earnings);
     private final BillingService billing = new BillingService(owners, referralService, mock(NotificationDispatcher.class));
 
     private Owner friend;
@@ -99,6 +106,39 @@ class BillingServiceTest {
 
         Map<String, Object> anon = new HashMap<>(Map.of("type", "RENEWAL", "app_user_id", "$RCAnonymousID:abc"));
         assertFalse(billing.applyRevenueCatEvent(anon));
+    }
+
+    @Test
+    void partnerCodeGivesBonusAndPartnerEarnsOnFirstPaymentOnce() {
+        Partner agent = new Partner();
+        agent.setId(UUID.randomUUID());
+        agent.setCode("ABHAGENT");
+        when(partners.findByCode("ABHAGENT")).thenReturn(Optional.of(agent));
+
+        referralService.apply(friend.getId(), "abhagent");
+        assertEquals(agent.getId().toString(), friend.getPartnerId());
+        assertTrue(friend.getAccessUntil().isAfter(Instant.now().plus(44, ChronoUnit.DAYS)));
+        assertEquals("ALREADY_REFERRED", assertThrows(BusinessException.class,
+                () -> referralService.apply(friend.getId(), "ABHTEST1")).getErrorCode());
+
+        billing.applyRevenueCatEvent(event("INITIAL_PURCHASE", friend, Instant.now().plus(365, ChronoUnit.DAYS), "NORMAL"));
+        verify(earnings).save(argThat((PartnerEarning e) -> e.getRupees() == ReferralService.PARTNER_RUPEES
+                && e.getPartnerId().equals(agent.getId()) && e.getOwnerId().equals(friend.getId())));
+
+        // a renewal is not a first payment: no second earning
+        billing.applyRevenueCatEvent(event("RENEWAL", friend, Instant.now().plus(730, ChronoUnit.DAYS), "NORMAL"));
+        verify(earnings, times(1)).save(any());
+    }
+
+    @Test
+    void founderCallStages() {
+        assertEquals("DAY_3", GrowthAdminService.stage(3, true, 28, 0));
+        assertNull(GrowthAdminService.stage(10, true, 21, 0));
+        assertEquals("DAY_20", GrowthAdminService.stage(21, true, 10, 0));
+        assertEquals("ENDING", GrowthAdminService.stage(28, true, 3, 0));
+        assertEquals("ENDING", GrowthAdminService.stage(4, true, 2, 0)); // money at stake beats the day-3 call
+        assertEquals("ENDED", GrowthAdminService.stage(33, false, 0, 2));
+        assertNull(GrowthAdminService.stage(45, false, 0, 15));
     }
 
     @Test

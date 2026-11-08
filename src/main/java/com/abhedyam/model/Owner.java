@@ -46,5 +46,9 @@ public class Owner extends User {
 
     @Column(length = 36)
     private String referredBy;
+
+    /** Partner (agent) whose code this shop used; they earn when the shop first pays. */
+    @Column(length = 36)
+    private String partnerId;
 }
 
