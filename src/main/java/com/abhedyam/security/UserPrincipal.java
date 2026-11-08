@@ -19,9 +19,17 @@ public class UserPrincipal implements UserDetails {
     private String phone;
     /** This phone's session (JWT "sid"); null for old tokens. */
     private UUID sessionId;
+    /** Family member / helper signed in on this phone; null = the owner. */
+    private UUID memberId;
+    /** FAMILY / HELPER; null = the owner. */
+    private String role;
 
     public UserPrincipal(UUID userId, String phone) {
-        this(userId, phone, null);
+        this(userId, phone, null, null, null);
+    }
+
+    public UserPrincipal(UUID userId, String phone, UUID sessionId) {
+        this(userId, phone, sessionId, null, null);
     }
     
     @Override

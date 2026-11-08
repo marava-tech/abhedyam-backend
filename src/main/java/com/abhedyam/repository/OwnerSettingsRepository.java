@@ -11,6 +11,10 @@ import java.util.UUID;
 public interface OwnerSettingsRepository extends JpaRepository<OwnerSettings, UUID> {
     Optional<OwnerSettings> findByOwnerId(UUID ownerId);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select s from OwnerSettings s where s.ownerId = :ownerId")
+    Optional<OwnerSettings> lockByOwnerId(@org.springframework.data.repository.query.Param("ownerId") UUID ownerId);
+
     /** Race-safe create: parallel first requests both insert, the loser is ignored. */
     @org.springframework.transaction.annotation.Transactional // own short transaction: committed before the read-back
     @org.springframework.data.jpa.repository.Modifying

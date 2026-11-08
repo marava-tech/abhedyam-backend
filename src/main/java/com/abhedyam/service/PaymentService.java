@@ -59,6 +59,7 @@ public class PaymentService implements IPaymentService {
     private final CustomerService customerServiceConcrete;
     private final RedisTemplate<String, String> redisTemplate;
     private final StatsService statsService;
+    private final com.abhedyam.repository.ShopMemberRepository memberRepository;
 
     @Override
     public Payment create(Payment payment) {
@@ -565,6 +566,11 @@ public class PaymentService implements IPaymentService {
                 (v1, v2) -> v1
             ));
         
+        // "by Ravi": names of the shop's family members / helpers
+        java.util.Map<UUID, String> memberNames = new java.util.HashMap<>();
+        if (!sortedPayments.isEmpty()) {
+            memberRepository.findByOwnerId(sortedPayments.get(0).getOwnerId()).forEach(m -> memberNames.put(m.getId(), m.getName()));
+        }
         return sortedPayments.stream()
                 .map(payment -> {
                     String customerName = customerNameMap.getOrDefault(
@@ -578,7 +584,7 @@ public class PaymentService implements IPaymentService {
                         }
                     }
                     
-                    return new PaymentResponse(
+                    PaymentResponse r = new PaymentResponse(
                             payment.getId(),
                             payment.getCustomerId(),
                             customerName,
@@ -594,6 +600,8 @@ public class PaymentService implements IPaymentService {
                             payment.getUpdatedAt(),
                             Boolean.TRUE.equals(payment.getWriteOff())
                     );
+                    if (payment.getAddedBy() != null) r.setAddedByName(memberNames.get(payment.getAddedBy()));
+                    return r;
                 })
                 .toList();
     }

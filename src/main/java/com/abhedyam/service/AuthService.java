@@ -37,6 +37,8 @@ public class AuthService {
     private final LocationDetailsRepository locationDetailsRepository;
     private final JwtUtil jwtUtil;
     private final OwnerSessionService sessionService;
+    private final ShopMemberService memberService;
+    private final com.abhedyam.repository.ShopMemberRepository memberRepository;
 
     @Transactional
     public AuthResponse loginWithGoogle(GoogleLoginRequest request) {
@@ -77,6 +79,9 @@ public class AuthService {
             }
             user.setFirebaseUid(googleUser.getFirebaseUid());
             log.info("Owner logged in with email, linked Firebase UID: {}", googleUser.getFirebaseUid());
+        } else if (memberService.activeMember(googleUser.getFirebaseUid(), normalizedEmail).isPresent()) {
+            // a family member / helper signing in again (new phone, after logout): into the shop they joined
+            return memberAuth(memberService.activeMember(googleUser.getFirebaseUid(), normalizedEmail).get(), deviceId, deviceName);
         } else {
             Owner newOwner = new Owner();
             newOwner.setName(googleUser.getName() != null && !googleUser.getName().trim().isEmpty()
@@ -145,6 +150,47 @@ public class AuthService {
         return refresh(token, null, null);
     }
 
+    /**
+     * Join a shop from an invite link. One Gmail = one shop: refused if this Gmail owns a shop or is already
+     * in another one. The invite works once and for 48 h.
+     */
+    @Transactional
+    public AuthResponse joinShop(com.abhedyam.dto.JoinShopRequest request, String deviceId, String deviceName) {
+        GoogleUserInfo googleUser = googleOAuthService.verifyToken(request.getIdToken());
+        String email = EmailUtil.normalizeEmail(googleUser.getEmail());
+        com.abhedyam.model.ShopMember invite = memberService.usableInvite(request.getCode())
+                .orElseThrow(() -> new com.abhedyam.exception.BusinessException("INVITE_INVALID",
+                        "This invite has expired or was already used. Ask the shop owner to share a new one"));
+        if (userRepository.findByFirebaseUid(googleUser.getFirebaseUid()).isPresent() || userRepository.findByEmail(email).isPresent()) {
+            throw new com.abhedyam.exception.BusinessException("GMAIL_HAS_SHOP",
+                    "This Gmail already has its own shop. Join with another Gmail");
+        }
+        if (memberService.activeMember(googleUser.getFirebaseUid(), email).isPresent()) {
+            throw new com.abhedyam.exception.BusinessException("GMAIL_IN_SHOP",
+                    "This Gmail is already in a shop. Join with another Gmail");
+        }
+        return memberAuth(memberService.accept(invite, googleUser.getFirebaseUid(), email), deviceId, deviceName);
+    }
+
+    private AuthResponse memberAuth(com.abhedyam.model.ShopMember member, String deviceId, String deviceName) {
+        UUID sid = sessionService.start(member.getOwnerId(), member.getId(), deviceId, deviceName).getId();
+        return memberResponse(member, sid);
+    }
+
+    /** userId is the shop owner's id, so the app's /owners/{id}/... calls work unchanged. */
+    private AuthResponse memberResponse(com.abhedyam.model.ShopMember member, UUID sessionId) {
+        Owner owner = ownerRepository.findById(member.getOwnerId()).filter(o -> Boolean.TRUE.equals(o.getIsActive()))
+                .orElseThrow(() -> new com.abhedyam.exception.BusinessException("SESSION_REVOKED", "This shop is closed"));
+        String phone = owner.getPhoneNormalized() != null ? owner.getPhoneNormalized() : owner.getEmail();
+        AuthResponse r = new AuthResponse(
+                jwtUtil.generateToken(owner.getId(), phone, sessionId, member.getId(), member.getRole().name()),
+                owner.getId().toString(), phone, member.getName(), false, UserType.BUSINESS, null, owner.getCreatedAt());
+        r.setMemberId(member.getId());
+        r.setMemberRole(member.getRole().name());
+        r.setShopName(owner.getBusinessName());
+        return r;
+    }
+
     @Transactional
     public AuthResponse refresh(String token, String deviceId, String deviceName) {
         if (!jwtUtil.validateToken(token)) {
@@ -152,6 +198,15 @@ public class AuthService {
         }
         java.util.UUID userId = jwtUtil.getUserIdFromToken(token);
         String phone = jwtUtil.getPhoneFromToken(token);
+        UUID memberId = jwtUtil.getMemberIdFromToken(token);
+        if (memberId != null) {
+            com.abhedyam.model.ShopMember member = memberRepository.findById(memberId)
+                    .filter(m -> m.getStatus() == com.abhedyam.model.ShopMember.Status.ACTIVE && userId.equals(m.getOwnerId()))
+                    .orElseThrow(() -> new com.abhedyam.exception.BusinessException("SESSION_REVOKED",
+                            "You were removed from this shop. Ask the owner to add you again"));
+            UUID sid = sessionService.renew(userId, jwtUtil.getSessionIdFromToken(token), deviceId, deviceName).getId();
+            return memberResponse(member, sid);
+        }
         if (ownerRepository.existsById(userId)) {
             Owner owner = ownerRepository.findById(userId).orElseThrow();
             String tokenPhone = owner.getPhoneNormalized() != null ? owner.getPhoneNormalized() : owner.getEmail();

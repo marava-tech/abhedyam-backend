@@ -26,23 +26,34 @@ public class OwnerSessionService {
     private final OwnerSessionRepository repository;
     private final FcmDetailsRepository fcmDetailsRepository;
     private final FcmService fcmService;
+    private final com.abhedyam.repository.ShopMemberRepository memberRepository;
 
     /** Login on a phone. Same phone signing in again keeps its row; a new phone tells the owner's other phones. */
     @Transactional
     public OwnerSession start(UUID ownerId, String deviceId, String deviceName) {
+        return start(ownerId, null, deviceId, deviceName);
+    }
+
+    /** [memberId]: a family member / helper signing in (null = the owner). */
+    @Transactional
+    public OwnerSession start(UUID ownerId, UUID memberId, String deviceId, String deviceName) {
         String device = blankToNull(deviceId);
         if (device != null) {
             var existing = repository.findFirstByOwnerIdAndDeviceIdAndRevokedAtIsNull(ownerId, device);
-            if (existing.isPresent()) return touch(existing.get(), deviceName);
+            if (existing.isPresent() && java.util.Objects.equals(existing.get().getMemberId(), memberId)) {
+                return touch(existing.get(), deviceName);
+            }
+            existing.ifPresent(old -> revoke(ownerId, old.getId())); // same phone, other person: old sign-in ends
         }
         boolean hasOthers = !repository.findByOwnerIdAndRevokedAtIsNullOrderByLastSeenAtDesc(ownerId).isEmpty();
         OwnerSession s = new OwnerSession();
         s.setOwnerId(ownerId);
+        s.setMemberId(memberId);
         s.setDeviceId(device);
         s.setDeviceName(name(deviceName));
         s.setLastSeenAt(Instant.now());
         s = repository.save(s);
-        if (hasOthers) tellOtherPhones(ownerId, s.getDeviceName());
+        if (hasOthers && memberId == null) tellOtherPhones(ownerId, s.getDeviceName()); // members: "joined" push instead
         return s;
     }
 
@@ -58,9 +69,12 @@ public class OwnerSessionService {
 
     @Transactional(readOnly = true)
     public List<SessionResponse> list(UUID ownerId, UUID currentSessionId) {
+        Map<UUID, String> names = new java.util.HashMap<>();
+        memberRepository.findByOwnerId(ownerId).forEach(m -> names.put(m.getId(), m.getName()));
         return repository.findByOwnerIdAndRevokedAtIsNullOrderByLastSeenAtDesc(ownerId).stream()
                 .map(s -> new SessionResponse(s.getId(), s.getDeviceName() == null ? "Phone (older app version)" : s.getDeviceName(),
-                        s.getCreatedAt(), s.getLastSeenAt(), s.getId().equals(currentSessionId)))
+                        s.getCreatedAt(), s.getLastSeenAt(), s.getId().equals(currentSessionId),
+                        s.getMemberId() == null ? null : names.get(s.getMemberId())))
                 .toList();
     }
 
@@ -74,6 +88,12 @@ public class OwnerSessionService {
         s.setRevokedAt(Instant.now());
         repository.save(s);
         if (s.getDeviceId() != null) fcmDetailsRepository.deleteByUserIdAndDeviceId(ownerId, s.getDeviceId());
+    }
+
+    /** A member was removed: every phone they are signed in on is logged out. */
+    @Transactional
+    public void revokeMember(UUID ownerId, UUID memberId) {
+        for (OwnerSession s : repository.findByMemberIdAndRevokedAtIsNull(memberId)) revoke(ownerId, s.getId());
     }
 
     /** "Log out all other phones". Returns how many. */

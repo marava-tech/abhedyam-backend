@@ -132,7 +132,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
-            UserPrincipal userPrincipal = new UserPrincipal(userId, phone, sessionId);
+            UserPrincipal userPrincipal = new UserPrincipal(userId, phone, sessionId,
+                    jwtUtil.getMemberIdFromToken(token), jwtUtil.getRoleFromToken(token));
 
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     userPrincipal,

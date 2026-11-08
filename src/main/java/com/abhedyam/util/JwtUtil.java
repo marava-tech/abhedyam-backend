@@ -35,6 +35,11 @@ public class JwtUtil {
 
     /** [sessionId]: the owner_sessions row of this phone (claim "sid"), so the phone can be logged out from another one. */
     public String generateToken(UUID userId, String phone, UUID sessionId) {
+        return generateToken(userId, phone, sessionId, null, null);
+    }
+
+    /** A family member / helper: sub stays the shop owner's id; [memberId] (claim "mid") and [role] say who it is. */
+    public String generateToken(UUID userId, String phone, UUID sessionId, UUID memberId, String role) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
         
@@ -42,6 +47,8 @@ public class JwtUtil {
                 .subject(userId.toString())
                 .claim("phone", phone)
                 .claim("sid", sessionId == null ? null : sessionId.toString())
+                .claim("mid", memberId == null ? null : memberId.toString())
+                .claim("role", role)
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSigningKey())
@@ -65,6 +72,17 @@ public class JwtUtil {
         return UUID.fromString(getClaimFromToken(token, Claims::getSubject));
     }
     
+    /** Family member / helper id (claim "mid"); null = the owner. */
+    public UUID getMemberIdFromToken(String token) {
+        String mid = getClaimFromToken(token, claims -> claims.get("mid", String.class));
+        return mid == null ? null : UUID.fromString(mid);
+    }
+
+    /** FAMILY / HELPER; null = the owner. */
+    public String getRoleFromToken(String token) {
+        return getClaimFromToken(token, claims -> claims.get("role", String.class));
+    }
+
     /** Null for tokens made before sessions existed (and for customer/admin tokens). */
     public UUID getSessionIdFromToken(String token) {
         String sid = getClaimFromToken(token, claims -> claims.get("sid", String.class));

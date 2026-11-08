@@ -21,13 +21,16 @@ public class AsyncConfig {
         executor.setThreadNamePrefix("audit-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(60);
+        // who made the request travels with the task, so rows it saves get added_by ("by Ravi")
+        executor.setTaskDecorator(org.springframework.security.concurrent.DelegatingSecurityContextRunnable::new);
         executor.initialize();
         return executor;
     }
     
     @Bean(name = "virtualThreadExecutor")
     public Executor virtualThreadExecutor() {
-        return Executors.newVirtualThreadPerTaskExecutor();
+        // same: copy the caller's security context into the task (audit rows get added_by)
+        return new org.springframework.security.concurrent.DelegatingSecurityContextExecutor(Executors.newVirtualThreadPerTaskExecutor());
     }
 }
 

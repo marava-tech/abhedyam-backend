@@ -75,6 +75,27 @@ public class OwnerSettingsService implements IOwnerSettingsService {
         return ownerSettingsRepository.findByOwnerId(ownerId).map(s -> Boolean.TRUE.equals(s.getVillageModeEnabled())).orElse(false);
     }
 
+    @Override
+    @Transactional
+    public OwnerSettingsResponse addChaseContacted(UUID ownerId, String customerId) {
+        validateOwnerAccess(ownerId);
+        if (customerId == null || customerId.isBlank()) {
+            throw new com.abhedyam.exception.BusinessException("VALIDATION_ERROR", "customerId is required");
+        }
+        ownerSettingsRepository.insertDefaultsIfAbsent(ownerId.toString());
+        OwnerSettings settings = ownerSettingsRepository.lockByOwnerId(ownerId).orElseThrow();
+        String today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata")).toString();
+        java.util.Map<String, Object> flags = settings.getOtherFlags() == null ? new java.util.HashMap<>() : new java.util.HashMap<>(settings.getOtherFlags());
+        java.util.List<Object> ids = new java.util.ArrayList<>();
+        if (flags.get("chaseContacted") instanceof java.util.Map<?, ?> cur && today.equals(cur.get("on")) && cur.get("ids") instanceof java.util.List<?> old) {
+            ids.addAll(old);
+        }
+        if (!ids.contains(customerId)) ids.add(customerId);
+        flags.put("chaseContacted", java.util.Map.of("on", today, "ids", ids));
+        settings.setOtherFlags(flags);
+        return toResponse(ownerSettingsRepository.save(settings));
+    }
+
     /**
      * Two phones each send only the key they changed, so merge instead of replacing the map
      * (replacing lost the other phone's change). A null value removes the key.

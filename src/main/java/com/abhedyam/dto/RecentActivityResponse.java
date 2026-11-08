@@ -48,5 +48,11 @@ public class RecentActivityResponse {
 
     @Schema(description = "Activity timestamp", example = "2025-11-15T10:51:15.325Z", accessMode = Schema.AccessMode.READ_ONLY)
     private Instant timestamp;
-}
 
+    @Schema(description = "Family member / helper who made this (by Ravi); null = the owner")
+    private String addedBy;
+
+    public RecentActivityResponse(UUID id, AuditType type, AuditAction action, String headline, String description, BigDecimal amount, UUID entityId, UUID customerId, String customerName, String detail, Instant timestamp) {
+        this(id, type, action, headline, description, amount, entityId, customerId, customerName, detail, timestamp, null);
+    }
+}

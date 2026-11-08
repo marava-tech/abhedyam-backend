@@ -27,6 +27,16 @@ public class AuthController {
         return ApiResponse.success(response);
     }
 
+    @PostMapping("/google/join")
+    @ResponseStatus(HttpStatus.OK)
+    @io.swagger.v3.oas.annotations.Operation(summary = "Join a shop from an invite (family member / helper)",
+            description = "Google sign-in + invite code. One Gmail = one shop. Returns a token for the shop (userId = owner id) with memberId/memberRole.")
+    public ApiResponse<AuthResponse> joinShop(@Valid @RequestBody com.abhedyam.dto.JoinShopRequest request,
+            @RequestHeader(value = "X-Device-Id", required = false) String deviceId,
+            @RequestHeader(value = "X-Device-Name", required = false) String deviceName) {
+        return ApiResponse.success(authService.joinShop(request, deviceId, deviceName));
+    }
+
     @PostMapping("/phone/login")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<AuthResponse> loginWithPhone(@Valid @RequestBody PhoneLoginRequest request) {
