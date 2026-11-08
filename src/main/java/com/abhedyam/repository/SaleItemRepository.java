@@ -50,6 +50,10 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, UUID> {
            "WHERE s.ownerId = :ownerId GROUP BY s.customerId")
     List<Object[]> sumTotalsByCustomer(@Param("ownerId") UUID ownerId);
 
+    /** customerId, created-at of that customer's latest sale. */
+    @Query("SELECT s.customerId, MAX(s.createdAt) FROM SaleItem s WHERE s.ownerId = :ownerId GROUP BY s.customerId")
+    List<Object[]> lastSaleByCustomer(@Param("ownerId") UUID ownerId);
+
     /** customerId, created-at of that customer's oldest sale not yet fully paid. */
     @Query("SELECT s.customerId, MIN(s.createdAt) FROM SaleItem s " +
            "WHERE s.ownerId = :ownerId AND s.status <> com.abhedyam.model.enums.SaleItemStatus.FULLY_PAID " +

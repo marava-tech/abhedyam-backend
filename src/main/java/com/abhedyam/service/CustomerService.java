@@ -52,6 +52,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -352,6 +353,14 @@ public class CustomerService implements ICustomerService {
         return total;
     }
 
+    private static Map<UUID, Instant> latestByCustomer(List<Object[]> rows) {
+        Map<UUID, Instant> out = new HashMap<>();
+        for (Object[] r : rows) {
+            if (r[0] != null && r[1] != null) out.put(UUID.fromString(r[0].toString()), r[1] instanceof Instant i ? i : ((java.sql.Timestamp) r[1]).toInstant());
+        }
+        return out;
+    }
+
     /**
      * sortBy=pendingAmount and/or owesOnly: pending is not a column, so filter/sort/page in memory
      * (an owner has at most thousands of customers). Without byPending the village order is kept.
@@ -380,9 +389,14 @@ public class CustomerService implements ICustomerService {
         Map<UUID, String> villageMap = ids.isEmpty() ? Map.of() : locationDetailsRepository.findByUserIdIn(ids).stream()
             .filter(l -> l.getVillage() != null) // toMap rejects null values; no village = absent
             .collect(Collectors.toMap(LocationDetails::getUserId, LocationDetails::getVillage, (a, b) -> a));
+        // Home's "who to chase" dates: updatedAt only moves when the customer's details are edited.
+        Map<UUID, Instant> lastSale = ids.isEmpty() ? Map.of() : latestByCustomer(saleItemRepository.lastSaleByCustomer(ownerId));
+        Map<UUID, Instant> lastPayment = ids.isEmpty() ? Map.of() : latestByCustomer(paymentRepository.lastSuccessfulPaymentByCustomer(ownerId));
         List<CustomerResponse> responses = pageRows.stream().map(c -> {
             CustomerResponse r = CustomerResponse.fromEntity(c, villageMap.get(c.getId()));
             r.setPendingAmount(pending.getOrDefault(c.getId(), BigDecimal.ZERO));
+            r.setLastSaleAt(lastSale.get(c.getId()));
+            r.setLastPaymentAt(lastPayment.get(c.getId()));
             return r;
         }).toList();
         int totalPages = (int) Math.ceil(rows.size() / (double) sz);
