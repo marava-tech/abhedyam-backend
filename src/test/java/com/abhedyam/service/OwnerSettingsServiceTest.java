@@ -78,4 +78,19 @@ class OwnerSettingsServiceTest {
         verify(ownerSettingsRepository).insertDefaultsIfAbsent(ownerId.toString());
         verify(ownerSettingsRepository, never()).save(any());
     }
+
+    @Test
+    void mergeFlags_KeepsOtherPhonesKeysAndNullRemoves() {
+        java.util.Map<String, Object> current = new java.util.HashMap<>(java.util.Map.of("hideAmounts", true, "homeTools", List.of("a")));
+        java.util.Map<String, Object> changes = new java.util.HashMap<>();
+        changes.put("customerSms", false);
+        changes.put("homeTools", null);
+
+        java.util.Map<String, Object> merged = OwnerSettingsService.mergeFlags(current, changes);
+
+        assertEquals(true, merged.get("hideAmounts"));
+        assertEquals(false, merged.get("customerSms"));
+        assertFalse(merged.containsKey("homeTools"));
+        assertEquals(1, OwnerSettingsService.mergeFlags(null, java.util.Map.of("x", 1)).size());
+    }
 }

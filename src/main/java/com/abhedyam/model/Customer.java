@@ -23,4 +23,8 @@ public class Customer extends User {
     /** Owner stopped chasing this customer: left out of Who to chase / Old dues. Balance unchanged. */
     @Column(name = "chase_paused")
     private Boolean chasePaused;
+
+    /** Goes up on every edit. Phones send the number they loaded, so an old edit form can't overwrite a newer edit. */
+    @Column(name = "edit_version", nullable = false, columnDefinition = "BIGINT NOT NULL DEFAULT 0")
+    private long editVersion;
 }

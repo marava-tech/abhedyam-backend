@@ -22,4 +22,7 @@ public class CustomerUpdateRequest {
     
     @Schema(description = "Longitude", example = "77.6245")
     private BigDecimal longitude;
+
+    @Schema(description = "editVersion the phone loaded; if the customer changed since, 409 STALE_EDIT. Leave out to skip the check (old apps).", example = "3")
+    private Long editVersion;
 }
