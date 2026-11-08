@@ -195,7 +195,32 @@ public class PaymentService implements IPaymentService {
     @Override
     @Transactional
     public com.abhedyam.dto.CollectPaymentResponse collectFromCustomer(UUID ownerId, com.abhedyam.dto.CollectPaymentRequest request) {
-        return collect(ownerId, request, false);
+        String key = request.getIdempotencyKey() == null || request.getIdempotencyKey().isBlank()
+                ? null : "payment:idempotency:client:" + ownerId + ":" + request.getIdempotencyKey().trim();
+        if (key != null && !claimOnce(key)) {
+            log.warn("Duplicate payment request ignored: {}", key);
+            return new com.abhedyam.dto.CollectPaymentResponse(request.getCustomerId(), request.getAmount(), List.of());
+        }
+        try {
+            return collect(ownerId, request, false);
+        } catch (RuntimeException e) {
+            if (key != null) release(key); // not recorded, so a retry must go through
+            throw e;
+        }
+    }
+
+    /** True the first time a key is seen in 10 minutes. Redis down = allow (never block taking money). */
+    private boolean claimOnce(String key) {
+        try {
+            return !Boolean.FALSE.equals(redisTemplate.opsForValue().setIfAbsent(key, "1", java.time.Duration.ofMinutes(10)));
+        } catch (Exception e) {
+            log.warn("Redis idempotency check failed, recording payment: {}", e.getMessage());
+            return true;
+        }
+    }
+
+    private void release(String key) {
+        try { redisTemplate.delete(key); } catch (Exception ignored) { }
     }
 
     /** Old dues that will not come back: closes the whole open balance (oldest sale first), no money in, no notice. */

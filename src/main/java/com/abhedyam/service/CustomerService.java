@@ -168,6 +168,11 @@ public class CustomerService implements ICustomerService {
         if (!ownerId.equals(customer.getOwnerId())) {
             throw new BusinessException(ErrorCodes.UNAUTHORIZED, "You don't have access to this customer");
         }
+        // ponytail: check-then-save, two saves in the same millisecond can both pass; add @Version if that ever matters
+        if (request.getEditVersion() != null && request.getEditVersion() != customer.getEditVersion()) {
+            throw new BusinessException(ErrorCodes.STALE_EDIT, "This customer was changed on another phone. Reload and try again");
+        }
+        customer.setEditVersion(customer.getEditVersion() + 1);
 
         if (request.getName() != null && !request.getName().trim().isEmpty()) {
             customer.setName(request.getName().trim());

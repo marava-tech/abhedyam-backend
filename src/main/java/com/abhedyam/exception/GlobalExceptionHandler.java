@@ -63,7 +63,9 @@ public class GlobalExceptionHandler {
             ? HttpStatus.FORBIDDEN 
             : "RATE_LIMITED".equals(ex.getErrorCode())
                 ? HttpStatus.TOO_MANY_REQUESTS
-                : HttpStatus.BAD_REQUEST;
+                : "STALE_EDIT".equals(ex.getErrorCode())
+                    ? HttpStatus.CONFLICT
+                    : HttpStatus.BAD_REQUEST;
         
         log.warn("Business error [{}]: {}", ex.getErrorCode(), ex.getMessage());
         return ResponseEntity.status(status).body(error);

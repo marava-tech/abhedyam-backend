@@ -57,7 +57,7 @@ public class OwnerSettingsService implements IOwnerSettingsService {
             settings.setLocationToolsEnabled(request.getLocationToolsEnabled());
         }
         if (request.getOtherFlags() != null) {
-            settings.setOtherFlags(request.getOtherFlags());
+            settings.setOtherFlags(mergeFlags(settings.getOtherFlags(), request.getOtherFlags()));
         }
         
         OwnerSettings saved = ownerSettingsRepository.save(settings);
@@ -69,6 +69,19 @@ public class OwnerSettingsService implements IOwnerSettingsService {
     @Transactional(readOnly = true)
     public boolean villageMode(UUID ownerId) {
         return ownerSettingsRepository.findByOwnerId(ownerId).map(s -> Boolean.TRUE.equals(s.getVillageModeEnabled())).orElse(false);
+    }
+
+    /**
+     * Two phones each send only the key they changed, so merge instead of replacing the map
+     * (replacing lost the other phone's change). A null value removes the key.
+     */
+    static java.util.Map<String, Object> mergeFlags(java.util.Map<String, Object> current, java.util.Map<String, Object> changes) {
+        java.util.Map<String, Object> merged = current == null ? new java.util.HashMap<>() : new java.util.HashMap<>(current);
+        changes.forEach((k, v) -> {
+            if (v == null) merged.remove(k);
+            else merged.put(k, v);
+        });
+        return merged;
     }
 
     private OwnerSettingsResponse toResponse(OwnerSettings settings) {

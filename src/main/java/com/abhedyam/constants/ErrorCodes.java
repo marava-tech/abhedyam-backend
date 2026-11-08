@@ -4,6 +4,8 @@ public final class ErrorCodes {
     private ErrorCodes() {}
     
     public static final String UNAUTHORIZED = "UNAUTHORIZED";
+    /** The record changed on another phone since this one loaded it (409). */
+    public static final String STALE_EDIT = "STALE_EDIT";
     public static final String NOT_FOUND = "NOT_FOUND";
     public static final String INVALID = "INVALID";
     public static final String MISSING = "MISSING";
