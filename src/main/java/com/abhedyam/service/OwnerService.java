@@ -232,11 +232,13 @@ public class OwnerService implements IOwnerService {
         BigDecimal totalSalesAmount = saleItemRepository.sumTotalsByCustomer(ownerId).stream()
             .map(r -> new BigDecimal(r[1].toString()))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalCollectedAmount = paymentRepository.sumSuccessfulByCustomer(ownerId).stream()
+        // Balance counts write-offs (they close the due); "collected" does not (no money came in).
+        BigDecimal settledAmount = paymentRepository.sumSuccessfulByCustomer(ownerId).stream()
             .map(r -> new BigDecimal(r[1].toString()))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
-        BigDecimal totalPendingAmount = totalSalesAmount.subtract(totalCollectedAmount);
+        BigDecimal totalCollectedAmount = paymentRepository.sumCollected(ownerId);
+
+        BigDecimal totalPendingAmount = totalSalesAmount.subtract(settledAmount);
         if (totalPendingAmount.compareTo(BigDecimal.ZERO) < 0) {
             totalPendingAmount = BigDecimal.ZERO;
         }

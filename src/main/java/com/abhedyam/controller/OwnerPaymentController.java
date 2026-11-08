@@ -29,6 +29,25 @@ public class OwnerPaymentController {
         return ApiResponse.success(paymentService.collectFromCustomer(ownerId, request));
     }
 
+    @PostMapping("/write-off")
+    @Operation(summary = "Write off a customer's whole balance",
+            description = "For dues that will not come back. Closes the open balance oldest sale first; kept in the ledger as 'Written off', never counted as collected. Undo by deleting those payments.")
+    public ApiResponse<com.abhedyam.dto.CollectPaymentResponse> writeOff(
+            @PathVariable UUID ownerId,
+            @RequestBody java.util.Map<String, UUID> body) {
+        UUID customerId = body.get("customerId");
+        if (customerId == null) {
+            throw new com.abhedyam.exception.BusinessException(com.abhedyam.constants.ErrorCodes.VALIDATION_ERROR, "customerId is required");
+        }
+        return ApiResponse.success(paymentService.writeOffCustomer(ownerId, customerId));
+    }
+
+    @DeleteMapping("/write-off/{customerId}")
+    @Operation(summary = "Undo a write-off", description = "Puts the written-off amounts back on the customer's sales.")
+    public ApiResponse<java.util.Map<String, Integer>> undoWriteOff(@PathVariable UUID ownerId, @PathVariable UUID customerId) {
+        return ApiResponse.success(java.util.Map.of("removed", paymentService.undoWriteOff(ownerId, customerId)));
+    }
+
     @GetMapping
     @Operation(summary = "List payments", description = "List payments for an owner with search and pagination")
     public ApiResponse<PageResponse<PaymentResponse>> listPayments(

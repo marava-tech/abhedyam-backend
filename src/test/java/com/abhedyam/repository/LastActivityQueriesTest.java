@@ -61,6 +61,25 @@ class LastActivityQueriesTest {
         assertEquals(0, new BigDecimal("2").compareTo(payments.sumSuccessfulBetween(owner, from, to)));
     }
 
+    @Test
+    void writeOffClosesTheBalanceButIsNeverMoneyIn() {
+        UUID owner = UUID.randomUUID(), customer = UUID.randomUUID();
+        Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+        Instant from = now.minus(1, ChronoUnit.HOURS), to = now.plus(1, ChronoUnit.HOURS);
+        pay(owner, customer, now.minus(30, ChronoUnit.DAYS), PaymentStatus.SUCCESS);   // real ₹1, 30 days ago
+        Payment w = pay(owner, customer, now, PaymentStatus.SUCCESS);                 // ₹1 written off today
+        w.setWriteOff(true);
+        payments.save(w);
+
+        // balance side: both rows close the due
+        assertEquals(0, new BigDecimal("2").compareTo(new BigDecimal(payments.sumSuccessfulByCustomer(owner).get(0)[1].toString())));
+        // money-in side: the write-off is invisible
+        assertEquals(0, new BigDecimal("1").compareTo(payments.sumCollected(owner)));
+        assertEquals(0, BigDecimal.ZERO.compareTo(payments.sumSuccessfulBetween(owner, from, to)));
+        assertEquals(0, payments.countSuccessfulBetween(owner, from, to));
+        assertEquals(now.minus(30, ChronoUnit.DAYS), toInstant(payments.lastSuccessfulPaymentByCustomer(owner).get(0)[1]));
+    }
+
     private static Instant toInstant(Object o) {
         return o instanceof Instant i ? i : ((java.sql.Timestamp) o).toInstant();
     }
@@ -72,10 +91,10 @@ class LastActivityQueriesTest {
         sales.save(s);
     }
 
-    private void pay(UUID owner, UUID customer, Instant at, PaymentStatus status) {
+    private Payment pay(UUID owner, UUID customer, Instant at, PaymentStatus status) {
         Payment p = new Payment();
         p.setOwnerId(owner); p.setCustomerId(customer); p.setAmount(BigDecimal.ONE);
         p.setMedium(PaymentMedium.CASH); p.setTimestamp(at); p.setStatus(status);
-        payments.save(p);
+        return payments.save(p);
     }
 }

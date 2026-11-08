@@ -34,6 +34,9 @@ public class CustomerResponse {
     @Schema(description = "Latest successful payment (owesOnly / sortBy=pendingAmount lists only)")
     private Instant lastPaymentAt;
 
+    @Schema(description = "Owner stopped chasing this customer (old dues). Balance unchanged.")
+    private boolean chasePaused;
+
     public static CustomerResponse fromEntity(Customer customer, String village) {
         CustomerResponse response = new CustomerResponse();
         response.setId(customer.getId());
@@ -46,6 +49,7 @@ public class CustomerResponse {
         response.setVillage(village);
         response.setCreatedAt(customer.getCreatedAt());
         response.setUpdatedAt(customer.getUpdatedAt());
+        response.setChasePaused(Boolean.TRUE.equals(customer.getChasePaused()));
         return response;
     }
 }

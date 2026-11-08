@@ -19,4 +19,8 @@ public class Customer extends User {
     @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(columnDefinition = "VARCHAR(36)")
     private UUID ownerId;
+
+    /** Owner stopped chasing this customer: left out of Who to chase / Old dues. Balance unchanged. */
+    @Column(name = "chase_paused")
+    private Boolean chasePaused;
 }

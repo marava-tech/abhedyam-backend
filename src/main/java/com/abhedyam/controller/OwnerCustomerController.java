@@ -44,6 +44,17 @@ public class OwnerCustomerController {
         return ApiResponse.success(customerService.getOwnerCustomers(ownerId, q, village, page, size, sortBy, sortDirection, Boolean.TRUE.equals(includePendingAmountDetails), Boolean.TRUE.equals(owesOnly)));
     }
 
+    @PutMapping("/{customerId}/chase")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Stop or restart chasing a customer",
+            description = "Body {\"paused\": true|false}. Paused customers drop out of Who to chase / Old dues; the balance is unchanged.")
+    public com.abhedyam.dto.ApiResponse<com.abhedyam.dto.CustomerResponse> setChase(
+            @PathVariable java.util.UUID ownerId,
+            @PathVariable java.util.UUID customerId,
+            @RequestBody java.util.Map<String, Boolean> body) {
+        return com.abhedyam.dto.ApiResponse.success(
+                customerService.setChasePaused(ownerId, customerId, Boolean.TRUE.equals(body.get("paused"))));
+    }
+
     @GetMapping("/{customerId}/summary")
     @Operation(summary = "Customer summary", description = "Get basic customer summary for an owner")
     public ApiResponse<CustomerBasicSummaryResponse> getCustomerSummary(

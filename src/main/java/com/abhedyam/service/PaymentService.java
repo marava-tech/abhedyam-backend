@@ -136,6 +136,7 @@ public class PaymentService implements IPaymentService {
         payment.setReference(request.getReference());
         payment.setDueId(request.getDueId());
         payment.setStatus(request.getStatus() != null ? request.getStatus() : PaymentStatus.SUCCESS);
+        payment.setWriteOff(Boolean.TRUE.equals(request.getWriteOff()) ? Boolean.TRUE : null);
         
         Payment savedPayment = paymentRepository.save(payment);
         
@@ -186,16 +187,51 @@ public class PaymentService implements IPaymentService {
                 savedPayment.getReference(),
                 savedPayment.getStatus(),
                 savedPayment.getCreatedAt(),
-                savedPayment.getUpdatedAt()
+                savedPayment.getUpdatedAt(),
+                Boolean.TRUE.equals(savedPayment.getWriteOff())
         );
     }
 
     @Override
     @Transactional
     public com.abhedyam.dto.CollectPaymentResponse collectFromCustomer(UUID ownerId, com.abhedyam.dto.CollectPaymentRequest request) {
+        return collect(ownerId, request, false);
+    }
+
+    /** Old dues that will not come back: closes the whole open balance (oldest sale first), no money in, no notice. */
+    @Override
+    @Transactional
+    public com.abhedyam.dto.CollectPaymentResponse writeOffCustomer(UUID ownerId, UUID customerId) {
+        com.abhedyam.dto.CollectPaymentRequest request = new com.abhedyam.dto.CollectPaymentRequest();
+        request.setCustomerId(customerId);
+        request.setMedium(PaymentMedium.OFFLINE); // old apps know OFFLINE; a new medium would make them throw
+        request.setReference("Written off");
+        return collect(ownerId, request, true);
+    }
+
+    /** Undo a write-off: puts each amount back on its sale and removes the written-off rows. Returns how many. */
+    @Override
+    @Transactional
+    public int undoWriteOff(UUID ownerId, UUID customerId) {
+        validateOwnerAccess(ownerId);
+        List<Payment> rows = paymentRepository.findByCustomerIdAndOwnerId(customerId, ownerId).stream()
+                .filter(p -> Boolean.TRUE.equals(p.getWriteOff()))
+                .toList();
+        for (Payment p : rows) {
+            if (p.getSaleItemId() != null) {
+                saleItemRepository.findById(p.getSaleItemId()).ifPresent(si -> updateSaleItemBalance(si, p.getAmount(), false));
+            }
+        }
+        paymentRepository.deleteAll(rows);
+        invalidateAllRelatedCachesOnPaymentChange(ownerId, customerId);
+        return rows.size();
+    }
+
+    /** [writeOff]: the amount is the whole open balance and the rows are marked written off. */
+    private com.abhedyam.dto.CollectPaymentResponse collect(UUID ownerId, com.abhedyam.dto.CollectPaymentRequest request, boolean writeOff) {
         validateOwnerAccess(ownerId);
 
-        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+        if (!writeOff && (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0)) {
             throw new BusinessException(ErrorCodes.INVALID_AMOUNT, "Payment amount must be greater than zero");
         }
 
@@ -216,6 +252,7 @@ public class PaymentService implements IPaymentService {
         if (totalDue.signum() <= 0) {
             throw new BusinessException(ErrorCodes.NO_DUE_AMOUNT, "No payment is due for this customer");
         }
+        if (writeOff) request.setAmount(totalDue);
         if (request.getAmount().compareTo(totalDue) > 0) {
             throw new BusinessException(ErrorCodes.PAYMENT_EXCEEDS_DUE,
                     String.format("Payment amount (₹%s) cannot exceed the total due (₹%s).", request.getAmount(), totalDue));
@@ -231,6 +268,7 @@ public class PaymentService implements IPaymentService {
             one.setReference(request.getReference());
             one.setStatus(PaymentStatus.SUCCESS);
             one.setDueId(request.getDueId());
+            one.setWriteOff(writeOff ? Boolean.TRUE : null);
             payments.add(createManualPayment(one));
         }
         return new com.abhedyam.dto.CollectPaymentResponse(customer.getId(), request.getAmount(), payments);
@@ -334,7 +372,8 @@ public class PaymentService implements IPaymentService {
                 savedPayment.getReference(),
                 savedPayment.getStatus(),
                 savedPayment.getCreatedAt(),
-                savedPayment.getUpdatedAt()
+                savedPayment.getUpdatedAt(),
+                Boolean.TRUE.equals(savedPayment.getWriteOff())
         );
     }
     
@@ -527,7 +566,8 @@ public class PaymentService implements IPaymentService {
                             payment.getReference(),
                             payment.getStatus(),
                             payment.getCreatedAt(),
-                            payment.getUpdatedAt()
+                            payment.getUpdatedAt(),
+                            Boolean.TRUE.equals(payment.getWriteOff())
                     );
                 })
                 .toList();
@@ -824,7 +864,8 @@ public class PaymentService implements IPaymentService {
                     payment.getReference(),
                     payment.getStatus(),
                     payment.getCreatedAt(),
-                    payment.getUpdatedAt()
+                    payment.getUpdatedAt(),
+                    Boolean.TRUE.equals(payment.getWriteOff())
                 );
             })
             .toList();

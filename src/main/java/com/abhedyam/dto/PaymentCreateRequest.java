@@ -34,5 +34,9 @@ public class PaymentCreateRequest {
     
     @Schema(description = "Payment status", example = "SUCCESS")
     private PaymentStatus status;
+
+    /** Set only by the write-off endpoint (never from the app's payment form). */
+    @io.swagger.v3.oas.annotations.media.Schema(hidden = true)
+    private Boolean writeOff;
 }
 
