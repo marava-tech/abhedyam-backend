@@ -32,4 +32,10 @@ public class OwnerSummaryResponse {
 
     @Schema(description = "Number of successful payments today (Asia/Kolkata)", example = "1")
     private Long collectedTodayCount;
+
+    @Schema(description = "Collected since Monday 00:00 (Asia/Kolkata)", example = "5121.00")
+    private BigDecimal collectedThisWeek;
+
+    @Schema(description = "Collected last week from Monday up to this same weekday and time (fair comparison)", example = "3900.00")
+    private BigDecimal collectedLastWeekSoFar;
 }

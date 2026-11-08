@@ -250,6 +250,7 @@ public class OwnerService implements IOwnerService {
         // In SQL: Home used to add up only the 10 newest payments it had loaded.
         java.time.ZonedDateTime dayStart = java.time.LocalDate.now(zone).atStartOfDay(zone);
         java.time.Instant dayEnd = dayStart.plusDays(1).toInstant();
+        WeekWindow week = WeekWindow.at(java.time.ZonedDateTime.now(zone));
 
         return new OwnerSummaryResponse(
             totalPendingAmount,
@@ -258,7 +259,9 @@ public class OwnerService implements IOwnerService {
             totalCollectedAmount,
             collectedThisMonth,
             paymentRepository.sumSuccessfulBetween(ownerId, dayStart.toInstant(), dayEnd),
-            paymentRepository.countSuccessfulBetween(ownerId, dayStart.toInstant(), dayEnd)
+            paymentRepository.countSuccessfulBetween(ownerId, dayStart.toInstant(), dayEnd),
+            paymentRepository.sumSuccessfulBetween(ownerId, week.thisStart(), week.now()),
+            paymentRepository.sumSuccessfulBetween(ownerId, week.lastStart(), week.lastSameTime())
         );
     }
     
@@ -268,5 +271,15 @@ public class OwnerService implements IOwnerService {
             throw new BusinessException(ErrorCodes.UNAUTHORIZED, "You can only access your own owner profile");
         }
     }
-}
 
+    /** This week (Monday 00:00 → now) and the same stretch last week, so Tuesday is compared with Tuesday. */
+    record WeekWindow(java.time.Instant thisStart, java.time.Instant now, java.time.Instant lastStart, java.time.Instant lastSameTime) {
+        static WeekWindow at(java.time.ZonedDateTime now) {
+            java.time.ZonedDateTime monday = now.toLocalDate()
+                .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+                .atStartOfDay(now.getZone());
+            return new WeekWindow(monday.toInstant(), now.toInstant(),
+                monday.minusWeeks(1).toInstant(), now.minusWeeks(1).toInstant());
+        }
+    }
+}
