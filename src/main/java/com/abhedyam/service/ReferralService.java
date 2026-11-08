@@ -4,9 +4,13 @@ import com.abhedyam.dto.ReferralSummaryResponse;
 import com.abhedyam.exception.BusinessException;
 import com.abhedyam.exception.ResourceNotFoundException;
 import com.abhedyam.model.Owner;
+import com.abhedyam.model.Partner;
+import com.abhedyam.model.PartnerEarning;
 import com.abhedyam.model.Referral;
 import com.abhedyam.model.enums.ReferralStatus;
 import com.abhedyam.repository.OwnerRepository;
+import com.abhedyam.repository.PartnerEarningRepository;
+import com.abhedyam.repository.PartnerRepository;
 import com.abhedyam.repository.ReferralRepository;
 import com.abhedyam.service.interfaces.IReferralService;
 import lombok.RequiredArgsConstructor;
@@ -18,11 +22,13 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 /**
  * Give 15 days, get a month: the friend gets {@link #FRIEND_BONUS_DAYS} extra days when they use a code; the
  * referrer is rewarded only when the friend makes a first Play payment. A payment is the proof the shop is real,
- * so there are no activity or device checks. Spec: specs/billing.md
+ * so there are no activity or device checks. A partner's code (agent / accountant) works the same for the shop;
+ * the partner earns {@link #PARTNER_RUPEES} when the shop first pays. Spec: specs/billing.md
  */
 @Service
 @RequiredArgsConstructor
@@ -32,12 +38,15 @@ public class ReferralService implements IReferralService {
     public static final int FRIEND_BONUS_DAYS = 15;
     public static final int REFERRER_REWARD_DAYS = 30;
     public static final int REFERRER_REWARD_RUPEES = 200;
+    public static final int PARTNER_RUPEES = 250;
 
     private static final String CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I, O, 0, 1
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final OwnerRepository ownerRepository;
     private final ReferralRepository referralRepository;
+    private final PartnerRepository partnerRepository;
+    private final PartnerEarningRepository partnerEarningRepository;
 
     @Override
     @Transactional
@@ -54,7 +63,7 @@ public class ReferralService implements IReferralService {
         long cash = referrals.stream().filter(r -> r.getStatus() == ReferralStatus.PAID && r.getRewardCash()).count()
                 * REFERRER_REWARD_RUPEES;
         return new ReferralSummaryResponse(code, "https://duesetu.com/join?ref=" + code, months, cash,
-                owner.getReferredBy() != null, friends);
+                owner.getReferredBy() != null || owner.getPartnerId() != null, friends);
     }
 
     @Override
@@ -62,14 +71,22 @@ public class ReferralService implements IReferralService {
     public void apply(UUID refereeOwnerId, String rawCode) {
         String code = rawCode == null ? "" : rawCode.trim().toUpperCase();
         Owner referee = find(refereeOwnerId);
-        if (referee.getReferredBy() != null) {
+        if (referee.getReferredBy() != null || referee.getPartnerId() != null) {
             throw new BusinessException("ALREADY_REFERRED", "You have already used a referral code");
         }
         if (referee.getFirstPaidAt() != null) {
             throw new BusinessException("ALREADY_PAID", "Referral codes are for new shops that have not paid yet");
         }
-        Owner referrer = ownerRepository.findByReferralCode(code)
-                .orElseThrow(() -> new BusinessException("CODE_NOT_FOUND", "This code is not right. Check it and try again"));
+        Owner referrer = ownerRepository.findByReferralCode(code).orElse(null);
+        if (referrer == null) {
+            Partner partner = partnerRepository.findByCode(code)
+                    .orElseThrow(() -> new BusinessException("CODE_NOT_FOUND", "This code is not right. Check it and try again"));
+            referee.setPartnerId(partner.getId().toString());
+            BillingService.addDays(referee, FRIEND_BONUS_DAYS);
+            ownerRepository.save(referee);
+            log.info("Partner code used: owner={}, partner={}", refereeOwnerId, partner.getId());
+            return;
+        }
         if (referrer.getId().equals(refereeOwnerId)) {
             throw new BusinessException("SELF_REFERRAL", "You can't use your own code");
         }
@@ -88,6 +105,14 @@ public class ReferralService implements IReferralService {
     @Override
     @Transactional
     public void onFirstPayment(Owner payer) {
+        if (payer.getPartnerId() != null && !partnerEarningRepository.existsByOwnerId(payer.getId())) {
+            PartnerEarning earning = new PartnerEarning();
+            earning.setPartnerId(UUID.fromString(payer.getPartnerId()));
+            earning.setOwnerId(payer.getId());
+            earning.setRupees(PARTNER_RUPEES);
+            partnerEarningRepository.save(earning);
+            log.info("Partner earned ₹{}: partner={}, shop={}", PARTNER_RUPEES, payer.getPartnerId(), payer.getId());
+        }
         Referral referral = referralRepository.findByRefereeOwnerId(payer.getId()).orElse(null);
         if (referral == null || referral.getStatus() == ReferralStatus.PAID) return;
         Owner referrer = ownerRepository.findById(referral.getReferrerOwnerId()).orElse(null);
@@ -109,14 +134,20 @@ public class ReferralService implements IReferralService {
 
     private String codeFor(Owner owner) {
         if (owner.getReferralCode() != null) return owner.getReferralCode();
+        String code = newCode(c -> ownerRepository.existsByReferralCode(c) || partnerRepository.existsByCode(c));
+        owner.setReferralCode(code);
+        ownerRepository.save(owner);
+        return code;
+    }
+
+    /** ABH + 5 unambiguous characters, unique across owner and partner codes. */
+    public static String newCode(Predicate<String> taken) {
         String code;
         do {
             StringBuilder sb = new StringBuilder("ABH");
             for (int i = 0; i < 5; i++) sb.append(CODE_CHARS.charAt(RANDOM.nextInt(CODE_CHARS.length())));
             code = sb.toString();
-        } while (ownerRepository.existsByReferralCode(code));
-        owner.setReferralCode(code);
-        ownerRepository.save(owner);
+        } while (taken.test(code));
         return code;
     }
 
