@@ -17,5 +17,7 @@ public interface FcmDetailsRepository extends JpaRepository<FcmDetails, UUID> {
     List<FcmDetails> findByUserIdAndPackageName(UUID userId, String packageName);
     Optional<FcmDetails> findByUserIdAndTokenAndPackageName(UUID userId, String token, String packageName);
     void deleteByUserIdAndTokenAndPackageName(UUID userId, String token, String packageName);
-}
 
+    @org.springframework.transaction.annotation.Transactional
+    void deleteByUserIdAndDeviceId(UUID userId, String deviceId);
+}

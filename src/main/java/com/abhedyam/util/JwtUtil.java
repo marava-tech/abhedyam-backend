@@ -30,12 +30,18 @@ public class JwtUtil {
     }
     
     public String generateToken(UUID userId, String phone) {
+        return generateToken(userId, phone, null);
+    }
+
+    /** [sessionId]: the owner_sessions row of this phone (claim "sid"), so the phone can be logged out from another one. */
+    public String generateToken(UUID userId, String phone, UUID sessionId) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
         
         return Jwts.builder()
                 .subject(userId.toString())
                 .claim("phone", phone)
+                .claim("sid", sessionId == null ? null : sessionId.toString())
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSigningKey())
@@ -59,6 +65,12 @@ public class JwtUtil {
         return UUID.fromString(getClaimFromToken(token, Claims::getSubject));
     }
     
+    /** Null for tokens made before sessions existed (and for customer/admin tokens). */
+    public UUID getSessionIdFromToken(String token) {
+        String sid = getClaimFromToken(token, claims -> claims.get("sid", String.class));
+        return sid == null ? null : UUID.fromString(sid);
+    }
+
     public String getPhoneFromToken(String token) {
         return getClaimFromToken(token, claims -> claims.get("phone", String.class));
     }

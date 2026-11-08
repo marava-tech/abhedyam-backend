@@ -49,6 +49,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return ownerRepository;
     }
 
+    private com.abhedyam.repository.OwnerSessionRepository sessionRepository;
+
+    private com.abhedyam.repository.OwnerSessionRepository getSessionRepository() {
+        if (sessionRepository == null) {
+            sessionRepository = applicationContext.getBean(com.abhedyam.repository.OwnerSessionRepository.class);
+        }
+        return sessionRepository;
+    }
+
     private CustomerRepository getCustomerRepository() {
         if (customerRepository == null) {
             customerRepository = applicationContext.getBean(CustomerRepository.class);
@@ -115,7 +124,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
 
-            UserPrincipal userPrincipal = new UserPrincipal(userId, phone);
+            UUID sessionId = jwtUtil.getSessionIdFromToken(token);
+            // ponytail: one PK lookup per request; cache it if the DB ever feels it
+            if (sessionId != null && getSessionRepository().existsByIdAndRevokedAtIsNotNull(sessionId)) {
+                sendUnauthorizedError(response, "This phone was logged out from another phone", "SESSION_REVOKED",
+                        request.getRequestURI());
+                return;
+            }
+
+            UserPrincipal userPrincipal = new UserPrincipal(userId, phone, sessionId);
 
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     userPrincipal,

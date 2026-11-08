@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -35,9 +36,16 @@ public class AuthService {
     private final CustomerRepository customerRepository;
     private final LocationDetailsRepository locationDetailsRepository;
     private final JwtUtil jwtUtil;
+    private final OwnerSessionService sessionService;
 
     @Transactional
     public AuthResponse loginWithGoogle(GoogleLoginRequest request) {
+        return loginWithGoogle(request, null, null);
+    }
+
+    /** [deviceId]/[deviceName]: X-Device-Id / X-Device-Name of the phone signing in (null from older apps). */
+    @Transactional
+    public AuthResponse loginWithGoogle(GoogleLoginRequest request, String deviceId, String deviceName) {
         GoogleUserInfo googleUser = googleOAuthService.verifyToken(request.getIdToken());
 
         String normalizedEmail = EmailUtil.normalizeEmail(googleUser.getEmail());
@@ -107,7 +115,8 @@ public class AuthService {
         userRepository.save(user);
 
         String phoneForToken = user.getPhoneNormalized() != null ? user.getPhoneNormalized() : normalizedEmail;
-        String token = jwtUtil.generateToken(user.getId(), phoneForToken);
+        UUID sessionId = sessionService.start(user.getId(), deviceId, deviceName).getId();
+        String token = jwtUtil.generateToken(user.getId(), phoneForToken, sessionId);
 
         return new AuthResponse(
                 token,
@@ -133,6 +142,11 @@ public class AuthService {
 
     @Transactional
     public AuthResponse refresh(String token) {
+        return refresh(token, null, null);
+    }
+
+    @Transactional
+    public AuthResponse refresh(String token, String deviceId, String deviceName) {
         if (!jwtUtil.validateToken(token)) {
             throw new com.abhedyam.exception.BusinessException("INVALID_TOKEN", "Session expired. Please sign in again");
         }
@@ -141,8 +155,10 @@ public class AuthService {
         if (ownerRepository.existsById(userId)) {
             Owner owner = ownerRepository.findById(userId).orElseThrow();
             String tokenPhone = owner.getPhoneNormalized() != null ? owner.getPhoneNormalized() : owner.getEmail();
+            // logged out from another phone → refused, so the app goes to sign in
+            UUID sessionId = sessionService.renew(owner.getId(), jwtUtil.getSessionIdFromToken(token), deviceId, deviceName).getId();
             return new AuthResponse(
-                    jwtUtil.generateToken(owner.getId(), tokenPhone != null ? tokenPhone : phone),
+                    jwtUtil.generateToken(owner.getId(), tokenPhone != null ? tokenPhone : phone, sessionId),
                     owner.getId().toString(),
                     tokenPhone != null ? tokenPhone : phone,
                     owner.getName(),

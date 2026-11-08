@@ -17,6 +17,12 @@ public class UserPrincipal implements UserDetails {
     
     private UUID userId;
     private String phone;
+    /** This phone's session (JWT "sid"); null for old tokens. */
+    private UUID sessionId;
+
+    public UserPrincipal(UUID userId, String phone) {
+        this(userId, phone, null);
+    }
     
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
