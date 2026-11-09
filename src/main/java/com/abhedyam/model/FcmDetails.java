@@ -1,5 +1,7 @@
 package com.abhedyam.model;
 
+import com.abhedyam.model.enums.AppLanguage;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -31,5 +33,10 @@ public class FcmDetails extends BaseEntity {
     
     @Column(length = 50)
     private String deviceType;
+
+    /** The app language on this phone: its pushes are written in it. null (older app) = English. */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 8)
+    private AppLanguage language;
 }
 

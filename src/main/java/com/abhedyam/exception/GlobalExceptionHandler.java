@@ -218,6 +218,21 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(error);
     }
     
+    /** Body that is not valid JSON or has a wrong value (e.g. an unknown language code): the caller's mistake, not a 500. */
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleUnreadableBody(org.springframework.http.converter.HttpMessageNotReadableException ex, WebRequest request) {
+        String path = ((ServletWebRequest) request).getRequest().getRequestURI();
+        log.warn("Unreadable request body on {}: {}", path, ex.getMostSpecificCause().getMessage());
+        ErrorResponse error = new ErrorResponse(
+            "Validation Error",
+            "Request body is not valid",
+            "VALIDATION_ERROR",
+            MDC.get("correlationId"),
+            path
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex, WebRequest request) {
         String correlationId = MDC.get("correlationId");

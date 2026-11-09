@@ -33,7 +33,8 @@ public class FcmController {
             request.getToken(),
             request.getPackageName(),
             request.getDeviceId(),
-            request.getDeviceType()
+            request.getDeviceType(),
+            request.getLanguage()
         );
         
         Map<String, Object> response = new HashMap<>();
