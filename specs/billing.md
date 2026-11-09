@@ -18,7 +18,7 @@ Plan and research: `abhedyam-owner/.product/MONETIZATION_REDESIGN.md`.
   - Unknown/anonymous `app_user_id` → `{applied:false}`, 200.
 - `GET /api/v1/referrals` → `{referralCode, shareLink (duesetu.com/join?ref=CODE), monthsEarned, cashEarned, usedACode, friends[{businessName, joinedAt, paid}]}`.
 - `POST /api/v1/referrals/apply {referralCode}` (owner only): case-insensitive; not own code, not after paying, once per owner. Friend gets +15 days.
-- Admin (`X-Admin-Key`): `POST /admin/owners/{id}/subscription/upgrade` = +365 days, `/downgrade` = access ends now.
+- Admin (TOTP admin token): `POST /admin/shops/{id}/access {days}` adds days, `/access/end` ends access now. See `admin-dashboard.md`.
 
 ## Referral reward
 When the friend first pays: the referrer gets +30 days, or, if the referrer already pays on Play (free days would not stop Google charging), ₹200 by UPI (`referrals.reward_cash = true`, paid by hand). No activity, device or customer-count checks: a payment is the proof.
