@@ -117,10 +117,7 @@ app:
   billing:
     # RevenueCat → Integrations → Webhooks → Authorization header value. Blank = webhook rejects everything.
     revenuecat-webhook-auth: ${REVENUECAT_WEBHOOK_AUTH:}
-  subscription:
-    admin-key: ${SUBSCRIPTION_ADMIN_KEY:}
   admin:
-    key-prefix: ${ADMIN_KEY_PREFIX}
     email: ${ADMIN_EMAIL:kinneramadhu123@gmail.com}
     totp-secret: ${ADMIN_TOTP_SECRET}
   cloudinary:

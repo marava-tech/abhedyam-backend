@@ -71,7 +71,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // Skip if already authenticated by AdminKeyFilter
+        // Skip if something earlier already authenticated this request
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
             log.debug("Already authenticated, skipping JWT validation for path: {}", path);
             filterChain.doFilter(request, response);

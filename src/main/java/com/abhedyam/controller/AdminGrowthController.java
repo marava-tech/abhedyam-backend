@@ -13,12 +13,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** Founder growth tools (admin dashboard). Guarded by AdminKeyFilter like every /api/v1/admin route. */
+/** Founder growth tools (admin dashboard). Admin TOTP token only, like every /api/v1/admin route (SecurityConfig). */
 @RestController
 @RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
 @Tag(name = "Admin growth", description = "Trial call list and partners")
-@SecurityRequirement(name = "AdminKey")
+@SecurityRequirement(name = "Bearer Authentication")
 public class AdminGrowthController {
 
     private final IGrowthAdminService growth;

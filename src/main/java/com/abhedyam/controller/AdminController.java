@@ -28,8 +28,8 @@ public class AdminController {
     private final AdminService adminService;
     
     @GetMapping("/owners")
-    @Operation(summary = "List owners", description = "Get list of owners with filters, pagination and sorting. Requires X-Admin-Key header.")
-    @SecurityRequirement(name = "AdminKey")
+    @Operation(summary = "List owners", description = "Get list of owners with filters, pagination and sorting. Requires the dashboard admin token.")
+    @SecurityRequirement(name = "Bearer Authentication")
     public ApiResponse<PageResponse<AdminOwnerListResponse>> listOwners(
             @Parameter(description = "Filter by username (partial match)") 
             @RequestParam(value = "username", required = false) String username,
@@ -47,8 +47,8 @@ public class AdminController {
     }
     
     @GetMapping("/owners/{ownerId}")
-    @Operation(summary = "Get owner details", description = "Get detailed information about an owner including sales, payments and feedbacks. Requires X-Admin-Key header.")
-    @SecurityRequirement(name = "AdminKey")
+    @Operation(summary = "Get owner details", description = "Get detailed information about an owner including sales, payments and feedbacks. Requires the dashboard admin token.")
+    @SecurityRequirement(name = "Bearer Authentication")
     public ApiResponse<AdminOwnerDetailResponse> getOwnerDetails(
             @Parameter(description = "Owner ID") 
             @PathVariable UUID ownerId,
@@ -62,8 +62,8 @@ public class AdminController {
     }
     
     @PostMapping("/owners/{ownerId}/subscription/upgrade")
-    @Operation(summary = "Upgrade owner subscription", description = "Gives the owner 365 more days of full access. Requires X-Admin-Key header.")
-    @SecurityRequirement(name = "AdminKey")
+    @Operation(summary = "Upgrade owner subscription", description = "Gives the owner 365 more days of full access. Requires the dashboard admin token.")
+    @SecurityRequirement(name = "Bearer Authentication")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public ApiResponse<Void> upgradeSubscription(
             @Parameter(description = "Owner ID") 
@@ -73,8 +73,8 @@ public class AdminController {
     }
     
     @PostMapping("/owners/{ownerId}/subscription/downgrade")
-    @Operation(summary = "Downgrade owner subscription", description = "Ends the owner's full access now (app becomes read-only). Requires X-Admin-Key header.")
-    @SecurityRequirement(name = "AdminKey")
+    @Operation(summary = "Downgrade owner subscription", description = "Ends the owner's full access now (app becomes read-only). Requires the dashboard admin token.")
+    @SecurityRequirement(name = "Bearer Authentication")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public ApiResponse<Void> downgradeSubscription(
             @Parameter(description = "Owner ID") 
@@ -84,8 +84,8 @@ public class AdminController {
     }
     
     @GetMapping("/feedbacks")
-    @Operation(summary = "List feedbacks", description = "Get list of feedbacks with filters, pagination and sorting. Requires X-Admin-Key header.")
-    @SecurityRequirement(name = "AdminKey")
+    @Operation(summary = "List feedbacks", description = "Get list of feedbacks with filters, pagination and sorting. Requires the dashboard admin token.")
+    @SecurityRequirement(name = "Bearer Authentication")
     public ApiResponse<PageResponse<AdminFeedbackResponse>> listFeedbacks(
             @Parameter(description = "Filter by user ID") 
             @RequestParam(value = "userId", required = false) UUID userId,

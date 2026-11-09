@@ -11,7 +11,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +28,9 @@ public class FileUploadService implements IFileUploadService {
         "image/webp", "image/bmp", "image/svg+xml"
     };
     private static final String PDF_TYPE = "application/pdf";
+    // .../<image|raw>/upload/[transforms/][v123/]abhedyam/<id>[.ext]
+    private static final Pattern OUR_UPLOAD = Pattern.compile(
+            "^https?://res\\.cloudinary\\.com/[^/]+/(image|raw)/upload/(?:[^/]+/)*?(" + FOLDER_NAME + "/[^?#]+)$");
     
     @Override
     public FileUploadResponse uploadFile(MultipartFile file) {
@@ -62,6 +68,32 @@ public class FileUploadService implements IFileUploadService {
         }
     }
     
+    @Override
+    public void deleteFiles(Collection<String> urls) {
+        for (String url : urls) {
+            String[] target = cloudinaryTarget(url);
+            if (target == null) continue;
+            try {
+                cloudinary.uploader().destroy(target[1], ObjectUtils.asMap("resource_type", target[0]));
+            } catch (Exception e) {
+                log.warn("Cloudinary delete failed for {}: {}", target[1], e.getMessage());
+            }
+        }
+    }
+
+    /** {resourceType, publicId} for one of our uploads, else null. Image ids drop the extension, raw (PDF) ids keep it. */
+    static String[] cloudinaryTarget(String url) {
+        if (url == null) return null;
+        Matcher m = OUR_UPLOAD.matcher(url.trim());
+        if (!m.matches()) return null;
+        String type = m.group(1), id = m.group(2);
+        if (type.equals("image")) {
+            int dot = id.lastIndexOf('.');
+            if (dot > id.lastIndexOf('/')) id = id.substring(0, dot);
+        }
+        return new String[]{type, id};
+    }
+
     private boolean isImageType(String contentType) {
         if (contentType == null) {
             return false;

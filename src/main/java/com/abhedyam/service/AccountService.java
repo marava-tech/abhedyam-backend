@@ -5,6 +5,7 @@ import com.abhedyam.exception.ResourceNotFoundException;
 import com.abhedyam.model.*;
 import com.abhedyam.repository.*;
 import com.abhedyam.service.interfaces.IAccountService;
+import com.abhedyam.service.interfaces.IFileUploadService;
 import com.abhedyam.util.CsvUtil;
 import com.google.firebase.auth.FirebaseAuth;
 import jakarta.persistence.EntityManager;
@@ -39,6 +40,7 @@ public class AccountService implements IAccountService {
     private EntityManager em;
 
     private final TransactionTemplate tx;
+    private final IFileUploadService fileUploadService;
     private final OwnerRepository ownerRepository;
     private final CustomerRepository customerRepository;
     private final SaleItemRepository saleItemRepository;
@@ -143,10 +145,12 @@ public class AccountService implements IAccountService {
 
     @Override
     public void deleteAccount(UUID ownerId) {
+        Set<String> files = new HashSet<>();
         String firebaseUid = tx.execute(status -> {
             Owner owner = ownerRepository.findById(ownerId)
                     .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
             String uid = owner.getFirebaseUid();
+            files.addAll(uploadedFiles(owner));
 
             for (Class<?> c : OWNER_SCOPED) {
                 em.createQuery("delete from " + c.getSimpleName() + " e where e.ownerId = :o")
@@ -172,7 +176,8 @@ public class AccountService implements IAccountService {
             return uid;
         });
 
-        // After the DB commit; the account is already gone, so a Firebase failure is only logged.
+        // After the DB commit; the account is already gone, so file/Firebase failures are only logged.
+        fileUploadService.deleteFiles(files);
         if (firebaseUid != null && !firebaseUid.isBlank()) {
             try {
                 FirebaseAuth.getInstance().deleteUser(firebaseUid);
@@ -181,6 +186,24 @@ public class AccountService implements IAccountService {
             }
         }
         log.info("Account deleted: owner {}", ownerId);
+    }
+
+    /** URLs of everything this owner uploaded (photos, documents, item images, payment proofs). Shared catalog images are left alone. */
+    private Set<String> uploadedFiles(Owner owner) {
+        UUID o = owner.getId();
+        Set<String> urls = new HashSet<>();
+        urls.add(owner.getImageUrl());
+        for (String q : List.of(
+                "select e.imageUrl from Customer e where e.ownerId = :o",
+                "select e.uploadedUrl from Document e where e.ownerId = :o",
+                "select e.imageUrl from Product e where e.ownerId = :o",
+                "select e.reference from Payment e where e.ownerId = :o and e.reference like 'http%'",
+                "select e.imageUrl from Feedback e where e.userId = :o")) {
+            urls.addAll(em.createQuery(q, String.class).setParameter("o", o).getResultList());
+        }
+        urls.remove(null);
+        urls.removeAll(em.createQuery("select i.imageUrl from ImageStore i", String.class).getResultList());
+        return urls;
     }
 
     @Override
