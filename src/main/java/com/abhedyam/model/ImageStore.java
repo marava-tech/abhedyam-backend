@@ -10,6 +10,7 @@ import java.util.List;
 @Table(name = "image_store")
 @Getter
 @Setter
+/** Admin image store was removed; the table and entity stay only so account deletion never deletes shared catalog pictures old products may point to. */
 public class ImageStore extends BaseEntity {
 
     @Column(nullable = false)

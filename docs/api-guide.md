@@ -20,7 +20,6 @@
 | POST | `/products` |
 | GET | `/stock/{productId}/current` |
 | PUT | `/stock/update` |
-| GET | `/image-store/search` |
 
 ### Customers & CRM
 | Method | Endpoint |
@@ -124,10 +123,26 @@
 
 ---
 
-## Dashboard Admin Panel (11 endpoints)
+## Dashboard Admin Panel (spec: `specs/admin-dashboard.md`, TOTP admin token only)
 
 | Method | Endpoint | Notes |
 |---|---|---|
+| POST | `/auth/admin/login` | email + TOTP → admin token |
+| GET | `/admin/overview` | Today: shops by status, paying by plan, signups, funnel, ₹ owed |
+| GET | `/admin/shops` | `q`, `status`, `sort`, `page`, `size` |
+| GET | `/admin/shops/{ownerId}` | Detail: setup, devices, members, referrals, calls, feedback |
+| POST | `/admin/shops/{ownerId}/access` | `{days}` 1–3650 |
+| POST | `/admin/shops/{ownerId}/access/end` | Read-only now |
+| GET | `/admin/trial-calls` | |
+| POST | `/admin/owners/{ownerId}/calls` | `{stage, note}` |
+| GET | `/admin/referrals` | |
+| POST | `/admin/referrals/{referralId}/cash-paid` | ₹200 paid by UPI |
+| GET | `/admin/partners` | |
+| POST | `/admin/partners` | |
+| POST | `/admin/partners/{partnerId}/payout` | |
+| GET | `/admin/feedbacks` | |
+
+---|---|---|
 | GET | `/admin/owners` | Called twice — login validation + listing |
 | GET | `/admin/owners/{ownerId}` | |
 | POST | `/admin/owners/{ownerId}/subscription/upgrade` | |

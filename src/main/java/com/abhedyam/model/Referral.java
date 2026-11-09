@@ -38,4 +38,7 @@ public class Referral extends BaseEntity {
     /** true: the referrer already pays on Play, so the reward is ₹200 by UPI (paid by hand) instead of free days. */
     @Column(nullable = false)
     private Boolean rewardCash = false;
+
+    /** When the founder paid the ₹200 cash reward by UPI (admin dashboard); null = not paid yet. */
+    private java.time.Instant cashPaidAt;
 }
