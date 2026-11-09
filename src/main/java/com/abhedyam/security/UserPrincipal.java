@@ -14,7 +14,10 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserPrincipal implements UserDetails {
-    
+
+    /** Fixed id of the dashboard admin; only AuthService.adminLogin (TOTP) issues tokens for it. */
+    public static final UUID ADMIN_ID = new UUID(0L, 0L);
+
     private UUID userId;
     private String phone;
     /** This phone's session (JWT "sid"); null for old tokens. */
@@ -32,6 +35,10 @@ public class UserPrincipal implements UserDetails {
         this(userId, phone, sessionId, null, null);
     }
     
+    public boolean isAdmin() {
+        return ADMIN_ID.equals(userId) && "ADMIN".equals(phone);
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.emptyList();

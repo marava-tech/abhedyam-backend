@@ -257,8 +257,7 @@ public class AuthService {
                     "Invalid OTP");
         }
 
-        // Use a fixed UUID for admin
-        java.util.UUID adminId = java.util.UUID.fromString("00000000-0000-0000-0000-000000000000");
+        java.util.UUID adminId = com.abhedyam.security.UserPrincipal.ADMIN_ID;
         String token = jwtUtil.generateToken(adminId, "ADMIN");
 
         return new AuthResponse(

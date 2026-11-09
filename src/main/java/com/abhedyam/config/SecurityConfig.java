@@ -1,16 +1,20 @@
 package com.abhedyam.config;
 
 import com.abhedyam.security.JwtAuthenticationFilter;
+import com.abhedyam.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authorization.AuthorizationDecision;
+import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -26,7 +30,6 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CorrelationIdFilter correlationIdFilter;
     private final LoggingFilter loggingFilter;
-    private final AdminKeyFilter adminKeyFilter;
     private final AuthRateLimitFilter authRateLimitFilter;
 
     @Value("${app.cors.allowed-origins:*}")
@@ -58,16 +61,19 @@ public class SecurityConfig {
                             "/v3/api-docs/**",
                             "/error").permitAll();
 
-                    auth.requestMatchers("/api/v1/admin/**").permitAll()
+                    // Only the dashboard's TOTP login token; an owner or customer token is refused.
+                    AuthorizationManager<RequestAuthorizationContext> adminOnly = (auth2, ctx) ->
+                            new AuthorizationDecision(auth2.get() != null
+                                    && auth2.get().getPrincipal() instanceof UserPrincipal p && p.isAdmin());
+                    auth.requestMatchers("/api/v1/admin/**").access(adminOnly)
                             .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                            .requestMatchers("/actuator/**").authenticated()
+                            .requestMatchers("/actuator/**").access(adminOnly)
                             .anyRequest().authenticated();
                 })
                 .addFilterBefore(authRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(correlationIdFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(loggingFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(adminKeyFilter, jwtAuthenticationFilter.getClass());
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

@@ -31,6 +31,7 @@ class AccountServiceTest {
     @Autowired AccountService service;
     @Autowired AccountExportService exportService;
     @MockBean GmailSender gmailSender;
+    @MockBean com.abhedyam.service.interfaces.IFileUploadService files;
     @MockBean(name = "virtualThreadExecutor") Executor executor;
     @Autowired OwnerRepository owners;
     @Autowired CustomerRepository customers;
@@ -39,9 +40,13 @@ class AccountServiceTest {
     @Autowired OwnerSettingsRepository settings;
     @Autowired EntityManager em;
 
+    private static String url(String name) {
+        return "https://res.cloudinary.com/demo/image/upload/v1/abhedyam/" + name + ".jpg";
+    }
+
     private UUID seed(String name) {
         Owner o = new Owner();
-        o.setName(name); o.setType(com.abhedyam.model.enums.UserType.BUSINESS); o.setPhone("9" + Math.abs(name.hashCode() % 900000000 + 100000000)); o.setBusinessName(name + " store");
+        o.setName(name); o.setImageUrl(url(name)); o.setType(com.abhedyam.model.enums.UserType.BUSINESS); o.setPhone("9" + Math.abs(name.hashCode() % 900000000 + 100000000)); o.setBusinessName(name + " store");
         o = owners.save(o);
         Customer c = new Customer();
         c.setName("C of " + name); c.setType(com.abhedyam.model.enums.UserType.CUSTOMER); c.setPhone("8" + Math.abs(name.hashCode() % 900000000 + 100000000)); c.setOwnerId(o.getId());
@@ -63,6 +68,7 @@ class AccountServiceTest {
         assertTrue(owners.findById(kept).isPresent());
         assertEquals(1, customers.findByOwnerId(kept).size());
         assertEquals(1, sales.findByOwnerId(kept).size());
+        verify(files).deleteFiles(java.util.Set.of(url("Alpha")));
     }
 
     @Test
