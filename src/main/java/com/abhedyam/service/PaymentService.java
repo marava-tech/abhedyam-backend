@@ -253,6 +253,44 @@ public class PaymentService implements IPaymentService {
         return rows.size();
     }
 
+    /**
+     * Cancels payments the owner recorded by mistake, all in one transaction (a Payment in can be several rows).
+     * Each amount goes back on its sale and the row becomes FAILED, so history keeps it ("Cancelled") and every
+     * total, due and last-paid date, which only count SUCCESS, drops it. Rows already cancelled are skipped,
+     * so a retry is safe; a row of another owner or a written-off row rejects the whole request.
+     */
+    @Override
+    @Transactional
+    public int cancelPayments(UUID ownerId, List<UUID> paymentIds) {
+        validateOwnerAccess(ownerId);
+        List<Payment> rows = paymentRepository.findAllById(paymentIds);
+        if (rows.size() != new java.util.HashSet<>(paymentIds).size()) {
+            throw new ResourceNotFoundException("Payment could not be found");
+        }
+        int changed = 0;
+        java.util.Set<UUID> customers = new java.util.HashSet<>();
+        for (Payment p : rows) {
+            if (!ownerId.equals(p.getOwnerId())) {
+                throw new BusinessException(ErrorCodes.UNAUTHORIZED, "You don't have permission to access this payment");
+            }
+            if (Boolean.TRUE.equals(p.getWriteOff())) {
+                throw new BusinessException(ErrorCodes.VALIDATION_ERROR, "A write-off is undone from the customer, not cancelled here");
+            }
+            if (p.getStatus() != PaymentStatus.SUCCESS) continue;
+            if (p.getSaleItemId() != null) {
+                saleItemRepository.findById(p.getSaleItemId()).ifPresent(si -> updateSaleItemBalance(si, p.getAmount(), false));
+            }
+            p.setStatus(PaymentStatus.FAILED);
+            if (p.getReference() == null || p.getReference().isBlank()) p.setReference("Cancelled by owner");
+            customers.add(p.getCustomerId());
+            changed++;
+        }
+        paymentRepository.saveAll(rows);
+        for (UUID customerId : customers) invalidateAllRelatedCachesOnPaymentChange(ownerId, customerId);
+        log.info("Owner {} cancelled {} payment rows", ownerId, changed);
+        return changed;
+    }
+
     /** [writeOff]: the amount is the whole open balance and the rows are marked written off. */
     private com.abhedyam.dto.CollectPaymentResponse collect(UUID ownerId, com.abhedyam.dto.CollectPaymentRequest request, boolean writeOff) {
         validateOwnerAccess(ownerId);

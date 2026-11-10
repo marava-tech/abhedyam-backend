@@ -29,6 +29,15 @@ public class OwnerPaymentController {
         return ApiResponse.success(paymentService.collectFromCustomer(ownerId, request));
     }
 
+    @PostMapping("/cancel")
+    @Operation(summary = "Cancel payments recorded by mistake",
+            description = "Takes the ids from the collect response. Each amount goes back on its sale; the rows stay in history as failed. Safe to repeat.")
+    public ApiResponse<java.util.Map<String, Integer>> cancel(
+            @PathVariable UUID ownerId,
+            @jakarta.validation.Valid @RequestBody com.abhedyam.dto.CancelPaymentsRequest request) {
+        return ApiResponse.success(java.util.Map.of("cancelled", paymentService.cancelPayments(ownerId, request.getPaymentIds())));
+    }
+
     @PostMapping("/write-off")
     @Operation(summary = "Write off a customer's whole balance",
             description = "For dues that will not come back. Closes the open balance oldest sale first; kept in the ledger as 'Written off', never counted as collected. Undo by deleting those payments.")
