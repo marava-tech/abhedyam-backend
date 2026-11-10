@@ -33,7 +33,7 @@ public class AccountService implements IAccountService {
     /** Tables keyed by owner_id that are removed with the owner. */
     private static final List<Class<?>> OWNER_SCOPED = List.of(
             SaleItem.class, Payment.class, Product.class, Inventory.class, Reminder.class, Note.class,
-            Document.class, UPIAccount.class, Audit.class, Notification.class, OwnerSettings.class,
+            UPIAccount.class, Audit.class, Notification.class, OwnerSettings.class,
             DailyStats.class, TopProduct.class);
 
     @PersistenceContext
@@ -188,14 +188,13 @@ public class AccountService implements IAccountService {
         log.info("Account deleted: owner {}", ownerId);
     }
 
-    /** URLs of everything this owner uploaded (photos, documents, item images, payment proofs). Shared catalog images are left alone. */
+    /** URLs of everything this owner uploaded (photos, item images, payment proofs). Shared catalog images are left alone. */
     private Set<String> uploadedFiles(Owner owner) {
         UUID o = owner.getId();
         Set<String> urls = new HashSet<>();
         urls.add(owner.getImageUrl());
         for (String q : List.of(
                 "select e.imageUrl from Customer e where e.ownerId = :o",
-                "select e.uploadedUrl from Document e where e.ownerId = :o",
                 "select e.imageUrl from Product e where e.ownerId = :o",
                 "select e.reference from Payment e where e.ownerId = :o and e.reference like 'http%'",
                 "select e.imageUrl from Feedback e where e.userId = :o")) {
