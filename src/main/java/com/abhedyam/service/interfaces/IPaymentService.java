@@ -18,6 +18,9 @@ public interface IPaymentService {
     com.abhedyam.dto.CollectPaymentResponse writeOffCustomer(java.util.UUID ownerId, java.util.UUID customerId);
 
     int undoWriteOff(java.util.UUID ownerId, java.util.UUID customerId);
+
+    /** Owner took a payment by mistake: puts each amount back on its sale and marks the rows failed (kept, not deleted). Returns how many changed. */
+    int cancelPayments(java.util.UUID ownerId, java.util.List<java.util.UUID> paymentIds);
     Payment getById(UUID id);
     List<PaymentResponse> filterPayments(String searchText);
     PageResponse<PaymentResponse> getOwnerPayments(UUID ownerId, String searchText, Integer page, Integer size, String sortBy, String sortDirection);
