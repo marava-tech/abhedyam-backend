@@ -38,6 +38,7 @@ public class ShopMemberService {
     private final OwnerSessionRepository sessionRepository;
     private final OwnerSessionService sessionService;
     private final FcmService fcmService;
+    private final NotificationText text;
 
     public static String link(String code) {
         return "https://marava.tech/join/" + code;
@@ -131,8 +132,9 @@ public class ShopMemberService {
         invite.setInviteExpiresAt(null);
         ShopMember m = repository.save(invite);
         try {
-            fcmService.sendNotificationToUser(m.getOwnerId(), m.getName() + " joined your shop",
-                    "As " + (m.getRole() == ShopMember.Role.FAMILY ? "Family" : "Helper") + ". More → Family & helpers to change or remove.",
+            fcmService.sendNotificationToUser(m.getOwnerId(),
+                    text.byCode(com.abhedyam.util.Txt.of("notif.member.title", m.getName()),
+                            com.abhedyam.util.Txt.of(m.getRole() == ShopMember.Role.FAMILY ? "notif.member.body.family" : "notif.member.body.helper")),
                     PackageConstants.BUSINESS_APP_PACKAGE, Map.of("category", "MEMBER_JOINED"));
         } catch (Exception e) {
             log.warn("Member-joined push failed: {}", e.getMessage());

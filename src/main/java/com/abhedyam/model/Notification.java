@@ -58,6 +58,44 @@ public class Notification extends BaseEntity {
     @Column
     private String title;
 
+    /** The title and message in the other app languages, JSON {"te": ["title", "body"]} (title/message are English). */
+    @Column(columnDefinition = "TEXT")
+    private String texts;
+
+    private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
+
+    /** Title and message in every app language: English into title/message, the others into {@link #texts}. */
+    public void setLocalized(java.util.Map<com.abhedyam.model.enums.AppLanguage, String[]> all) {
+        java.util.Map<String, java.util.List<String>> other = new java.util.LinkedHashMap<>();
+        all.forEach((lang, t) -> {
+            if (lang == com.abhedyam.model.enums.AppLanguage.EN) {
+                title = t[0];
+                message = t[1];
+            } else {
+                other.put(lang.code(), java.util.Arrays.asList(t));
+            }
+        });
+        try {
+            texts = other.isEmpty() ? null : JSON.writeValueAsString(other);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            texts = null; // English still goes out
+        }
+    }
+
+    /** {title, message} in a language code ("te"); English when the row has no text in it (older rows). */
+    public String[] textIn(String lang) {
+        if (texts != null && lang != null) {
+            try {
+                java.util.List<String> t = JSON.readValue(texts, new com.fasterxml.jackson.core.type.TypeReference<
+                        java.util.Map<String, java.util.List<String>>>() {}).get(lang);
+                if (t != null && t.size() == 2) return new String[] {t.get(0), t.get(1)};
+            } catch (com.fasterxml.jackson.core.JsonProcessingException ignored) {
+                // fall through to English
+            }
+        }
+        return new String[] {title, message};
+    }
+
     /** Same key twice for one owner = same event; the second is ignored. Nullable. */
     @Column
     private String dedupeKey;

@@ -11,6 +11,7 @@ import com.abhedyam.repository.SaleItemRepository;
 import com.abhedyam.service.interfaces.INotificationSettingsService;
 import com.abhedyam.service.interfaces.IPaymentDueService;
 import com.abhedyam.util.PackageConstants;
+import com.abhedyam.util.Txt;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -19,7 +20,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
@@ -80,19 +80,19 @@ public class DueDigestJob {
 
         DueDigest digest = DueDigest.of(toMap(saleItems.sumTotalsByCustomer(ownerId)), toMap(payments.sumSuccessfulByCustomer(ownerId)),
             oldestUnpaid(saleItems.oldestUnpaidSaleByCustomer(ownerId)), now);
-        String stockLine = stockLine(ownerId);
+        Txt stockLine = stockLine(ownerId);
         if (digest == null && stockLine == null) return;
-        List<String> parts = new java.util.ArrayList<>();
-        String duesLine = DueDigest.duesLine(dues, today);
+        List<Txt> parts = new java.util.ArrayList<>();
+        Txt duesLine = DueDigest.duesLine(dues, today);
         if (duesLine != null) parts.add(duesLine);
         if (digest != null) parts.add(digest.text());
         if (stockLine != null) parts.add(stockLine);
-        String title = digest != null ? "Money to collect" : "Stock running low";
-        dispatcher.notify(ownerId, NotificationCategory.DUE_DIGEST, NotificationType.INFO, title, String.join(" · ", parts), "DIGEST", null, key);
+        Txt title = Txt.of(digest != null ? "notif.digest.title.money" : "notif.digest.title.stock");
+        dispatcher.notify(ownerId, NotificationCategory.DUE_DIGEST, NotificationType.INFO, title, Txt.of("notif.join", parts), "DIGEST", null, key);
     }
 
     /** A stock problem must never stop the money digest. */
-    private String stockLine(UUID ownerId) {
+    private Txt stockLine(UUID ownerId) {
         try {
             return DueDigest.stockLine(items.all(ownerId));
         } catch (Exception e) {
@@ -100,8 +100,6 @@ public class DueDigestJob {
             return null;
         }
     }
-
-    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEE, d MMM");
 
     /** Key holds the date and the lead time, so changing either re-arms the reminder; the dispatcher drops repeats. */
     private void remindAhead(UUID ownerId, List<OwnerDueResponse> dues, LocalDate today) {
@@ -112,11 +110,11 @@ public class DueDigestJob {
             if (d.getDueDate().minusDays(1).equals(today)) n = 1;
             else if (d.getEarlyReminderDays() != null && d.getDueDate().minusDays(d.getEarlyReminderDays()).equals(today)) n = d.getEarlyReminderDays();
             else continue;
-            String name = o.getCustomerName() == null ? "A customer" : o.getCustomerName();
-            String when = n == 1 ? "tomorrow" : "in " + n + " days";
-            String body = "₹" + PaymentDueService.rupees(d.getRemaining()) + " due on " + d.getDueDate().format(DAY)
-                + (d.getNote() == null ? "" : " · " + d.getNote());
-            dispatcher.notify(ownerId, NotificationCategory.OWNER_REMINDER, NotificationType.INFO, name + " pays " + when, body,
+            Object name = o.getCustomerName() == null ? Txt.of("notif.customer") : o.getCustomerName();
+            Txt title = n == 1 ? Txt.of("notif.due.title.tomorrow", name) : Txt.of("notif.due.title.days", name, n);
+            List<Object> body = new java.util.ArrayList<>(List.of(Txt.of("notif.due.body", PaymentDueService.rupees(d.getRemaining()), d.getDueDate())));
+            if (d.getNote() != null) body.add(d.getNote()); // the owner's own words, as typed
+            dispatcher.notify(ownerId, NotificationCategory.OWNER_REMINDER, NotificationType.INFO, title, Txt.of("notif.join", body),
                 "DUE", d.getId(), "due-remind:" + d.getId() + ":" + d.getDueDate() + ":" + n);
         }
     }
@@ -125,10 +123,11 @@ public class DueDigestJob {
     private void remindVisits(UUID ownerId, LocalDate today) {
         for (var v : paymentDues.ownerVisits(ownerId)) {
             if (!v.getVisitDate().equals(today.plusDays(1))) continue;
-            String body = v.getOwingCount() == 0 ? "Nobody there owes you right now"
-                : v.getOwingCount() + (v.getOwingCount() == 1 ? " customer owes ₹" : " customers owe ₹") + PaymentDueService.rupees(v.getOwingAmount());
-            if (v.getNote() != null) body += " · " + v.getNote();
-            dispatcher.notify(ownerId, NotificationCategory.OWNER_REMINDER, NotificationType.INFO, "Visit " + v.getVillage() + " tomorrow", body,
+            List<Object> body = new java.util.ArrayList<>(List.of(v.getOwingCount() == 0 ? Txt.of("notif.visit.nobody")
+                : Txt.of("notif.visit.owing", v.getOwingCount(), PaymentDueService.rupees(v.getOwingAmount()))));
+            if (v.getNote() != null) body.add(v.getNote());
+            dispatcher.notify(ownerId, NotificationCategory.OWNER_REMINDER, NotificationType.INFO, Txt.of("notif.visit.title", v.getVillage()),
+                Txt.of("notif.join", body),
                 "VISIT", v.getId(), "visit-remind:" + v.getId() + ":" + v.getVisitDate());
         }
     }

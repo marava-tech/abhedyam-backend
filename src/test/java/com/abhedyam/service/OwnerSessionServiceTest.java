@@ -24,6 +24,7 @@ class OwnerSessionServiceTest {
     @Mock private OwnerSessionRepository repo;
     @Mock private FcmDetailsRepository fcm;
     @Mock private FcmService fcmService;
+    @org.mockito.Spy private NotificationText text = Texts.TEXT;
     @InjectMocks private OwnerSessionService service;
 
     private final UUID owner = UUID.randomUUID();
@@ -55,7 +56,8 @@ class OwnerSessionServiceTest {
 
         service.start(owner, "dev-b", "Redmi Note 12");
 
-        verify(fcmService).sendNotificationToUser(eq(owner), eq("Signed in on a new phone"), contains("Redmi Note 12"), anyString(), anyMap());
+        verify(fcmService).sendNotificationToUser(eq(owner), org.mockito.ArgumentMatchers.<java.util.function.Function<String, String[]>>argThat(t -> t.apply("en")[0].equals("Signed in on a new phone")
+            && t.apply("en")[1].contains("Redmi Note 12") && t.apply("te")[0].equals("కొత్త ఫోన్‌లో సైన్ ఇన్ అయ్యారు")), anyString(), anyMap());
     }
 
     @Test

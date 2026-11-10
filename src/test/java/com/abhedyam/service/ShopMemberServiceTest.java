@@ -30,6 +30,7 @@ class ShopMemberServiceTest {
     @Mock private OwnerSessionRepository sessionRepository;
     @Mock private OwnerSessionService sessionService;
     @Mock private FcmService fcmService;
+    @org.mockito.Spy private NotificationText text = Texts.TEXT;
     @InjectMocks private ShopMemberService service;
 
     private final UUID owner = UUID.randomUUID();
@@ -92,7 +93,8 @@ class ShopMemberServiceTest {
 
         assertEquals(ShopMember.Status.ACTIVE, m.getStatus());
         assertNull(m.getInviteCode());
-        verify(fcmService).sendNotificationToUser(eq(owner), eq("Ravi joined your shop"), contains("Helper"), anyString(), anyMap());
+        verify(fcmService).sendNotificationToUser(eq(owner), org.mockito.ArgumentMatchers.<java.util.function.Function<String, String[]>>argThat(t -> t.apply("en")[0].equals("Ravi joined your shop")
+            && t.apply("en")[1].contains("Helper")), anyString(), anyMap());
     }
 
     @Test

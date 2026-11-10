@@ -31,7 +31,7 @@ class NotificationDispatcherTest {
     @Mock NotificationRepository repo;
     @Mock INotificationSettingsService settings;
     @Mock IFcmService fcm;
-    @InjectMocks NotificationDispatcher dispatcher;
+    NotificationDispatcher dispatcher;
 
     final UUID owner = UUID.randomUUID();
     final NotificationSettings defaults = new NotificationSettings(); // 21:00-08:00 IST
@@ -41,19 +41,21 @@ class NotificationDispatcherTest {
 
     @BeforeEach
     void setUp() {
+        dispatcher = new NotificationDispatcher(repo, settings, fcm, Texts.TEXT);
         lenient().when(settings.forOwner(owner)).thenReturn(defaults);
         lenient().when(repo.save(any(Notification.class))).thenAnswer(i -> i.getArgument(0));
     }
 
     Notification send(NotificationCategory c, String key, Instant now) {
-        return dispatcher.notify(owner, c, NotificationType.INFO, "T", "B", "PAYMENT", UUID.randomUUID(), key, now);
+        return dispatcher.notify(owner, c, NotificationType.INFO, com.abhedyam.util.Txt.raw("T"), com.abhedyam.util.Txt.raw("B"), "PAYMENT", UUID.randomUUID(), key, now);
     }
 
     @Test
     void daytimeWritesRowAndPushesNow() {
         Notification n = send(NotificationCategory.OWNER_REMINDER, null, day);
         assertEquals(DeliveryStatus.SENT, n.getDeliveryStatus());
-        verify(fcm).sendNotificationToUser(eq(owner), eq("T"), eq("B"), any(), any());
+        verify(fcm).sendNotificationToUser(eq(owner), org.mockito.ArgumentMatchers.<java.util.function.Function<String, String[]>>argThat(
+            t -> java.util.Arrays.equals(t.apply("te"), new String[] {"T", "B"})), any(), any());
     }
 
     @Test
@@ -104,7 +106,9 @@ class NotificationDispatcherTest {
         when(repo.findByDeliveryStatusAndPushAfterLessThanEqual(DeliveryStatus.DEFERRED, held.getPushAfter())).thenReturn(List.of(held));
         dispatcher.deliverDeferred(held.getPushAfter());
         assertEquals(DeliveryStatus.SENT, held.getDeliveryStatus());
-        verify(fcm, times(1)).sendNotificationToUser(eq(owner), eq("T"), eq("B"), any(), any());
+        // sent later from the stored row, still in each phone's language
+        verify(fcm, times(1)).sendNotificationToUser(eq(owner), org.mockito.ArgumentMatchers.<java.util.function.Function<String, String[]>>argThat(
+            t -> java.util.Arrays.equals(t.apply("en"), new String[] {"T", "B"})), any(), any());
     }
 
     @Test

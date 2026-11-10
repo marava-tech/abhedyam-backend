@@ -46,7 +46,7 @@ class ReminderRoutingTest {
         Reminder r = reminder(owner, null);
         scheduler.processDueReminders();
         verify(dispatcher).notify(owner, NotificationCategory.OWNER_REMINDER, NotificationType.INFO,
-            "Call Ravi", "Ask about the TV payment", "REMINDER", r.getId(), "reminder:" + r.getId());
+            com.abhedyam.util.Txt.raw("Call Ravi"), com.abhedyam.util.Txt.raw("Ask about the TV payment"), "REMINDER", r.getId(), "reminder:" + r.getId());
         verifyNoInteractions(fcm, notificationService);
         assertEquals(ReminderStatus.SENT, r.getStatus());
     }

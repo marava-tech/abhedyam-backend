@@ -9,6 +9,7 @@ import com.abhedyam.repository.NotificationRepository;
 import com.abhedyam.service.interfaces.IFcmService;
 import com.abhedyam.service.interfaces.INotificationSettingsService;
 import com.abhedyam.util.PackageConstants;
+import com.abhedyam.util.Txt;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -33,14 +34,16 @@ public class NotificationDispatcher {
     private final NotificationRepository notifications;
     private final INotificationSettingsService settings;
     private final IFcmService fcm;
+    private final NotificationText text;
 
+    /** [title] and [body] are written in every app language (specs/notifications-telugu.md). */
     @Transactional
-    public Notification notify(UUID ownerId, NotificationCategory category, NotificationType type, String title, String body,
+    public Notification notify(UUID ownerId, NotificationCategory category, NotificationType type, Txt title, Txt body,
                                String relatedType, UUID relatedId, String dedupeKey) {
         return notify(ownerId, category, type, title, body, relatedType, relatedId, dedupeKey, Instant.now());
     }
 
-    Notification notify(UUID ownerId, NotificationCategory category, NotificationType type, String title, String body,
+    Notification notify(UUID ownerId, NotificationCategory category, NotificationType type, Txt title, Txt body,
                         String relatedType, UUID relatedId, String dedupeKey, Instant now) {
         if (dedupeKey != null) {
             var existing = notifications.findByOwnerIdAndDedupeKey(ownerId, dedupeKey);
@@ -51,8 +54,7 @@ public class NotificationDispatcher {
         n.setUserId(ownerId);
         n.setType(type);
         n.setCategory(category);
-        n.setTitle(title);
-        n.setMessage(body);
+        n.setLocalized(text.renderAll(title, body));
         n.setTimestamp(now);
         n.setRelatedEntityType(relatedType);
         n.setRelatedEntityId(relatedId);
@@ -101,7 +103,7 @@ public class NotificationDispatcher {
     }
 
     private void push(Notification n) {
-        fcm.sendNotificationToUser(n.getOwnerId(), n.getTitle(), n.getMessage(), PackageConstants.BUSINESS_APP_PACKAGE, dataFor(n));
+        fcm.sendNotificationToUser(n.getOwnerId(), n::textIn, PackageConstants.BUSINESS_APP_PACKAGE, dataFor(n)); // each phone in its language
     }
 
     /** What the app needs to open the right screen when the push is tapped. FCM data values must be strings, never null. */

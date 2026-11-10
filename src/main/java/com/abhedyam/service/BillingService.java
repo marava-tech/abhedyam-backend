@@ -121,20 +121,9 @@ public class BillingService implements IBillingService {
         for (Owner owner : ownerRepository.findByPlayProductIdIsNullAndAccessUntilBetween(now.minus(1, ChronoUnit.DAYS), now.plus(73, ChronoUnit.HOURS))) {
             Instant until = owner.getAccessUntil();
             long days = until.isAfter(now) ? (long) Math.ceil(Duration.between(now, until).toHours() / 24.0) : 0;
-            String title;
-            String body;
-            if (days == 3) {
-                title = "3 days left in your free month";
-                body = "Keep Who to chase, reminders and WhatsApp bills. Plans from ₹83 a month.";
-            } else if (days == 1) {
-                title = "Last day of your free month";
-                body = "Subscribe today to keep adding sales. Your records stay safe either way.";
-            } else if (days == 0) {
-                title = "Your free month has ended";
-                body = "Your records are safe and you can still see and export them. Subscribe to keep adding sales.";
-            } else {
-                continue;
-            }
+            if (days != 3 && days != 1 && days != 0) continue;
+            com.abhedyam.util.Txt title = com.abhedyam.util.Txt.of("notif.billing.days" + days + ".title");
+            com.abhedyam.util.Txt body = com.abhedyam.util.Txt.of("notif.billing.days" + days + ".body");
             try {
                 notifications.notify(owner.getId(), NotificationCategory.BILLING, NotificationType.INFO, title, body,
                         null, null, "access-end-" + days + "-" + until.getEpochSecond());

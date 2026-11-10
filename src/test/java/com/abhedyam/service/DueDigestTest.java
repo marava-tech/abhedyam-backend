@@ -26,7 +26,7 @@ class DueDigestTest {
         assertEquals(2, d.customers());
         assertEquals(new BigDecimal("124000"), d.total());
         assertEquals(45, d.oldestDays());
-        assertEquals("2 customers owe ₹1,24,000 · oldest 45 days", d.text());
+        assertEquals("2 customers owe ₹1,24,000 · oldest 45 days", Texts.en(d.text()));
     }
 
     @Test
@@ -36,7 +36,7 @@ class DueDigestTest {
         DueDigest d = DueDigest.of(sales, paid, Map.of(a, daysAgo(3)), now);
         assertEquals(1, d.customers());
         assertEquals(new BigDecimal("100"), d.total());
-        assertEquals("1 customer owes ₹100 · oldest 3 days", d.text());
+        assertEquals("1 customer owes ₹100 · oldest 3 days", Texts.en(d.text()));
     }
 
     @Test
@@ -59,6 +59,6 @@ class DueDigestTest {
     @Test
     void singularDay() {
         DueDigest d = DueDigest.of(Map.of(a, BigDecimal.TEN), Map.of(), Map.of(a, daysAgo(1)), now);
-        assertTrue(d.text().endsWith("oldest 1 day"));
+        assertTrue(Texts.en(d.text()).endsWith("oldest 1 day"));
     }
 }

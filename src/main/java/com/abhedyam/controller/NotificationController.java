@@ -22,6 +22,7 @@ public class NotificationController {
     
     private final INotificationService notificationService;
     private final com.abhedyam.service.interfaces.IFcmService fcm;
+    private final com.abhedyam.service.NotificationText text;
     
     @GetMapping("/{id}")
     public ApiResponse<NotificationResponse> getById(@PathVariable UUID id) {
@@ -38,8 +39,9 @@ public class NotificationController {
     /** Sends a push to the caller's own phones only (no inbox row, ignores mute and quiet hours). Returns how many phones got it. */
     @PostMapping("/test")
     public ApiResponse<Integer> sendTest() {
-        int sent = fcm.sendNotificationToUser(com.abhedyam.util.SecurityUtil.getCurrentUserId(), "Test notification",
-            "Notifications work on this phone.", com.abhedyam.util.PackageConstants.BUSINESS_APP_PACKAGE, java.util.Map.of());
+        int sent = fcm.sendNotificationToUser(com.abhedyam.util.SecurityUtil.getCurrentUserId(),
+            text.byCode(com.abhedyam.util.Txt.of("notif.test.title"), com.abhedyam.util.Txt.of("notif.test.body")), // each phone in its language
+            com.abhedyam.util.PackageConstants.BUSINESS_APP_PACKAGE, java.util.Map.of());
         return ApiResponse.success(sent);
     }
 
