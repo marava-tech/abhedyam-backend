@@ -120,7 +120,7 @@ public class LocationDetailsService implements ILocationDetailsService {
         } else {
             villagePage = locationDetailsRepository
                     .findVillagesWithCustomerCountByNameContainingIgnoreCaseAndOwnerIdPageable(
-                            normalizedName, ownerId, pageable);
+                            normalizedName, ownerId, com.abhedyam.util.SearchKey.forQuery(normalizedName), pageable);
         }
 
         java.util.Map<java.util.UUID, java.math.BigDecimal> sales = toAmountMap(saleItemRepository.sumTotalsByCustomer(ownerId));

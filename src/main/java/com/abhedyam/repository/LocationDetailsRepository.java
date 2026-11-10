@@ -71,7 +71,8 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
                      "INNER JOIN Customer c ON c.id = ld.userId " +
                      "WHERE c.ownerId = :ownerId " +
                      "AND ld.village IS NOT NULL " +
-                     "AND LOWER(ld.village) LIKE LOWER(CONCAT('%', :name, '%')) " +
+                     "AND (LOWER(ld.village) LIKE LOWER(CONCAT('%', :name, '%')) " +
+                     "     OR (:key IS NOT NULL AND CONCAT(' ', ld.villageKey) LIKE CONCAT('% ', :key, '%'))) " +
                      "AND c.isActive = true " +
                      "GROUP BY ld.village " +
                      "ORDER BY LOWER(TRIM(ld.village)) ASC", countQuery = "SELECT COUNT(DISTINCT ld.village) " +
@@ -79,11 +80,13 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
                                    "INNER JOIN Customer c ON c.id = ld.userId " +
                                    "WHERE c.ownerId = :ownerId " +
                                    "AND ld.village IS NOT NULL " +
-                                   "AND LOWER(ld.village) LIKE LOWER(CONCAT('%', :name, '%')) " +
+                                   "AND (LOWER(ld.village) LIKE LOWER(CONCAT('%', :name, '%')) " +
+                     "     OR (:key IS NOT NULL AND CONCAT(' ', ld.villageKey) LIKE CONCAT('% ', :key, '%'))) " +
                                    "AND c.isActive = true")
        Page<Object[]> findVillagesWithCustomerCountByNameContainingIgnoreCaseAndOwnerIdPageable(
                      @Param("name") String name,
                      @Param("ownerId") UUID ownerId,
+                     @Param("key") String key,
                      Pageable pageable);
 
        @Query("SELECT c.id, ld.village FROM LocationDetails ld " +

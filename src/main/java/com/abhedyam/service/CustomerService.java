@@ -35,6 +35,7 @@ import com.abhedyam.repository.SaleItemRepository;
 import com.abhedyam.repository.UserRepository;
 import com.abhedyam.service.interfaces.ICustomerService;
 import com.abhedyam.util.PhoneUtil;
+import com.abhedyam.util.SearchKey;
 import com.abhedyam.util.SecurityUtil;
 import com.abhedyam.constants.CacheKeys;
 import com.abhedyam.constants.ErrorCodes;
@@ -295,6 +296,7 @@ public class CustomerService implements ICustomerService {
 
         String normalizedSearchText = searchText != null && !searchText.trim().isEmpty() ? searchText.trim() : null;
         String normalizedVillage = village != null && !village.trim().isEmpty() ? village.trim() : null;
+        String searchKey = SearchKey.forQuery(normalizedSearchText);
         boolean isNumeric = false;
         if (normalizedSearchText != null) {
             try {
@@ -321,6 +323,7 @@ public class CustomerService implements ICustomerService {
                     normalizedVillage,
                     normalizedSearchText,
                     isNumeric,
+                    searchKey,
                     pageable
                 );
             } else {
@@ -328,6 +331,7 @@ public class CustomerService implements ICustomerService {
                     ownerId,
                     normalizedSearchText,
                     isNumeric,
+                    searchKey,
                     pageable
                 );
             }
@@ -346,6 +350,7 @@ public class CustomerService implements ICustomerService {
                     normalizedVillage,
                     normalizedSearchText,
                     isNumeric,
+                    searchKey,
                     pageable
                 );
             } else if (villageMode) {
@@ -353,10 +358,11 @@ public class CustomerService implements ICustomerService {
                     ownerId,
                     normalizedSearchText,
                     isNumeric,
+                    searchKey,
                     pageable
                 );
             } else {
-                customerPage = customerRepository.searchCustomers(ownerId, normalizedSearchText, pageable);
+                customerPage = customerRepository.searchCustomers(ownerId, normalizedSearchText, searchKey, pageable);
             }
         }
 
@@ -455,8 +461,8 @@ public class CustomerService implements ICustomerService {
             try { Long.parseLong(text); numeric = true; } catch (NumberFormatException ignored) { }
         }
         List<Customer> all = vil != null
-            ? customerRepository.searchCustomersWithVillageFilterOrderByVillage(ownerId, vil, text, numeric, Pageable.unpaged()).getContent()
-            : customerRepository.searchCustomersOrderByVillage(ownerId, text, numeric, Pageable.unpaged()).getContent();
+            ? customerRepository.searchCustomersWithVillageFilterOrderByVillage(ownerId, vil, text, numeric, SearchKey.forQuery(text), Pageable.unpaged()).getContent()
+            : customerRepository.searchCustomersOrderByVillage(ownerId, text, numeric, SearchKey.forQuery(text), Pageable.unpaged()).getContent();
 
         Map<UUID, BigDecimal> pending = pendingByCustomer(ownerId);
         List<Customer> rows = PendingOrdering.apply(all, pending, byPending, !"ASC".equalsIgnoreCase(sortDirection), owesOnly);
@@ -502,7 +508,8 @@ public class CustomerService implements ICustomerService {
         List<Customer> customers = customerRepository.filterCustomers(
             ownerId,
             normalizedSearchText.isEmpty() ? null : normalizedSearchText,
-            isNumeric
+            isNumeric,
+            SearchKey.forQuery(normalizedSearchText)
         );
         
         List<Customer> limitedCustomers = customers.stream().limit(15).toList();
@@ -541,6 +548,7 @@ public class CustomerService implements ICustomerService {
         Page<Customer> page = customerRepository.searchCustomers(
             ownerId,
             request.getSearchTerm(),
+            SearchKey.forQuery(request.getSearchTerm()),
             pageable
         );
         

@@ -28,6 +28,16 @@ public class LocationDetails extends BaseEntity {
     
     @Column
     private String village;
+
+    /** Hidden cross-script search key for {@link #village} (specs/cross-script-search.md). */
+    @Column(name = "village_key")
+    private String villageKey;
+
+    @PrePersist
+    @PreUpdate
+    void keyVillage() {
+        villageKey = com.abhedyam.util.SearchKey.of(village);
+    }
     
     @Column(columnDefinition = "TEXT")
     private String addressText;
