@@ -16,12 +16,12 @@ Plan and research: `abhedyam-owner/.product/MONETIZATION_REDESIGN.md`.
   - The same minus `SUBSCRIPTION_EXTENDED`, with `period_type != TRIAL`, is a payment; the first one sets `first_paid_at` and rewards the referrer.
   - `EXPIRATION` → `play_product_id = null` (access already ends at the expiry date).
   - Unknown/anonymous `app_user_id` → `{applied:false}`, 200.
-- `GET /api/v1/referrals` → `{referralCode, shareLink (duesetu.com/join?ref=CODE), monthsEarned, cashEarned, usedACode, friends[{businessName, joinedAt, paid}]}`.
+- `GET /api/v1/referrals` → `{referralCode, shareLink (duesetu.com/join?ref=CODE), monthsEarned, usedACode, friends[{businessName, joinedAt, paid}]}`.
 - `POST /api/v1/referrals/apply {referralCode}` (owner only): case-insensitive; not own code, not after paying, once per owner, and only a shop that joined **after** the code's owner (`REFERRER_NOT_OLDER`), so two shops can't swap codes for bonus days. Friend gets +15 days.
 - Admin (TOTP admin token): `POST /admin/shops/{id}/access {days}` adds days, `/access/end` ends access now. See `admin-dashboard.md`.
 
 ## Referral reward
-When the friend first pays: the referrer gets +30 days, or, if the referrer already pays on Play (free days would not stop Google charging), ₹200 by UPI (`referrals.reward_cash = true`, paid by hand). No activity, device or customer-count checks: a payment is the proof.
+When the friend first pays: the referrer always gets +30 days, never money, also when they already pay on Play (the days extend `access_until`; a later Play renewal event can replace it with Play's own expiry if that is later). `referrals.reward_cash` is always false now; the old cash columns and admin cash-paid endpoint are dead code to delete. No activity, device or customer-count checks: a payment is the proof.
 
 ## Reminders
 10:30 IST daily, owners not paying: push (category `BILLING`) at 3 days left, last day, and the day access ended. Dedupe key `access-end-<days>-<accessUntil epoch>`.
