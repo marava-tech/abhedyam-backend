@@ -14,6 +14,16 @@ public class User extends BaseEntity {
     
     @Column(nullable = false)
     private String name;
+
+    /** Hidden cross-script search key for {@link #name} (specs/cross-script-search.md). */
+    @Column(name = "name_key")
+    private String nameKey;
+
+    @PrePersist
+    @PreUpdate
+    void keyName() {
+        nameKey = com.abhedyam.util.SearchKey.of(name);
+    }
     
     @Column(nullable = true)
     private String phone;

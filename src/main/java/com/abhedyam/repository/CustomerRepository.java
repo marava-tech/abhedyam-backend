@@ -21,9 +21,11 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
 
     @Query("SELECT c FROM Customer c WHERE c.ownerId = :ownerId " +
            "AND (:searchTerm IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
+           "OR (:key IS NOT NULL AND CONCAT(' ', c.nameKey) LIKE CONCAT('% ', :key, '%')) " +
            "OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
     Page<Customer> searchCustomers(@Param("ownerId") UUID ownerId,
                                    @Param("searchTerm") String searchTerm,
+                                   @Param("key") String key,
                                    Pageable pageable);
 
     @Query("SELECT DISTINCT c FROM Customer c " +
@@ -31,22 +33,28 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
            "WHERE c.ownerId = :ownerId " +
            "AND (:searchText IS NULL OR " +
            "     LOWER(c.name) LIKE LOWER(CONCAT('%', :searchText, '%')) OR " +
+           "     (:key IS NOT NULL AND CONCAT(' ', c.nameKey) LIKE CONCAT('% ', :key, '%')) OR " +
            "     (ld.village IS NOT NULL AND LOWER(ld.village) LIKE LOWER(CONCAT('%', :searchText, '%'))) OR " +
+           "     (:key IS NOT NULL AND CONCAT(' ', ld.villageKey) LIKE CONCAT('% ', :key, '%')) OR " +
            "     (:isNumeric = true AND c.phone LIKE CONCAT('%', :searchText, '%')))")
     List<Customer> filterCustomers(@Param("ownerId") UUID ownerId,
                                    @Param("searchText") String searchText,
-                                   @Param("isNumeric") boolean isNumeric);
+                                   @Param("isNumeric") boolean isNumeric,
+                                   @Param("key") String key);
 
     @Query("SELECT DISTINCT c FROM Customer c " +
            "LEFT JOIN LocationDetails ld ON ld.userId = c.id " +
            "WHERE c.ownerId = :ownerId " +
            "AND (:searchText IS NULL OR " +
            "     LOWER(c.name) LIKE LOWER(CONCAT('%', :searchText, '%')) OR " +
+           "     (:key IS NOT NULL AND CONCAT(' ', c.nameKey) LIKE CONCAT('% ', :key, '%')) OR " +
            "     (ld.village IS NOT NULL AND LOWER(ld.village) LIKE LOWER(CONCAT('%', :searchText, '%'))) OR " +
+           "     (:key IS NOT NULL AND CONCAT(' ', ld.villageKey) LIKE CONCAT('% ', :key, '%')) OR " +
            "     (:isNumeric = true AND c.phone LIKE CONCAT('%', :searchText, '%')))")
     Page<Customer> searchCustomersWithVillage(@Param("ownerId") UUID ownerId,
                                               @Param("searchText") String searchText,
                                               @Param("isNumeric") boolean isNumeric,
+                                              @Param("key") String key,
                                               Pageable pageable);
     
     @Query("SELECT DISTINCT c FROM Customer c " +
@@ -55,11 +63,13 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
            "AND (:village IS NULL OR (ld.village IS NOT NULL AND LOWER(TRIM(ld.village)) = LOWER(TRIM(:village)))) " +
            "AND (:searchText IS NULL OR " +
            "     LOWER(c.name) LIKE LOWER(CONCAT('%', :searchText, '%')) OR " +
+           "     (:key IS NOT NULL AND CONCAT(' ', c.nameKey) LIKE CONCAT('% ', :key, '%')) OR " +
            "     (:isNumeric = true AND c.phone LIKE CONCAT('%', :searchText, '%')))")
     Page<Customer> searchCustomersWithVillageFilter(@Param("ownerId") UUID ownerId,
                                                     @Param("village") String village,
                                                     @Param("searchText") String searchText,
                                                     @Param("isNumeric") boolean isNumeric,
+                                                    @Param("key") String key,
                                                     Pageable pageable);
 
     /*
@@ -74,7 +84,9 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
            "WHERE c.ownerId = :ownerId " +
            "AND (:searchText IS NULL OR " +
            "     LOWER(c.name) LIKE LOWER(CONCAT('%', :searchText, '%')) OR " +
+           "     (:key IS NOT NULL AND CONCAT(' ', c.nameKey) LIKE CONCAT('% ', :key, '%')) OR " +
            "     (ld.village IS NOT NULL AND LOWER(ld.village) LIKE LOWER(CONCAT('%', :searchText, '%'))) OR " +
+           "     (:key IS NOT NULL AND CONCAT(' ', ld.villageKey) LIKE CONCAT('% ', :key, '%')) OR " +
            "     (:isNumeric = true AND c.phone LIKE CONCAT('%', :searchText, '%'))) " +
            "ORDER BY CASE WHEN ld.village IS NULL OR TRIM(ld.village) = '' THEN 1 ELSE 0 END, " +
            "LOWER(TRIM(ld.village)), LOWER(TRIM(c.name))",
@@ -83,11 +95,14 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
            "WHERE c.ownerId = :ownerId " +
            "AND (:searchText IS NULL OR " +
            "     LOWER(c.name) LIKE LOWER(CONCAT('%', :searchText, '%')) OR " +
+           "     (:key IS NOT NULL AND CONCAT(' ', c.nameKey) LIKE CONCAT('% ', :key, '%')) OR " +
            "     (ld.village IS NOT NULL AND LOWER(ld.village) LIKE LOWER(CONCAT('%', :searchText, '%'))) OR " +
+           "     (:key IS NOT NULL AND CONCAT(' ', ld.villageKey) LIKE CONCAT('% ', :key, '%')) OR " +
            "     (:isNumeric = true AND c.phone LIKE CONCAT('%', :searchText, '%')))")
     Page<Customer> searchCustomersOrderByVillage(@Param("ownerId") UUID ownerId,
                                                  @Param("searchText") String searchText,
                                                  @Param("isNumeric") boolean isNumeric,
+                                                 @Param("key") String key,
                                                  Pageable pageable);
 
     @Query(value = "SELECT c FROM Customer c " +
@@ -96,6 +111,7 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
            "AND (:village IS NULL OR (ld.village IS NOT NULL AND LOWER(TRIM(ld.village)) = LOWER(TRIM(:village)))) " +
            "AND (:searchText IS NULL OR " +
            "     LOWER(c.name) LIKE LOWER(CONCAT('%', :searchText, '%')) OR " +
+           "     (:key IS NOT NULL AND CONCAT(' ', c.nameKey) LIKE CONCAT('% ', :key, '%')) OR " +
            "     (:isNumeric = true AND c.phone LIKE CONCAT('%', :searchText, '%'))) " +
            "ORDER BY CASE WHEN ld.village IS NULL OR TRIM(ld.village) = '' THEN 1 ELSE 0 END, " +
            "LOWER(TRIM(ld.village)), LOWER(TRIM(c.name))",
@@ -105,11 +121,13 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
            "AND (:village IS NULL OR (ld.village IS NOT NULL AND LOWER(TRIM(ld.village)) = LOWER(TRIM(:village)))) " +
            "AND (:searchText IS NULL OR " +
            "     LOWER(c.name) LIKE LOWER(CONCAT('%', :searchText, '%')) OR " +
+           "     (:key IS NOT NULL AND CONCAT(' ', c.nameKey) LIKE CONCAT('% ', :key, '%')) OR " +
            "     (:isNumeric = true AND c.phone LIKE CONCAT('%', :searchText, '%')))")
     Page<Customer> searchCustomersWithVillageFilterOrderByVillage(@Param("ownerId") UUID ownerId,
                                                                  @Param("village") String village,
                                                                  @Param("searchText") String searchText,
                                                                  @Param("isNumeric") boolean isNumeric,
+                                                                 @Param("key") String key,
                                                                  Pageable pageable);
 
     @Query("SELECT c FROM Customer c WHERE c.id IN :customerIds")
