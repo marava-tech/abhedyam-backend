@@ -10,18 +10,13 @@ import com.abhedyam.model.Customer;
 import com.abhedyam.model.Payment;
 import com.abhedyam.model.Product;
 import com.abhedyam.model.SaleItem;
-import com.abhedyam.model.User;
 import com.abhedyam.model.enums.PaymentMedium;
 import com.abhedyam.model.enums.PaymentStatus;
 import com.abhedyam.model.enums.SaleItemStatus;
-import com.abhedyam.model.enums.UserType;
 import com.abhedyam.repository.CustomerRepository;
 import com.abhedyam.repository.PaymentRepository;
 import com.abhedyam.repository.ProductRepository;
 import com.abhedyam.repository.SaleItemRepository;
-import com.abhedyam.repository.UserRepository;
-import com.abhedyam.model.enums.NotificationCategory;
-import com.abhedyam.model.enums.NotificationType;
 import com.abhedyam.service.interfaces.IAuditService;
 import com.abhedyam.service.interfaces.ICustomerService;
 import com.abhedyam.service.interfaces.IPaymentService;
@@ -52,9 +47,7 @@ public class PaymentService implements IPaymentService {
     private final CustomerRepository customerRepository;
     private final ProductRepository productRepository;
     private final SaleItemRepository saleItemRepository;
-    private final UserRepository userRepository;
     private final IAuditService auditService;
-    private final NotificationDispatcher dispatcher;
     private final ICustomerService customerService;
     private final CustomerService customerServiceConcrete;
     private final RedisTemplate<String, String> redisTemplate;
@@ -79,29 +72,11 @@ public class PaymentService implements IPaymentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Sale item could not be found"));
         
         UUID saleItemOwnerId = saleItem.getOwnerId();
-        UUID saleItemCustomerId = saleItem.getCustomerId();
         
-        // Allow access if:
-        // 1. Current user is the customer of the sale item
-        // 2. Current user is the owner of the sale item
-        boolean hasAccess = false;
-        UUID paymentOwnerId = saleItemOwnerId;
-        
-        if (currentUserId.equals(saleItemCustomerId)) {
-            hasAccess = true;
-            paymentOwnerId = saleItemOwnerId;
-        } else if (saleItemOwnerId != null && saleItemOwnerId.equals(currentUserId)) {
-            User currentUser = userRepository.findById(currentUserId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Your account could not be found"));
-            if (currentUser.getType() == UserType.BUSINESS) {
-                hasAccess = true;
-                paymentOwnerId = currentUserId;
-            }
-        }
-        
-        if (!hasAccess) {
+        if (saleItemOwnerId == null || !saleItemOwnerId.equals(currentUserId)) {
             throw new BusinessException(ErrorCodes.UNAUTHORIZED, "You don't have permission to access this sale item");
         }
+        UUID paymentOwnerId = currentUserId;
         
         BigDecimal remainingAmount = saleItem.getRemainingAmount();
         if (remainingAmount == null) {
@@ -169,10 +144,6 @@ public class PaymentService implements IPaymentService {
                 savedPayment.getStatus().toString(),
                 savedPayment.getMedium().toString()
             );
-        }
-        
-        if (savedPayment.getStatus() == PaymentStatus.PENDING && currentUserId.equals(saleItemCustomerId)) {
-            sendPendingPaymentNotificationToOwner(savedPayment, customer, product, paymentOwnerId);
         }
         
         return new PaymentResponse(
@@ -448,25 +419,7 @@ public class PaymentService implements IPaymentService {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment could not be found"));
         
-        UUID paymentOwnerId = payment.getOwnerId();
-        UUID paymentCustomerId = payment.getCustomerId();
-        
-        // Allow access if:
-        // 1. Current user is the customer of the payment
-        // 2. Current user is the owner of the payment
-        boolean hasAccess = false;
-        
-        if (currentUserId.equals(paymentCustomerId)) {
-            hasAccess = true;
-        } else if (paymentOwnerId != null && paymentOwnerId.equals(currentUserId)) {
-            User currentUser = userRepository.findById(currentUserId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Your account could not be found"));
-            if (currentUser.getType() == UserType.BUSINESS) {
-                hasAccess = true;
-            }
-        }
-        
-        if (!hasAccess) {
+        if (payment.getOwnerId() == null || !payment.getOwnerId().equals(currentUserId)) {
             throw new BusinessException(ErrorCodes.UNAUTHORIZED, "You don't have permission to access this payment");
         }
         
@@ -652,35 +605,11 @@ public class PaymentService implements IPaymentService {
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer could not be found"));
         
-        UUID ownerId = customer.getOwnerId();
-        
-        // Allow access if:
-        // 1. Current user is the customer themselves
-        // 2. Current user is the owner of this customer
-        boolean hasAccess = false;
-        
-        if (currentUserId.equals(customerId)) {
-            hasAccess = true;
-        } else if (ownerId != null) {
-            User currentUser = userRepository.findById(currentUserId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Your account could not be found"));
-            
-            if (currentUser.getType() == UserType.BUSINESS && ownerId.equals(currentUserId)) {
-                hasAccess = true;
-            }
-        }
-        
-        if (!hasAccess) {
+        if (customer.getOwnerId() == null || !customer.getOwnerId().equals(currentUserId)) {
             throw new BusinessException(ErrorCodes.UNAUTHORIZED, "You don't have permission to access this customer's payments");
         }
         
-        // If customer is accessing, use their ownerId; if owner is accessing, use currentUserId
-        UUID filterOwnerId = currentUserId.equals(customerId) ? ownerId : currentUserId;
-        if (filterOwnerId == null) {
-            return List.of();
-        }
-        
-        List<Payment> payments = paymentRepository.findByCustomerIdAndOwnerId(customerId, filterOwnerId);
+        List<Payment> payments = paymentRepository.findByCustomerIdAndOwnerId(customerId, currentUserId);
         return payments.stream()
             .sorted((p1, p2) -> {
                 if (p1.getCreatedAt() == null && p2.getCreatedAt() == null) return 0;
@@ -811,17 +740,6 @@ public class PaymentService implements IPaymentService {
             saleItem.setStatus(SaleItemStatus.PARTIALLY_PAID);
         } else {
             saleItem.setStatus(SaleItemStatus.NOT_PAID);
-        }
-    }
-    
-    private void sendPendingPaymentNotificationToOwner(Payment payment, Customer customer, Product product, UUID ownerId) {
-        try {
-            // "Prava paid ₹1,000" · "For Cooler. Check it and OK it in Collected."
-            dispatcher.notify(ownerId, NotificationCategory.PAYMENT_NEEDS_OK, NotificationType.ACTION_REQUIRED,
-                com.abhedyam.util.Txt.of("notif.payment.title", customer.getName(), PaymentDueService.rupees(payment.getAmount())),
-                com.abhedyam.util.Txt.of("notif.payment.body", product.getName()), "PAYMENT", payment.getId(), "payment-needs-ok:" + payment.getId());
-        } catch (Exception e) {
-            log.error("Failed to notify owner {} of pending payment {}: {}", ownerId, payment.getId(), e.getMessage(), e);
         }
     }
     

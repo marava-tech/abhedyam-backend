@@ -1,20 +1,16 @@
 package com.abhedyam.service;
 
-import com.abhedyam.dto.OwnerPublicResponse;
 import com.abhedyam.dto.OwnerResponse;
 import com.abhedyam.dto.OwnerSummaryResponse;
 import com.abhedyam.dto.OwnerUpdateRequest;
 import com.abhedyam.exception.BusinessException;
 import com.abhedyam.exception.ResourceNotFoundException;
-import com.abhedyam.model.LocationDetails;
 import com.abhedyam.model.Owner;
 import com.abhedyam.repository.CustomerRepository;
 import com.abhedyam.repository.LocationDetailsRepository;
 import com.abhedyam.repository.OwnerRepository;
-import com.abhedyam.repository.OwnerSettingsRepository;
 import com.abhedyam.repository.PaymentRepository;
 import com.abhedyam.repository.SaleItemRepository;
-import com.abhedyam.repository.UPIAccountRepository;
 import com.abhedyam.service.interfaces.IOwnerService;
 import com.abhedyam.util.EmailUtil;
 import com.abhedyam.util.PhoneUtil;
@@ -25,12 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -38,8 +29,6 @@ public class OwnerService implements IOwnerService {
     
     private final OwnerRepository ownerRepository;
     private final LocationDetailsRepository locationDetailsRepository;
-    private final OwnerSettingsRepository ownerSettingsRepository;
-    private final UPIAccountRepository upiAccountRepository;
     private final CustomerRepository customerRepository;
     private final PaymentRepository paymentRepository;
     private final SaleItemRepository saleItemRepository;
@@ -48,88 +37,6 @@ public class OwnerService implements IOwnerService {
         Owner owner = ownerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Account could not be found"));
         return toResponse(owner);
-    }
-    
-    @Override
-    @Transactional(readOnly = true)
-    public List<OwnerPublicResponse> getAllPublic(BigDecimal latitude, BigDecimal longitude) {
-        List<Owner> owners = ownerRepository.findAll();
-        
-        List<UUID> ownerIds = owners.stream().map(Owner::getId).collect(Collectors.toList());
-        List<LocationDetails> locations = locationDetailsRepository.findByUserIdIn(ownerIds);
-        Map<UUID, LocationDetails> locationMap = locations.stream()
-            .collect(Collectors.toMap(LocationDetails::getUserId, loc -> loc, (v1, v2) -> v1));
-        
-        List<OwnerPublicResponse> responses = owners.stream()
-                .map(owner -> {
-                    LocationDetails location = locationMap.get(owner.getId());
-                    
-                    OwnerPublicResponse response = new OwnerPublicResponse();
-                    response.setId(owner.getId());
-                    response.setName(owner.getName());
-                    response.setBusinessName(owner.getBusinessName());
-                    response.setPhone(owner.getPhone());
-                    response.setEmail(owner.getEmail());
-                    response.setImageUrl(owner.getImageUrl());
-                    response.setIsVerified(owner.getIsVerified());
-                    if (Boolean.TRUE.equals(owner.getPublicListingEnabled())) {
-                        response.setPublicSlug(owner.getPublicSlug());
-                    }
-                    
-                    if (location != null) {
-                        response.setLatitude(location.getLatitude());
-                        response.setLongitude(location.getLongitude());
-                        response.setVillage(location.getVillage());
-                        response.setAddressText(location.getAddressText());
-                        
-                        if (latitude != null && longitude != null && 
-                            location.getLatitude() != null && location.getLongitude() != null) {
-                            BigDecimal distance = calculateDistance(
-                                latitude, longitude,
-                                location.getLatitude(), location.getLongitude()
-                            );
-                            response.setDistance(distance);
-                        }
-                    }
-                    
-                    return response;
-                })
-                .collect(Collectors.toList());
-        
-        if (latitude != null && longitude != null) {
-            responses.sort(Comparator
-                .comparing((OwnerPublicResponse r) -> r.getDistance() != null ? 0 : 1)
-                .thenComparing((OwnerPublicResponse r) -> r.getDistance(), 
-                    Comparator.nullsLast(Comparator.naturalOrder()))
-            );
-        } else {
-            responses.sort(Comparator.comparing(
-                (OwnerPublicResponse r) -> r.getLatitude() != null && r.getLongitude() != null ? 0 : 1
-            ));
-        }
-        
-        return responses;
-    }
-    
-    private BigDecimal calculateDistance(BigDecimal lat1, BigDecimal lon1, BigDecimal lat2, BigDecimal lon2) {
-        final int EARTH_RADIUS_KM = 6371;
-        
-        double lat1Rad = Math.toRadians(lat1.doubleValue());
-        double lon1Rad = Math.toRadians(lon1.doubleValue());
-        double lat2Rad = Math.toRadians(lat2.doubleValue());
-        double lon2Rad = Math.toRadians(lon2.doubleValue());
-        
-        double dLat = lat2Rad - lat1Rad;
-        double dLon = lon2Rad - lon1Rad;
-        
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                   Math.cos(lat1Rad) * Math.cos(lat2Rad) *
-                   Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        double distanceKm = EARTH_RADIUS_KM * c;
-        
-        return BigDecimal.valueOf(distanceKm).setScale(2, RoundingMode.HALF_UP);
     }
     
     @Transactional

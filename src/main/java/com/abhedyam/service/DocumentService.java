@@ -7,10 +7,7 @@ import com.abhedyam.dto.DocumentResponse;
 import com.abhedyam.exception.BusinessException;
 import com.abhedyam.exception.ResourceNotFoundException;
 import com.abhedyam.model.Document;
-import com.abhedyam.model.User;
-import com.abhedyam.model.enums.UserType;
 import com.abhedyam.repository.DocumentRepository;
-import com.abhedyam.repository.UserRepository;
 import com.abhedyam.service.interfaces.IDocumentService;
 import com.abhedyam.util.SecurityUtil;
 import com.abhedyam.constants.ErrorCodes;
@@ -29,7 +26,6 @@ import java.util.stream.Collectors;
 public class DocumentService implements IDocumentService {
     
     private final DocumentRepository documentRepository;
-    private final UserRepository userRepository;
     
     @Override
     @Transactional
@@ -60,23 +56,10 @@ public class DocumentService implements IDocumentService {
     @Transactional(readOnly = true)
     public List<DocumentResponse> getByOwnerId(UUID ownerId) {
         UUID currentUserId = SecurityUtil.getCurrentUserId();
-        User currentUser = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
-        if (ownerId == null) {
-            ownerId = currentUserId;
+        if (ownerId != null && !ownerId.equals(currentUserId)) {
+            throw new BusinessException(ErrorCodes.UNAUTHORIZED, "You can only see your own documents");
         }
-        
-        List<Document> documents;
-        if (currentUser.getType() == UserType.CUSTOMER) {
-            documents = documentRepository.findVisibleDocumentsByOwnerId(ownerId);
-        } else {
-            if (ownerId.equals(currentUserId)) {
-                documents = documentRepository.findActiveDocumentsByOwnerId(ownerId);
-            } else {
-                documents = documentRepository.findVisibleDocumentsByOwnerId(ownerId);
-            }
-        }
+        List<Document> documents = documentRepository.findActiveDocumentsByOwnerId(currentUserId);
         
         return documents.stream()
                 .sorted((d1, d2) -> Integer.compare(d1.getOrderIndex(), d2.getOrderIndex()))

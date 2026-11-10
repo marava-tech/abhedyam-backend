@@ -8,7 +8,6 @@ import com.abhedyam.dto.CustomerSalesSummaryResponse;
 import com.abhedyam.dto.CustomerPaymentsSummaryResponse;
 import com.abhedyam.dto.CustomerNotesSummaryResponse;
 import com.abhedyam.dto.CustomerRemindersSummaryResponse;
-import com.abhedyam.dto.CustomerSummaryResponse;
 import com.abhedyam.dto.NearestCustomerRequest;
 import com.abhedyam.dto.NearestCustomerResponse;
 import com.abhedyam.dto.PageResponse;
@@ -35,6 +34,5 @@ public interface ICustomerService {
     CustomerRemindersSummaryResponse getCustomerRemindersSummary(UUID ownerId, UUID customerId);
     NearestCustomerResponse findNearestCustomer(NearestCustomerRequest request);
     void invalidateCustomerSummaryCache(UUID ownerId, UUID customerId);
-    CustomerSummaryResponse getMySummary();
     com.abhedyam.dto.CustomerResponse setChasePaused(java.util.UUID ownerId, java.util.UUID customerId, boolean paused);
 }

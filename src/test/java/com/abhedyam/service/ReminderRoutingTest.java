@@ -10,7 +10,6 @@ import com.abhedyam.model.enums.NotificationCategory;
 import com.abhedyam.model.enums.NotificationType;
 import com.abhedyam.model.enums.ReminderStatus;
 import com.abhedyam.repository.ReminderRepository;
-import com.abhedyam.util.PackageConstants;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -23,8 +22,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class ReminderRoutingTest {
     @Mock ReminderRepository repo;
-    @Mock NotificationService notificationService;
-    @Mock FcmService fcm;
     @Mock NotificationDispatcher dispatcher;
     @InjectMocks ReminderSchedulerService scheduler;
 
@@ -47,17 +44,17 @@ class ReminderRoutingTest {
         scheduler.processDueReminders();
         verify(dispatcher).notify(owner, NotificationCategory.OWNER_REMINDER, NotificationType.INFO,
             com.abhedyam.util.Txt.raw("Call Ravi"), com.abhedyam.util.Txt.raw("Ask about the TV payment"), "REMINDER", r.getId(), "reminder:" + r.getId());
-        verifyNoInteractions(fcm, notificationService);
         assertEquals(ReminderStatus.SENT, r.getStatus());
     }
 
     @Test
-    void reminderForACustomerStaysOnTheCustomerPathAndSkipsTheDispatcher() {
+    void reminderAboutACustomerAlsoReachesTheOwner() {
+        // The Reminders tool always attaches a customer; with no customer app it must still reach the owner.
         UUID owner = UUID.randomUUID(), customer = UUID.randomUUID();
-        reminder(owner, customer);
+        Reminder r = reminder(owner, customer);
         scheduler.processDueReminders();
-        verify(notificationService).create(any());
-        verify(fcm).sendNotificationToUser(eq(customer), eq("Call Ravi"), eq("Ask about the TV payment"), eq(PackageConstants.CUSTOMER_APP_PACKAGE));
-        verifyNoInteractions(dispatcher);
+        verify(dispatcher).notify(owner, NotificationCategory.OWNER_REMINDER, NotificationType.INFO,
+            com.abhedyam.util.Txt.raw("Call Ravi"), com.abhedyam.util.Txt.raw("Ask about the TV payment"), "REMINDER", r.getId(), "reminder:" + r.getId());
+        assertEquals(ReminderStatus.SENT, r.getStatus());
     }
 }
