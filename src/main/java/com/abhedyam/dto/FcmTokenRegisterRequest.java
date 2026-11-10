@@ -2,6 +2,7 @@ package com.abhedyam.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import com.abhedyam.model.enums.AppLanguage;
 import lombok.Data;
 
 @Data
@@ -20,5 +21,8 @@ public class FcmTokenRegisterRequest {
     
     @Schema(description = "Device type", example = "android")
     private String deviceType;
+
+    @Schema(description = "App language on this phone; pushes to it are written in it (default en)", example = "te")
+    private AppLanguage language;
 }
 

@@ -1,6 +1,7 @@
 package com.abhedyam.service;
 
 import com.abhedyam.model.FcmDetails;
+import com.abhedyam.model.enums.AppLanguage;
 import com.abhedyam.repository.FcmDetailsRepository;
 import com.abhedyam.service.interfaces.IFcmService;
 import com.google.firebase.messaging.*;
@@ -21,13 +22,14 @@ public class FcmService implements IFcmService {
     private final FcmDetailsRepository fcmDetailsRepository;
     
     @Transactional
-    public FcmDetails registerToken(UUID userId, String token, String packageName, String deviceId, String deviceType) {
+    public FcmDetails registerToken(UUID userId, String token, String packageName, String deviceId, String deviceType, AppLanguage language) {
         Optional<FcmDetails> existing = fcmDetailsRepository.findByUserIdAndTokenAndPackageName(userId, token, packageName);
         
         if (existing.isPresent()) {
             FcmDetails fcmDetails = existing.get();
             if (deviceId != null) fcmDetails.setDeviceId(deviceId);
             if (deviceType != null) fcmDetails.setDeviceType(deviceType);
+            if (language != null) fcmDetails.setLanguage(language);
             return fcmDetailsRepository.save(fcmDetails);
         }
         
@@ -37,6 +39,7 @@ public class FcmService implements IFcmService {
         fcmDetails.setPackageName(packageName);
         fcmDetails.setDeviceId(deviceId);
         fcmDetails.setDeviceType(deviceType);
+        fcmDetails.setLanguage(language);
         
         return fcmDetailsRepository.save(fcmDetails);
     }
