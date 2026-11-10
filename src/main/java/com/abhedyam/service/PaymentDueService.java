@@ -91,7 +91,10 @@ public class PaymentDueService implements IPaymentDueService {
     }
 
     private State load(UUID ownerId, UUID customerId) {
-        BigDecimal balance = customerService.getCustomerPaymentsSummary(ownerId, customerId).getDueAmount();
+        return load(ownerId, customerId, customerService.getCustomerPaymentsSummary(ownerId, customerId).getDueAmount());
+    }
+
+    private State load(UUID ownerId, UUID customerId, BigDecimal balance) {
         List<PaymentDue> dues = new ArrayList<>(dueRepository.findByOwnerIdAndCustomerIdAndIsActiveTrue(ownerId, customerId));
         dues.sort(BY_DATE);
         Map<UUID, BigDecimal> paid = allocate(dues, paymentRepository.findByCustomerIdAndOwnerId(customerId, ownerId));
@@ -101,7 +104,16 @@ public class PaymentDueService implements IPaymentDueService {
     @Override
     @Transactional(readOnly = true)
     public CustomerDuesResponse list(UUID ownerId, UUID customerId) {
-        State s = load(ownerId, customerId);
+        return list(load(ownerId, customerId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CustomerDuesResponse listForLink(UUID ownerId, UUID customerId, BigDecimal balance) {
+        return list(load(ownerId, customerId, balance));
+    }
+
+    private CustomerDuesResponse list(State s) {
         List<PaymentDueResponse> dues = s.dues().stream().map(s::response).toList();
         BigDecimal planned = s.plannedExcept(null);
         long overdue = dues.stream().filter(d -> d.getStatus().equals("OVERDUE")).count();

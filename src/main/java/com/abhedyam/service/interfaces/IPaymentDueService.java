@@ -14,6 +14,9 @@ import java.util.UUID;
 public interface IPaymentDueService {
     CustomerDuesResponse list(UUID ownerId, UUID customerId);
 
+    /** Same as list, with a balance the caller already worked out. No access check: the public khata link only. */
+    CustomerDuesResponse listForLink(UUID ownerId, UUID customerId, java.math.BigDecimal balance);
+
     /** Every active due of the owner with its paid part, sorted by date. No access check: server-side callers only. */
     List<OwnerDueResponse> ownerDues(UUID ownerId);
 
