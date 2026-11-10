@@ -780,8 +780,8 @@ public class PaymentService implements IPaymentService {
         try {
             // "Prava paid ₹1,000" · "For Cooler. Check it and OK it in Collected."
             dispatcher.notify(ownerId, NotificationCategory.PAYMENT_NEEDS_OK, NotificationType.ACTION_REQUIRED,
-                customer.getName() + " paid ₹" + PaymentDueService.rupees(payment.getAmount()),
-                "For " + product.getName() + ". Check it and OK it in Collected.", "PAYMENT", payment.getId(), "payment-needs-ok:" + payment.getId());
+                com.abhedyam.util.Txt.of("notif.payment.title", customer.getName(), PaymentDueService.rupees(payment.getAmount())),
+                com.abhedyam.util.Txt.of("notif.payment.body", product.getName()), "PAYMENT", payment.getId(), "payment-needs-ok:" + payment.getId());
         } catch (Exception e) {
             log.error("Failed to notify owner {} of pending payment {}: {}", ownerId, payment.getId(), e.getMessage(), e);
         }

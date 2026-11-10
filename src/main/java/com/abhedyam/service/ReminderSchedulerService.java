@@ -64,7 +64,8 @@ public class ReminderSchedulerService implements IReminderSchedulerService {
         // The owner's own reminder: the dispatcher handles the in-app row, mute, quiet hours and push.
         if (reminder.getCustomerId() == null) {
             dispatcher.notify(ownerId, NotificationCategory.OWNER_REMINDER, NotificationType.INFO,
-                reminder.getName(), reminder.getText(), "REMINDER", reminder.getId(), "reminder:" + reminder.getId());
+                com.abhedyam.util.Txt.raw(reminder.getName()), com.abhedyam.util.Txt.raw(reminder.getText()), // the owner's own words
+                "REMINDER", reminder.getId(), "reminder:" + reminder.getId());
             return;
         }
 

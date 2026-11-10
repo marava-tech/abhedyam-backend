@@ -2,6 +2,13 @@ spring:
   application:
     name: abhedyam-backend
 
+  # Owner notification texts (specs/notifications-telugu.md). A missing Telugu key falls back to messages.properties
+  # (English), never to the server's own locale.
+  messages:
+    basename: messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
+
   servlet:
     multipart:
       max-file-size: 15MB

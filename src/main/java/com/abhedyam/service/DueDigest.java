@@ -1,6 +1,8 @@
 package com.abhedyam.service;
 
 
+import com.abhedyam.util.Txt;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
@@ -39,14 +41,12 @@ record DueDigest(int customers, BigDecimal total, long oldestDays) {
         return new DueDigest(owing.size(), total.setScale(0, RoundingMode.HALF_UP), Math.max(0, Duration.between(oldest, now).toDays()));
     }
 
-    String text() {
-        String amount = indian(total.longValue());
-        return customers + (customers == 1 ? " customer owes ₹" : " customers owe ₹") + amount
-            + " · oldest " + oldestDays + (oldestDays == 1 ? " day" : " days");
+    Txt text() {
+        return Txt.of("notif.digest.owe", customers, indian(total.longValue()), oldestDays);
     }
 
     /** "2 dues today ₹7,000 · 1 overdue ₹3,000", or null when no due is today or overdue. */
-    static String duesLine(List<com.abhedyam.dto.OwnerDueResponse> dues, LocalDate today) {
+    static Txt duesLine(List<com.abhedyam.dto.OwnerDueResponse> dues, LocalDate today) {
         int todayCount = 0, overdueCount = 0;
         BigDecimal todayAmount = BigDecimal.ZERO, overdueAmount = BigDecimal.ZERO;
         for (var o : dues) {
@@ -54,26 +54,27 @@ record DueDigest(int customers, BigDecimal total, long oldestDays) {
             if (d.getStatus().equals("OVERDUE")) { overdueCount++; overdueAmount = overdueAmount.add(d.getRemaining()); }
             else if (!d.getStatus().equals("PAID") && d.getDueDate().equals(today)) { todayCount++; todayAmount = todayAmount.add(d.getRemaining()); }
         }
-        List<String> parts = new java.util.ArrayList<>();
-        if (todayCount > 0) parts.add(todayCount + (todayCount == 1 ? " due today ₹" : " dues today ₹") + indian(todayAmount.setScale(0, RoundingMode.HALF_UP).longValue()));
-        if (overdueCount > 0) parts.add(overdueCount + " overdue ₹" + indian(overdueAmount.setScale(0, RoundingMode.HALF_UP).longValue()));
-        return parts.isEmpty() ? null : String.join(" · ", parts);
+        List<Txt> parts = new java.util.ArrayList<>();
+        if (todayCount > 0) parts.add(Txt.of("notif.digest.duesToday", todayCount, indian(todayAmount.setScale(0, RoundingMode.HALF_UP).longValue())));
+        if (overdueCount > 0) parts.add(Txt.of("notif.digest.overdue", overdueCount, indian(overdueAmount.setScale(0, RoundingMode.HALF_UP).longValue())));
+        return parts.isEmpty() ? null : Txt.of("notif.join", parts);
     }
 
     /** "Buy soon: Oil (out), Rice (2 kg left) +1 more", or null when no tracked item is out or low. Out first. */
-    static String stockLine(List<com.abhedyam.dto.ItemResponse> items) {
+    static Txt stockLine(List<com.abhedyam.dto.ItemResponse> items) {
         List<com.abhedyam.dto.ItemResponse> need = items.stream()
             .filter(i -> i.getStatus() == com.abhedyam.dto.ItemResponse.Status.OUT || i.getStatus() == com.abhedyam.dto.ItemResponse.Status.LOW)
             .sorted(java.util.Comparator.comparing((com.abhedyam.dto.ItemResponse i) -> i.getStatus() != com.abhedyam.dto.ItemResponse.Status.OUT)
                 .thenComparing(com.abhedyam.dto.ItemResponse::getName, String.CASE_INSENSITIVE_ORDER))
             .toList();
         if (need.isEmpty()) return null;
-        List<String> names = new java.util.ArrayList<>();
+        List<Txt> names = new java.util.ArrayList<>();
         for (var i : need.subList(0, Math.min(2, need.size()))) {
-            names.add(i.getName() + (i.getStatus() == com.abhedyam.dto.ItemResponse.Status.OUT ? " (out)"
-                : " (" + i.getStock().stripTrailingZeros().toPlainString() + " " + i.getUnit().name().toLowerCase() + " left)"));
+            names.add(i.getStatus() == com.abhedyam.dto.ItemResponse.Status.OUT ? Txt.of("notif.stock.out", i.getName())
+                : Txt.of("notif.stock.left", i.getName(), i.getStock().stripTrailingZeros().toPlainString(), Txt.of("unit." + i.getUnit().name())));
         }
-        return "Buy soon: " + String.join(", ", names) + (need.size() > 2 ? " +" + (need.size() - 2) + " more" : "");
+        Txt shown = names.size() == 1 ? names.get(0) : Txt.of("notif.stock.two", names.get(0), names.get(1));
+        return Txt.of("notif.stock.buySoon", need.size() > 2 ? Txt.of("notif.stock.more", shown, need.size() - 2) : shown);
     }
 
     /** 124000 -> "1,24,000" (Java's en-IN formatter groups in thousands, which Indian owners do not expect). */

@@ -14,6 +14,12 @@ public interface IFcmService {
 
     /** {@code data} is delivered with the push so the app can open the right screen on tap (values are strings).
      *  Returns how many of the user's phones accepted it. */
-    int sendNotificationToUser(UUID userId, String title, String body, String packageName, java.util.Map<String, String> data);
+    default int sendNotificationToUser(UUID userId, String title, String body, String packageName, java.util.Map<String, String> data) {
+        return sendNotificationToUser(userId, lang -> new String[] {title, body}, packageName, data);
+    }
+
+    /** Each phone gets {title, body} in its own app language: {@code textIn} takes a language code ("en", "te"). */
+    int sendNotificationToUser(UUID userId, java.util.function.Function<String, String[]> textIn, String packageName,
+                               java.util.Map<String, String> data);
 }
 

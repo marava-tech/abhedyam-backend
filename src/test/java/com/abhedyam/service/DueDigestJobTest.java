@@ -72,8 +72,8 @@ class DueDigestJobTest {
         var tomorrow = java.time.LocalDate.of(2026, 11, 5);
         when(paymentDues.ownerDues(owner)).thenReturn(List.of(due(tomorrow, "OPEN", null)));
         job.run(ist(8, 15));
-        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.OWNER_REMINDER), eq(NotificationType.INFO), eq("Prava pays tomorrow"),
-            eq("₹5,000 due on Thu, 5 Nov · after harvest"), eq("DUE"), eq(dueId), eq("due-remind:" + dueId + ":2026-11-05:1"));
+        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.OWNER_REMINDER), eq(NotificationType.INFO), Texts.says("Prava pays tomorrow"),
+            Texts.says("₹5,000 due on Thu, 5 Nov · after harvest"), eq("DUE"), eq(dueId), eq("due-remind:" + dueId + ":2026-11-05:1"));
 
         reset(dispatcher);
         when(paymentDues.ownerDues(owner)).thenReturn(List.of(due(tomorrow, "PAID", null),
@@ -86,7 +86,7 @@ class DueDigestJobTest {
     void sevenDaysAheadSaysInSevenDays() {
         when(paymentDues.ownerDues(owner)).thenReturn(List.of(due(java.time.LocalDate.of(2026, 11, 11), "OPEN", 7)));
         job.run(ist(8, 15));
-        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.OWNER_REMINDER), any(), eq("Prava pays in 7 days"), any(), any(), any(),
+        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.OWNER_REMINDER), any(), Texts.says("Prava pays in 7 days"), any(), any(), any(),
             eq("due-remind:" + dueId + ":2026-11-11:7"));
     }
 
@@ -97,8 +97,8 @@ class DueDigestJobTest {
         when(paymentDues.ownerVisits(owner)).thenReturn(List.of(new com.abhedyam.dto.CollectionVisitResponse(visit, "Hanamkonda",
             java.time.LocalDate.of(2026, 11, 5), null, "UPCOMING", 6, new java.math.BigDecimal("18400"))));
         job.run(ist(8, 15));
-        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.OWNER_REMINDER), any(), eq("Visit Hanamkonda tomorrow"),
-            eq("6 customers owe ₹18,400"), eq("VISIT"), eq(visit), eq("visit-remind:" + visit + ":2026-11-05"));
+        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.OWNER_REMINDER), any(), Texts.says("Visit Hanamkonda tomorrow"),
+            Texts.says("6 customers owe ₹18,400"), eq("VISIT"), eq(visit), eq("visit-remind:" + visit + ":2026-11-05"));
     }
 
     @Test
@@ -115,7 +115,7 @@ class DueDigestJobTest {
         when(paymentDues.ownerDues(owner)).thenReturn(List.of(due(today, "OPEN", null), due(today.minusDays(3), "OVERDUE", null)));
         job.run(ist(8, 15));
         verify(dispatcher).notify(eq(owner), eq(NotificationCategory.DUE_DIGEST), any(), any(),
-            org.mockito.ArgumentMatchers.startsWith("1 due today ₹5,000 · 1 overdue ₹5,000 · 1 customer owes ₹500"), any(), any(), any());
+            Texts.startsWith("1 due today ₹5,000 · 1 overdue ₹5,000 · 1 customer owes ₹500"), any(), any(), any());
     }
 
     @Test
@@ -162,8 +162,8 @@ class DueDigestJobTest {
             item("Oil", "0", com.abhedyam.dto.ItemResponse.Status.OUT), item("Salt", "9", com.abhedyam.dto.ItemResponse.Status.OK),
             item("Dal", "1", com.abhedyam.dto.ItemResponse.Status.LOW)));
         job.run(ist(8, 15));
-        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.DUE_DIGEST), any(), eq("Money to collect"),
-            eq("1 customer owes ₹500 · oldest 0 days · Buy soon: Oil (out), Dal (1 kg left) +1 more"), any(), any(), any());
+        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.DUE_DIGEST), any(), Texts.says("Money to collect"),
+            Texts.says("1 customer owes ₹500 · oldest 0 days · Buy soon: Oil (out), Dal (1 kg left) +1 more"), any(), any(), any());
     }
 
     @Test
@@ -171,12 +171,12 @@ class DueDigestJobTest {
         when(saleItems.sumTotalsByCustomer(owner)).thenReturn(List.of());
         when(items.all(owner)).thenReturn(List.of(item("Oil", "0", com.abhedyam.dto.ItemResponse.Status.OUT)));
         job.run(ist(8, 15));
-        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.DUE_DIGEST), any(), eq("Stock running low"), eq("Buy soon: Oil (out)"), any(), any(), any());
+        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.DUE_DIGEST), any(), Texts.says("Stock running low"), Texts.says("Buy soon: Oil (out)"), any(), any(), any());
 
         reset(dispatcher);
         when(saleItems.sumTotalsByCustomer(owner)).thenReturn(java.util.Collections.singletonList(new Object[] {customer.toString(), new java.math.BigDecimal("500.00")}));
         when(items.all(owner)).thenThrow(new RuntimeException("boom"));
         job.run(ist(8, 15));
-        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.DUE_DIGEST), any(), eq("Money to collect"), eq("1 customer owes ₹500 · oldest 0 days"), any(), any(), any());
+        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.DUE_DIGEST), any(), Texts.says("Money to collect"), Texts.says("1 customer owes ₹500 · oldest 0 days"), any(), any(), any());
     }
 }

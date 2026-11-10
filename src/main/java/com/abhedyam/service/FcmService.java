@@ -49,7 +49,9 @@ public class FcmService implements IFcmService {
         fcmDetailsRepository.deleteByUserIdAndTokenAndPackageName(userId, token, packageName);
     }
     
-    public int sendNotificationToUser(UUID userId, String title, String body, String packageName, java.util.Map<String, String> data) {
+    @Override
+    public int sendNotificationToUser(UUID userId, java.util.function.Function<String, String[]> textIn, String packageName,
+                                      java.util.Map<String, String> data) {
         List<FcmDetails> fcmDetailsList = fcmDetailsRepository.findByUserIdAndPackageName(userId, packageName);
         
         if (fcmDetailsList.isEmpty()) {
@@ -60,6 +62,9 @@ public class FcmService implements IFcmService {
         int sent = 0;
         for (FcmDetails fcmDetails : fcmDetailsList) {
             try {
+                // The phone's app language (sent with its token); older apps sent none = English.
+                String[] text = textIn.apply(fcmDetails.getLanguage() == null ? "en" : fcmDetails.getLanguage().code());
+                String title = text[0], body = text[1];
                 Message message = Message.builder()
                     .setToken(fcmDetails.getToken())
                     .setNotification(Notification.builder()

@@ -26,6 +26,7 @@ public class OwnerSessionService {
     private final OwnerSessionRepository repository;
     private final FcmDetailsRepository fcmDetailsRepository;
     private final FcmService fcmService;
+    private final NotificationText text;
     private final com.abhedyam.repository.ShopMemberRepository memberRepository;
 
     /** Login on a phone. Same phone signing in again keeps its row; a new phone tells the owner's other phones. */
@@ -116,10 +117,10 @@ public class OwnerSessionService {
 
     private void tellOtherPhones(UUID ownerId, String deviceName) {
         try {
-            String phone = deviceName == null ? "a new phone" : deviceName;
+            Object phone = deviceName == null ? com.abhedyam.util.Txt.of("notif.newPhone.unknown") : deviceName;
             // sent before the new phone registers its push token, so only the other phones get it
-            fcmService.sendNotificationToUser(ownerId, "Signed in on a new phone",
-                    phone + ". Not you? More → Your devices → Log out.",
+            fcmService.sendNotificationToUser(ownerId,
+                    text.byCode(com.abhedyam.util.Txt.of("notif.newPhone.title"), com.abhedyam.util.Txt.of("notif.newPhone.body", phone)),
                     PackageConstants.BUSINESS_APP_PACKAGE, Map.of("category", "NEW_DEVICE"));
         } catch (Exception e) {
             log.warn("New-phone push failed for owner {}: {}", ownerId, e.getMessage());
