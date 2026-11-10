@@ -59,10 +59,8 @@ public class ReferralService implements IReferralService {
                         ownerRepository.findById(r.getRefereeOwnerId()).map(Owner::getBusinessName).orElse("A shop"),
                         r.getCreatedAt(), r.getStatus() == ReferralStatus.PAID))
                 .toList();
-        long months = referrals.stream().filter(r -> r.getStatus() == ReferralStatus.PAID && !r.getRewardCash()).count();
-        long cash = referrals.stream().filter(r -> r.getStatus() == ReferralStatus.PAID && r.getRewardCash()).count()
-                * REFERRER_REWARD_RUPEES;
-        return new ReferralSummaryResponse(code, "https://duesetu.com/join?ref=" + code, months, cash,
+        long months = referrals.stream().filter(r -> r.getStatus() == ReferralStatus.PAID).count();
+        return new ReferralSummaryResponse(code, "https://duesetu.com/join?ref=" + code, months,
                 owner.getReferredBy() != null || owner.getPartnerId() != null, friends);
     }
 
@@ -127,18 +125,14 @@ public class ReferralService implements IReferralService {
         Owner referrer = ownerRepository.findById(referral.getReferrerOwnerId()).orElse(null);
         if (referrer == null) return;
 
-        // Free days don't stop Google charging someone who already pays, so they get cash instead.
-        boolean cash = referrer.getPlayProductId() != null;
-        if (!cash) {
-            BillingService.addDays(referrer, REFERRER_REWARD_DAYS);
-            ownerRepository.save(referrer);
-        }
+        // Referrers are always rewarded in days, never money (also when they already pay on Play).
+        BillingService.addDays(referrer, REFERRER_REWARD_DAYS);
+        ownerRepository.save(referrer);
         referral.setStatus(ReferralStatus.PAID);
-        referral.setRewardCash(cash);
+        referral.setRewardCash(false);
         referral.setRewardedAt(Instant.now());
         referralRepository.save(referral);
-        log.info("Referral rewarded: referrer={}, friend={}, reward={}", referrer.getId(), payer.getId(),
-                cash ? "₹" + REFERRER_REWARD_RUPEES + " UPI" : REFERRER_REWARD_DAYS + " days");
+        log.info("Referral rewarded: referrer={}, friend={}, reward={} days", referrer.getId(), payer.getId(), REFERRER_REWARD_DAYS);
     }
 
     private String codeFor(Owner owner) {

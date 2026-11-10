@@ -99,7 +99,7 @@ class BillingServiceTest {
     }
 
     @Test
-    void payingReferrerGetsCashNotDays() {
+    void payingReferrerGetsDaysToo() {
         referrer.setPlayProductId("abhedyam_yearly");
         Instant referrerEnd = referrer.getAccessUntil();
         Referral r = new Referral();
@@ -108,8 +108,8 @@ class BillingServiceTest {
         when(referrals.findByRefereeOwnerId(friend.getId())).thenReturn(Optional.of(r));
 
         billing.applyRevenueCatEvent(event("INITIAL_PURCHASE", friend, Instant.now().plus(30, ChronoUnit.DAYS), "NORMAL"));
-        assertTrue(r.getRewardCash());
-        assertEquals(referrerEnd, referrer.getAccessUntil());
+        assertFalse(r.getRewardCash());
+        assertEquals(referrerEnd.plus(30, ChronoUnit.DAYS), referrer.getAccessUntil());
     }
 
     @Test
