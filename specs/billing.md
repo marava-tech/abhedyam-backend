@@ -17,7 +17,7 @@ Plan and research: `abhedyam-owner/.product/MONETIZATION_REDESIGN.md`.
   - `EXPIRATION` → `play_product_id = null` (access already ends at the expiry date).
   - Unknown/anonymous `app_user_id` → `{applied:false}`, 200.
 - `GET /api/v1/referrals` → `{referralCode, shareLink (duesetu.com/join?ref=CODE), monthsEarned, cashEarned, usedACode, friends[{businessName, joinedAt, paid}]}`.
-- `POST /api/v1/referrals/apply {referralCode}` (owner only): case-insensitive; not own code, not after paying, once per owner. Friend gets +15 days.
+- `POST /api/v1/referrals/apply {referralCode}` (owner only): case-insensitive; not own code, not after paying, once per owner, and only a shop that joined **after** the code's owner (`REFERRER_NOT_OLDER`), so two shops can't swap codes for bonus days. Friend gets +15 days.
 - Admin (TOTP admin token): `POST /admin/shops/{id}/access {days}` adds days, `/access/end` ends access now. See `admin-dashboard.md`.
 
 ## Referral reward

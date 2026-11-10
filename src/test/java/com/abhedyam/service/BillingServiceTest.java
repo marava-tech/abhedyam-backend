@@ -43,9 +43,30 @@ class BillingServiceTest {
         friend = owner();
         referrer = owner();
         referrer.setReferralCode("ABHTEST1");
+        referrer.setCreatedAt(Instant.now().minus(2, ChronoUnit.DAYS)); // the code owner joined first
+        friend.setCreatedAt(Instant.now().minus(1, ChronoUnit.DAYS));
         when(owners.save(any(Owner.class))).thenAnswer(i -> i.getArgument(0));
         when(referrals.save(any(Referral.class))).thenAnswer(i -> i.getArgument(0));
         when(owners.findByReferralCode("ABHTEST1")).thenReturn(Optional.of(referrer));
+    }
+
+    @Test
+    void circularReferralsAreRefused() {
+        // referrer is older than friend. friend may use referrer's code, but the older shop may not use the newer one's.
+        friend.setReferralCode("ABHTEST2");
+        when(owners.findByReferralCode("ABHTEST2")).thenReturn(Optional.of(friend));
+        BusinessException e = assertThrows(BusinessException.class, () -> referralService.apply(referrer.getId(), "ABHTEST2"));
+        assertEquals("REFERRER_NOT_OLDER", e.getErrorCode());
+        assertNull(referrer.getReferredBy());
+        referralService.apply(friend.getId(), "ABHTEST1");
+        assertEquals(referrer.getId().toString(), friend.getReferredBy());
+    }
+
+    @Test
+    void sameMomentAccountsCannotRefer() {
+        friend.setCreatedAt(referrer.getCreatedAt());
+        BusinessException e = assertThrows(BusinessException.class, () -> referralService.apply(friend.getId(), "ABHTEST1"));
+        assertEquals("REFERRER_NOT_OLDER", e.getErrorCode());
     }
 
     @Test
