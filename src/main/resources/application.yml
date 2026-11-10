@@ -100,7 +100,6 @@ app:
   jwt:
     secret: ${JWT_SECRET}
     expiration: ${JWT_EXPIRATION:1296000000}
-    customer-expiration: ${JWT_CUSTOMER_EXPIRATION:2592000000}
   firebase:
     credentials: ${FIREBASE_CREDENTIALS:}
   email:

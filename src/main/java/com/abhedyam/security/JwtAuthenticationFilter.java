@@ -1,7 +1,6 @@
 package com.abhedyam.security;
 
 import com.abhedyam.dto.ErrorResponse;
-import com.abhedyam.repository.CustomerRepository;
 import com.abhedyam.repository.OwnerRepository;
 import com.abhedyam.util.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,7 +34,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private ApplicationContext applicationContext;
 
     private OwnerRepository ownerRepository;
-    private CustomerRepository customerRepository;
 
     public JwtAuthenticationFilter(JwtUtil jwtUtil, ObjectMapper objectMapper) {
         this.jwtUtil = jwtUtil;
@@ -58,12 +56,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return sessionRepository;
     }
 
-    private CustomerRepository getCustomerRepository() {
-        if (customerRepository == null) {
-            customerRepository = applicationContext.getBean(CustomerRepository.class);
-        }
-        return customerRepository;
-    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -111,8 +103,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             } else {
                 try {
                     // A disabled owner (deleted account) keeps their rows but must not get in with an old token.
-                    boolean userExists = getOwnerRepository().existsByIdAndIsActiveTrue(userId)
-                            || getCustomerRepository().existsById(userId);
+                    // Owners only (family/helper tokens carry the owner's id): customers can't sign in.
+                    boolean userExists = getOwnerRepository().existsByIdAndIsActiveTrue(userId);
                     if (!userExists) {
                         log.warn("User not found for token - userId: {}", userId);
                         sendUnauthorizedError(response, "User account not found or has been deleted", "USER_NOT_FOUND",

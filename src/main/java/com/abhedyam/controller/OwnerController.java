@@ -1,7 +1,6 @@
 package com.abhedyam.controller;
 
 import com.abhedyam.dto.ApiResponse;
-import com.abhedyam.dto.OwnerPublicResponse;
 import com.abhedyam.dto.OwnerResponse;
 import com.abhedyam.dto.OwnerSummaryResponse;
 import com.abhedyam.dto.OwnerUpdateRequest;
@@ -13,8 +12,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -28,15 +25,6 @@ public class OwnerController {
     @GetMapping("/{id}")
     public ApiResponse<OwnerResponse> getById(@PathVariable UUID id) {
         return ApiResponse.success(ownerService.getById(id));
-    }
-    
-    @GetMapping("/public")
-    public ApiResponse<List<OwnerPublicResponse>> getAllPublic(
-            @Parameter(description = "Latitude for distance calculation (optional)", example = "12.9716")
-            @RequestParam(required = false) BigDecimal latitude,
-            @Parameter(description = "Longitude for distance calculation (optional)", example = "77.5946")
-            @RequestParam(required = false) BigDecimal longitude) {
-        return ApiResponse.success(ownerService.getAllPublic(latitude, longitude));
     }
     
     @PatchMapping("/{id}")

@@ -2,14 +2,10 @@ package com.abhedyam.service;
 
 import com.abhedyam.dto.AuthResponse;
 import com.abhedyam.dto.GoogleLoginRequest;
-import com.abhedyam.dto.PhoneLoginRequest;
 import com.abhedyam.service.GoogleOAuthService.GoogleUserInfo;
-import com.abhedyam.model.Customer;
 import com.abhedyam.model.Owner;
 import com.abhedyam.model.User;
 import com.abhedyam.model.enums.UserType;
-import com.abhedyam.repository.CustomerRepository;
-import com.abhedyam.repository.LocationDetailsRepository;
 import com.abhedyam.repository.OwnerRepository;
 import com.abhedyam.repository.UserRepository;
 import com.abhedyam.util.EmailUtil;
@@ -31,11 +27,8 @@ import java.util.UUID;
 public class AuthService {
 
     private final GoogleOAuthService googleOAuthService;
-    private final FirebaseService firebaseService;
     private final UserRepository userRepository;
     private final OwnerRepository ownerRepository;
-    private final CustomerRepository customerRepository;
-    private final LocationDetailsRepository locationDetailsRepository;
     private final JwtUtil jwtUtil;
     private final OwnerSessionService sessionService;
     private final ShopMemberService memberService;
@@ -135,17 +128,6 @@ public class AuthService {
                 user.getCreatedAt());
     }
 
-    /**
-     * Disabled: this issued a customer token from a phone number alone (no proof of
-     * ownership), so anyone could sign in as any customer. Customer sign-in stays off until a
-     * replacement (owner-issued access code) ships.
-     */
-    @Transactional
-    public AuthResponse loginWithPhone(PhoneLoginRequest request) {
-        throw new com.abhedyam.exception.BusinessException("OTP_REQUIRED",
-                "Verify your phone number to sign in");
-    }
-
     @Transactional
     public AuthResponse refresh(String token) {
         return refresh(token, null, null);
@@ -223,17 +205,8 @@ public class AuthService {
                     null,
                     owner.getCreatedAt());
         }
-        Customer customer = customerRepository.findById(userId)
-                .orElseThrow(() -> new com.abhedyam.exception.BusinessException("USER_NOT_FOUND", "Account could not be found"));
-        return new AuthResponse(
-                jwtUtil.generateCustomerToken(customer.getId(), customer.getPhoneNormalized()),
-                customer.getId().toString(),
-                customer.getPhoneNormalized(),
-                customer.getName(),
-                false,
-                UserType.CUSTOMER,
-                customer.getOwnerId(),
-                customer.getCreatedAt());
+        // Customers can't sign in (no customer app): only owners and their family/helpers renew.
+        throw new com.abhedyam.exception.BusinessException("USER_NOT_FOUND", "Account could not be found");
     }
 
     @Value("${app.admin.email}")

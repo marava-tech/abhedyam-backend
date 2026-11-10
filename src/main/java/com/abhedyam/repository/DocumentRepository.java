@@ -14,8 +14,6 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
     
     @Query("SELECT d FROM Document d WHERE d.ownerId = :ownerId AND d.isActive = true ORDER BY d.orderIndex ASC")
     List<Document> findActiveDocumentsByOwnerId(@Param("ownerId") UUID ownerId);
-    
-    @Query("SELECT d FROM Document d WHERE d.ownerId = :ownerId AND d.isActive = true AND d.visibleToCustomers = true ORDER BY d.orderIndex ASC")
-    List<Document> findVisibleDocumentsByOwnerId(@Param("ownerId") UUID ownerId);
+
 }
 

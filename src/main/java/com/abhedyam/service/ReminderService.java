@@ -52,11 +52,8 @@ public class ReminderService implements IReminderService {
         reminder.setText(request.getText());
         reminder.setStatus(ReminderStatus.PENDING);
         
-        List<String> packages = request.getPackages();
-        if (packages == null || packages.isEmpty()) {
-            packages = determinePackages(request.getCustomerId(), ownerId);
-        }
-        reminder.setPackages(packages);
+        // Every reminder is the owner's own (there is no customer app): it reaches the owner's phones.
+        reminder.setPackages(new java.util.ArrayList<>(List.of(PackageConstants.BUSINESS_APP_PACKAGE)));
         
         Reminder savedReminder = reminderRepository.save(reminder);
         
@@ -102,16 +99,6 @@ public class ReminderService implements IReminderService {
         reminder.setStatus(ReminderStatus.DELETED);
         reminder.setIsActive(false);
         reminderRepository.save(reminder);
-    }
-
-    private List<String> determinePackages(UUID customerId, UUID ownerId) {
-        if (customerId != null) {
-            return List.of(PackageConstants.CUSTOMER_APP_PACKAGE);
-        } else if (ownerId != null) {
-            return List.of(PackageConstants.BUSINESS_APP_PACKAGE);
-        } else {
-            return PackageConstants.ALL_PACKAGES;
-        }
     }
 }
 

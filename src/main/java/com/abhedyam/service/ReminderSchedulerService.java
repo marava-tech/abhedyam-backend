@@ -6,7 +6,6 @@ import com.abhedyam.model.enums.NotificationType;
 import com.abhedyam.model.enums.ReminderStatus;
 import com.abhedyam.repository.ReminderRepository;
 import com.abhedyam.service.interfaces.IReminderSchedulerService;
-import com.abhedyam.util.PackageConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -24,8 +23,6 @@ import java.util.UUID;
 public class ReminderSchedulerService implements IReminderSchedulerService {
     
     private final ReminderRepository reminderRepository;
-    private final NotificationService notificationService;
-    private final FcmService fcmService;
     private final NotificationDispatcher dispatcher;
     
     @Scheduled(fixedRate = 60000)
@@ -61,39 +58,10 @@ public class ReminderSchedulerService implements IReminderSchedulerService {
             return;
         }
 
-        // The owner's own reminder: the dispatcher handles the in-app row, mute, quiet hours and push.
-        if (reminder.getCustomerId() == null) {
-            dispatcher.notify(ownerId, NotificationCategory.OWNER_REMINDER, NotificationType.INFO,
-                com.abhedyam.util.Txt.raw(reminder.getName()), com.abhedyam.util.Txt.raw(reminder.getText()), // the owner's own words
-                "REMINDER", reminder.getId(), "reminder:" + reminder.getId());
-            return;
-        }
-
-        // A reminder addressed to a customer (customer app): not part of the owner notification engine.
-        UUID customerId = reminder.getCustomerId();
-        com.abhedyam.model.Notification notification = new com.abhedyam.model.Notification();
-        notification.setOwnerId(ownerId);
-        notification.setUserId(customerId);
-        notification.setType(NotificationType.INFO);
-        notification.setMessage(reminder.getText());
-        notification.setTimestamp(Instant.now());
-        notification.setIsRead(false);
-        notification.setRelatedEntityId(reminder.getId());
-        notification.setRelatedEntityType("REMINDER");
-        notificationService.create(notification);
-
-        List<String> packages = reminder.getPackages();
-        if (packages == null || packages.isEmpty()) {
-            packages = List.of(PackageConstants.CUSTOMER_APP_PACKAGE);
-        }
-        for (String packageName : packages) {
-            try {
-                fcmService.sendNotificationToUser(customerId, reminder.getName(), reminder.getText(), packageName);
-                log.info("FCM notification sent for reminder {} to customer {} with package {}", reminder.getId(), customerId, packageName);
-            } catch (Exception e) {
-                log.error("Failed to send FCM notification for reminder {} to customer {} with package {}: {}",
-                    reminder.getId(), customerId, packageName, e.getMessage());
-            }
-        }
+        // Every reminder is the owner's own, with or without a customer attached (there is no customer app).
+        // The dispatcher handles the in-app row, mute, quiet hours and push.
+        dispatcher.notify(ownerId, NotificationCategory.OWNER_REMINDER, NotificationType.INFO,
+            com.abhedyam.util.Txt.raw(reminder.getName()), com.abhedyam.util.Txt.raw(reminder.getText()), // the owner's own words
+            "REMINDER", reminder.getId(), "reminder:" + reminder.getId());
     }
 }

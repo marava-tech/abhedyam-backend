@@ -22,8 +22,6 @@ public class JwtUtil {
     @Value("${app.jwt.expiration:1296000000}")
     private Long expiration;
     
-    @Value("${app.jwt.customer-expiration:2592000000}")
-    private Long customerExpiration;
     
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
@@ -49,19 +47,6 @@ public class JwtUtil {
                 .claim("sid", sessionId == null ? null : sessionId.toString())
                 .claim("mid", memberId == null ? null : memberId.toString())
                 .claim("role", role)
-                .issuedAt(now)
-                .expiration(expiryDate)
-                .signWith(getSigningKey())
-                .compact();
-    }
-    
-    public String generateCustomerToken(UUID userId, String phone) {
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + customerExpiration);
-        
-        return Jwts.builder()
-                .subject(userId.toString())
-                .claim("phone", phone)
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSigningKey())

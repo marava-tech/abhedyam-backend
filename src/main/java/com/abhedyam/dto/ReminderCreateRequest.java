@@ -30,7 +30,5 @@ public class ReminderCreateRequest {
     @NotBlank(message = "Reminder text is required")
     @Schema(description = "Reminder message text", example = "Call customer about payment", required = true)
     private String text;
-    
-    @Schema(description = "Package names for targeting notifications", example = "[\"tech.marava.abhedyam\", \"tech.marava.abhedyamc\"]")
-    private java.util.List<String> packages;
+
 }

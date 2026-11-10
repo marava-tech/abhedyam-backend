@@ -6,7 +6,7 @@ MySQL 8 (primary DB) + Redis 7 (cache only).
 CI/CD: GitHub Actions → ghcr.io/marava-tech/abhedyam-backend:latest → auto-deploy on merge to main.
 
 ## Product context
-Abhedyam helps small shopkeepers manage customers, sales, inventory, and payments digitally. Owners sign in with Google (Firebase); customer sign-in is currently off. Billing: 30-day free trial, then a Google Play subscription via RevenueCat (one plan; read-only after access ends) — see specs/billing.md. Push notifications via Firebase FCM.
+Abhedyam helps small shopkeepers manage customers, sales, inventory, and payments digitally. Owners sign in with Google (Firebase). There is no customer app or customer sign-in: customers open a private khata link (specs/customer-khata-link.md). Billing: 30-day free trial, then a Google Play subscription via RevenueCat (one plan; read-only after access ends) — see specs/billing.md. Push notifications via Firebase FCM.
 
 ## Stack
 - Java 21, Spring Boot 3.x
