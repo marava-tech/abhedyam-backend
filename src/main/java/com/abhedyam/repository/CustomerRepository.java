@@ -17,6 +17,8 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
     List<Customer> findByOwnerId(UUID ownerId);
     
     Optional<Customer> findByPhoneNormalized(String phoneNormalized);
+
+    Optional<Customer> findByLinkToken(String linkToken);
     Optional<Customer> findFirstByOwnerIdAndNameIgnoreCase(UUID ownerId, String name);
 
     @Query("SELECT c FROM Customer c WHERE c.ownerId = :ownerId " +
