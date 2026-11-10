@@ -91,6 +91,15 @@ public class ReferralService implements IReferralService {
             throw new BusinessException("SELF_REFERRAL", "You can't use your own code");
         }
 
+        // Only an older account can refer a newer one. Otherwise two shops could use each other's codes and both
+        // collect the bonus days. A missing timestamp is denied too (it never happens for a saved owner).
+        Instant referrerSince = referrer.getCreatedAt();
+        Instant refereeSince = referee.getCreatedAt();
+        if (referrerSince == null || refereeSince == null || !refereeSince.isAfter(referrerSince)) {
+            throw new BusinessException("REFERRER_NOT_OLDER",
+                    "This code belongs to a shop that joined after you. Codes only work for shops that joined after the code owner");
+        }
+
         referee.setReferredBy(referrer.getId().toString());
         BillingService.addDays(referee, FRIEND_BONUS_DAYS);
         ownerRepository.save(referee);
