@@ -8,6 +8,7 @@ import com.abhedyam.exception.BusinessException;
 import com.abhedyam.model.Payment;
 import com.abhedyam.model.SaleItem;
 import com.abhedyam.model.enums.PaymentStatus;
+import com.abhedyam.repository.AuditRepository;
 import com.abhedyam.repository.PaymentRepository;
 import com.abhedyam.repository.SaleItemRepository;
 import com.abhedyam.repository.UserRepository;
@@ -24,11 +25,12 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
 
-/** Undo of a Payment in: amounts go back on the sales, rows stay as failed, retries and strangers are safe. */
+/** Undo of a Payment in: amounts go back on the sales, rows stay as failed, their Recent activity rows are deleted, retries and strangers are safe. */
 @ExtendWith(MockitoExtension.class)
 class CancelPaymentsTest {
 
     @Mock private PaymentRepository paymentRepository;
+    @Mock private AuditRepository auditRepository;
     @Mock private SaleItemRepository saleItemRepository;
     @Mock private UserRepository userRepository;
     @Mock private RedisTemplate<String, String> redisTemplate;
@@ -67,6 +69,7 @@ class CancelPaymentsTest {
         assertEquals(PaymentStatus.FAILED, live.getStatus());
         assertEquals("Cancelled by owner", live.getReference());
         assertEquals(0, new BigDecimal("500").compareTo(sale.getRemainingAmount()));
+        verify(auditRepository).deletePaymentActivities(owner, List.of(live.getId(), done.getId())); // gone from Recent activity
     }
 
     @Test
@@ -79,5 +82,6 @@ class CancelPaymentsTest {
             assertThrows(BusinessException.class, () -> paymentService.cancelPayments(owner, List.of(mine.getId(), theirs.getId())));
         }
         verify(paymentRepository, never()).saveAll(any());
+        verify(auditRepository, never()).deletePaymentActivities(any(), any());
     }
 }
