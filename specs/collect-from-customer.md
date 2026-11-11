@@ -19,6 +19,14 @@ Body: `{ customerId, amount, medium? (default CASH), reference? }`
 - Response: `{ customerId, totalCollected, payments[] }` (one PaymentResponse
   per allocated item).
 
+## Paid on an earlier day (`paidAt`)
+Optional `paidAt` (ISO instant) in the body: the owner records a payment taken
+earlier (paper notebook, a missed day). Every row of that collect gets it as
+its `timestamp`, so Collected, statements, "last paid" and month totals count
+it on that day. The Recent activity row still shows when it was entered.
+Not in the future (5 minutes of clock slack) and at most 366 days back, else
+`VALIDATION_ERROR`. Omitted = now. A write-off ignores it.
+
 ## Validation / access
 - Path owner must be the current user (existing owner check).
 - Customer must belong to that owner, else `UNAUTHORIZED`.

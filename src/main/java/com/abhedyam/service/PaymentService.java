@@ -109,7 +109,7 @@ public class PaymentService implements IPaymentService {
         payment.setSaleItemId(request.getSaleItemId());
         payment.setAmount(request.getAmount());
         payment.setMedium(request.getMedium());
-        payment.setTimestamp(Instant.now());
+        payment.setTimestamp(request.getPaidAt() != null ? request.getPaidAt() : Instant.now());
         payment.setReference(request.getReference());
         payment.setDueId(request.getDueId());
         payment.setStatus(request.getStatus() != null ? request.getStatus() : PaymentStatus.SUCCESS);
@@ -265,6 +265,18 @@ public class PaymentService implements IPaymentService {
         return changed;
     }
 
+    /** A payment entered later: not in the future (5 minutes of clock slack), at most a year back. Null = now. */
+    static Instant checkPaidAt(Instant paidAt, Instant now) {
+        if (paidAt == null) return null;
+        if (paidAt.isAfter(now.plus(java.time.Duration.ofMinutes(5)))) {
+            throw new BusinessException(ErrorCodes.VALIDATION_ERROR, "A payment date cannot be in the future");
+        }
+        if (paidAt.isBefore(now.minus(java.time.Duration.ofDays(366)))) {
+            throw new BusinessException(ErrorCodes.VALIDATION_ERROR, "A payment date can be at most a year back");
+        }
+        return paidAt;
+    }
+
     /** [writeOff]: the amount is the whole open balance and the rows are marked written off. */
     private com.abhedyam.dto.CollectPaymentResponse collect(UUID ownerId, com.abhedyam.dto.CollectPaymentRequest request, boolean writeOff) {
         validateOwnerAccess(ownerId);
@@ -297,6 +309,7 @@ public class PaymentService implements IPaymentService {
         }
 
         PaymentMedium medium = request.getMedium() != null ? request.getMedium() : PaymentMedium.CASH;
+        Instant paidAt = writeOff ? null : checkPaidAt(request.getPaidAt(), Instant.now());
         List<PaymentResponse> payments = new java.util.ArrayList<>();
         for (PaymentAllocator.Piece piece : PaymentAllocator.allocate(open, request.getAmount())) {
             PaymentCreateRequest one = new PaymentCreateRequest();
@@ -307,6 +320,7 @@ public class PaymentService implements IPaymentService {
             one.setStatus(PaymentStatus.SUCCESS);
             one.setDueId(request.getDueId());
             one.setWriteOff(writeOff ? Boolean.TRUE : null);
+            one.setPaidAt(paidAt);
             payments.add(createManualPayment(one));
         }
         return new com.abhedyam.dto.CollectPaymentResponse(customer.getId(), request.getAmount(), payments);
