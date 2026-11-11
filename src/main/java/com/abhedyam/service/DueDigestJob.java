@@ -85,10 +85,17 @@ public class DueDigestJob {
         List<Txt> parts = new java.util.ArrayList<>();
         Txt duesLine = DueDigest.duesLine(dues, today);
         if (duesLine != null) parts.add(duesLine);
+        long callAgain = paymentDues.ownerFollowUps(ownerId).stream()
+            .filter(f -> f.getStatus().equals("OVERDUE") || f.getDate().equals(today)).count();
+        if (callAgain > 0) parts.add(Txt.of("notif.digest.callAgain", callAgain));
         if (digest != null) parts.add(digest.text());
         if (stockLine != null) parts.add(stockLine);
-        Txt title = Txt.of(digest != null ? "notif.digest.title.money" : "notif.digest.title.stock");
-        dispatcher.notify(ownerId, NotificationCategory.DUE_DIGEST, NotificationType.INFO, title, Txt.of("notif.join", parts), "DIGEST", null, key);
+        // Money due today or late: the push is a call to send reminders, and opens Upcoming collections (DIGEST_DUES;
+        // older apps route by category and still open Customers).
+        Txt title = duesLine != null ? Txt.of("notif.digest.title.remind")
+            : Txt.of(digest != null ? "notif.digest.title.money" : "notif.digest.title.stock");
+        dispatcher.notify(ownerId, NotificationCategory.DUE_DIGEST, NotificationType.INFO, title, Txt.of("notif.join", parts),
+            duesLine != null ? "DIGEST_DUES" : "DIGEST", null, key);
     }
 
     /** A stock problem must never stop the money digest. */
