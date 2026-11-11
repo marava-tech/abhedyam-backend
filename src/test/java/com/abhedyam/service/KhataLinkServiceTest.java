@@ -149,6 +149,7 @@ class KhataLinkServiceTest {
         owner.setId(ownerId);
         owner.setBusinessName("Sri Lakshmi Stores");
         owner.setPhone("9000000000");
+        owner.setReferralCode("ABH8X29K");
         UPIAccount upi = new UPIAccount();
         upi.setVpa("shop@ybl");
         Instant t0 = Instant.parse("2026-11-01T10:00:00Z");
@@ -170,6 +171,7 @@ class KhataLinkServiceTest {
         assertEquals("Sri Lakshmi Stores", r.shopName());
         assertEquals("Prava", r.customerName());
         assertEquals("shop@ybl", r.upiId());
+        assertEquals("ABH8X29K", r.shopReferralCode()); // for "Shop owner? Keep your khata free" on the page
         assertNull(r.nextDue());
         assertEquals(List.of("PAYMENT", "SALE", "SALE"), r.entries().stream().map(PublicKhataResponse.Entry::kind).toList());
         assertFalse(r.toString().contains("9876543210"));

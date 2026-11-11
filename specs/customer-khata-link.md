@@ -24,3 +24,6 @@ Each customer gets a private, random link token. The owner puts the link in What
 
 ## Out of Scope
 "I've paid" from the page (owner decision 2026-11-11: later), link expiry, page analytics.
+
+## Shop referral code (2026-11-11)
+`GET /api/v1/public/k/{token}` also returns `shopReferralCode`: the shop owner's own referral code, or null if they never opened Invite shops (it is not created on this read path). duesetu.com shows a quiet "Shop owner? Keep your khata free" line linking to `/join?ref=<code>`, so a shop that joins from a customer's khata credits the shop that sent it. A referral code is meant to be shared; nothing about the customer is added.
