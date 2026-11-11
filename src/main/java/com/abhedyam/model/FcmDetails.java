@@ -34,8 +34,10 @@ public class FcmDetails extends BaseEntity {
     @Column(length = 50)
     private String deviceType;
 
-    /** The app language on this phone: its pushes are written in it. null (older app) = English. */
+    /** The app language on this phone: its pushes are written in it. null (older app) = English.
+     *  Plain VARCHAR, not MySQL's native enum: a new language must not need a column change (LanguageColumnWidening). */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(length = 8)
     private AppLanguage language;
 }

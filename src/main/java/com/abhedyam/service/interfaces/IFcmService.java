@@ -18,7 +18,7 @@ public interface IFcmService {
         return sendNotificationToUser(userId, lang -> new String[] {title, body}, packageName, data);
     }
 
-    /** Each phone gets {title, body} in its own app language: {@code textIn} takes a language code ("en", "te"). */
+    /** Each phone gets {title, body} in its own app language: {@code textIn} takes a language code ("en", "hi", "te"). */
     int sendNotificationToUser(UUID userId, java.util.function.Function<String, String[]> textIn, String packageName,
                                java.util.Map<String, String> data);
 }

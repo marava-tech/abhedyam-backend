@@ -27,7 +27,7 @@ public class NotificationResponse {
     /** Push title ("Prava pays tomorrow"); null on rows from before the dispatcher. */
     private String title;
     
-    /** Title and message in the app's language (Accept-Language: en, te); older rows are English only. */
+    /** Title and message in the app's language (Accept-Language: en, hi, te); older rows are English only. */
     public static NotificationResponse fromEntity(Notification notification) {
         String[] text = notification.textIn(org.springframework.context.i18n.LocaleContextHolder.getLocale().getLanguage());
         return new NotificationResponse(
