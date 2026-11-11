@@ -24,3 +24,8 @@ Rows in `reminders` with `type = FOLLOW_UP`, `time` = the push instant, `text` =
 - deleted: `status = DELETED`, `is_active = false`
 
 No new enum value: Hibernate 6 may have created a CHECK constraint on `reminders.status`, and `ddl-auto: update` does not widen it.
+
+## Morning digest (step 3)
+- Adds "N to call again" for follow-ups due today or overdue.
+- When money is due today or late, the digest title is "Send reminders for today" (en/te/hi) and the entity is `DIGEST_DUES`, so new apps open Upcoming collections (Message / Remind all); older apps route by category (`DUE_DIGEST`) and open Customers as before. Collection-cycle days are already counted in "dues today".
+- `notif.followup.*` in Hindi (was missing; Hindi owners got English).

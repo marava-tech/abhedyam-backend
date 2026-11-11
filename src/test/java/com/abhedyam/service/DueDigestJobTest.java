@@ -114,8 +114,20 @@ class DueDigestJobTest {
         var today = java.time.LocalDate.of(2026, 11, 4);
         when(paymentDues.ownerDues(owner)).thenReturn(List.of(due(today, "OPEN", null), due(today.minusDays(3), "OVERDUE", null)));
         job.run(ist(8, 15));
-        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.DUE_DIGEST), any(), any(),
-            Texts.startsWith("1 due today ₹5,000 · 1 overdue ₹5,000 · 1 customer owes ₹500"), any(), any(), any());
+        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.DUE_DIGEST), any(), Texts.says("Send reminders for today"),
+            Texts.startsWith("1 due today ₹5,000 · 1 overdue ₹5,000 · 1 customer owes ₹500"), eq("DIGEST_DUES"), any(), any());
+    }
+
+    @Test
+    void followUpsForTodayAndLateOnesAreCounted() {
+        var today = java.time.LocalDate.of(2026, 11, 4);
+        when(paymentDues.ownerFollowUps(owner)).thenReturn(List.of(
+            new com.abhedyam.dto.FollowUpResponse(UUID.randomUUID(), customer, "Prava", null, null, today, null, "UPCOMING"),
+            new com.abhedyam.dto.FollowUpResponse(UUID.randomUUID(), customer, "Prava", null, null, today.minusDays(2), null, "OVERDUE"),
+            new com.abhedyam.dto.FollowUpResponse(UUID.randomUUID(), customer, "Prava", null, null, today.plusDays(1), null, "UPCOMING")));
+        job.run(ist(8, 15));
+        verify(dispatcher).notify(eq(owner), eq(NotificationCategory.DUE_DIGEST), any(), Texts.says("Money to collect"),
+            Texts.startsWith("2 to call again · 1 customer owes ₹500"), eq("DIGEST"), any(), any());
     }
 
     @Test
