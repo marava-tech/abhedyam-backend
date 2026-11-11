@@ -252,10 +252,14 @@ public class ItemService implements IItemService {
     static ItemResponse toResponse(Product p, BigDecimal rawStock, Sales sales, Instant now) {
         boolean tracked = p.tracksStock();
         BigDecimal stock = tracked ? (rawStock == null ? BigDecimal.ZERO : rawStock).stripTrailingZeros() : null;
+        Instant cutoff = now.minus(Duration.ofDays(NOT_SELLING_DAYS));
+        Instant since = sales.lastSoldAt() != null ? sales.lastSoldAt() : p.getCreatedAt();
+        boolean notSelling = tracked && stock.signum() > 0 && since != null && since.isBefore(cutoff);
         ItemResponse.Status status;
         if (!tracked) status = ItemResponse.Status.UNTRACKED;
         else if (stock.signum() <= 0) status = ItemResponse.Status.OUT;
-        else if (p.getLowStockLevel() != null && stock.compareTo(p.getLowStockLevel()) <= 0) status = ItemResponse.Status.LOW;
+        // An item that is not selling is not "running low": buying more of it would be wrong (To buy, digest).
+        else if (!notSelling && p.getLowStockLevel() != null && stock.compareTo(p.getLowStockLevel()) <= 0) status = ItemResponse.Status.LOW;
         else status = ItemResponse.Status.OK;
         BigDecimal value = tracked && stock.signum() > 0 && p.getCostPrice() != null
                 ? stock.multiply(p.getCostPrice()).setScale(2, RoundingMode.HALF_UP) : null;
@@ -264,9 +268,6 @@ public class ItemService implements IItemService {
         else if (tracked && sales.last30().signum() > 0) {
             daysLeft = stock.multiply(BigDecimal.valueOf(30)).divide(sales.last30(), 0, RoundingMode.DOWN).intValue();
         }
-        Instant cutoff = now.minus(Duration.ofDays(NOT_SELLING_DAYS));
-        Instant since = sales.lastSoldAt() != null ? sales.lastSoldAt() : p.getCreatedAt();
-        boolean notSelling = tracked && stock.signum() > 0 && since != null && since.isBefore(cutoff);
         return new ItemResponse(p.getId(), p.getName(), p.getPrice(), p.getCostPrice(),
                 p.getUnit() == null ? StockUnit.PCS : p.getUnit(), tracked, stock,
                 p.getLowStockLevel() == null ? null : p.getLowStockLevel().stripTrailingZeros(),

@@ -30,4 +30,8 @@ public class CollectPaymentRequest {
 
     @Schema(description = "Random id the phone makes once per Payment in screen. A repeat (double tap, retry) within 10 minutes is not recorded again.")
     private String idempotencyKey;
+
+    @Schema(description = "Optional: when the customer paid, for a payment entered later. Not in the future, at most a year back. Default now.",
+            example = "2026-11-09T10:30:00Z")
+    private java.time.Instant paidAt;
 }

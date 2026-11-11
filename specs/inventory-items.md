@@ -29,7 +29,8 @@ transaction, so the `try/catch` around it cannot save the sale).
   and history, just hides them.
 - `RECEIVED` / `REMOVED`: quantity > 0 (REMOVED may go below zero). `COUNT`: quantity ≥ 0 = the counted stock;
   a count equal to the current stock writes nothing. Any of these on an untracked item turns tracking on.
-- Status: `OUT` stock ≤ 0 · `LOW` 0 < stock ≤ lowStockLevel · `OK` · `UNTRACKED`.
+- Status: `OUT` stock ≤ 0 · `LOW` 0 < stock ≤ lowStockLevel and the item is selling (not `notSelling`: no sale in 60
+  days, or never sold and older than 60 days; buying more of it would be wrong) · `OK` · `UNTRACKED`.
 - Delete = archive (`isActive=false`): hidden from the list; history kept.
 - Name required, ≤ 80; unique among the owner's active items (case-insensitive) → `ITEM_EXISTS`.
   Price ≥ 0. costPrice ≥ 0 or null. lowStockLevel > 0 or null (0 clears it). Quantities: 3 decimals.

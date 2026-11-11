@@ -38,5 +38,8 @@ public class PaymentCreateRequest {
     /** Set only by the write-off endpoint (never from the app's payment form). */
     @io.swagger.v3.oas.annotations.media.Schema(hidden = true)
     private Boolean writeOff;
+
+    @io.swagger.v3.oas.annotations.media.Schema(hidden = true)
+    private java.time.Instant paidAt;
 }
 
