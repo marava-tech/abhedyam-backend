@@ -37,4 +37,13 @@ public interface IPaymentDueService {
     CollectionVisitResponse updateVisit(UUID ownerId, UUID visitId, CollectionVisitRequest request);
 
     void deleteVisit(UUID ownerId, UUID visitId);
+
+    /** Open "call again on…" follow-ups of the owner, any date. */
+    java.util.List<com.abhedyam.dto.FollowUpResponse> ownerFollowUps(UUID ownerId);
+
+    com.abhedyam.dto.FollowUpResponse createFollowUp(UUID ownerId, UUID customerId, com.abhedyam.dto.FollowUpRequest request);
+
+    com.abhedyam.dto.FollowUpResponse updateFollowUp(UUID ownerId, UUID followUpId, com.abhedyam.dto.FollowUpRequest request);
+
+    void deleteFollowUp(UUID ownerId, UUID followUpId);
 }

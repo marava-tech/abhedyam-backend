@@ -24,6 +24,7 @@ public class ReminderSchedulerService implements IReminderSchedulerService {
     
     private final ReminderRepository reminderRepository;
     private final NotificationDispatcher dispatcher;
+    private final com.abhedyam.repository.CustomerRepository customers;
     
     @Scheduled(fixedRate = 60000)
     @Override
@@ -60,6 +61,17 @@ public class ReminderSchedulerService implements IReminderSchedulerService {
 
         // Every reminder is the owner's own, with or without a customer attached (there is no customer app).
         // The dispatcher handles the in-app row, mute, quiet hours and push.
+        if (reminder.getType() == com.abhedyam.model.enums.ReminderType.FOLLOW_UP && reminder.getCustomerId() != null) {
+            // "Call Bhaskar again" · the owner's note, or "You planned to call them today". Tap opens Upcoming collections.
+            String name = customers.findById(reminder.getCustomerId()).map(c -> c.getName()).orElse(null);
+            if (name == null) return; // customer deleted since
+            String note = reminder.getText();
+            dispatcher.notify(ownerId, NotificationCategory.OWNER_REMINDER, NotificationType.INFO,
+                com.abhedyam.util.Txt.of("notif.followup.title", name),
+                note == null || note.isBlank() ? com.abhedyam.util.Txt.of("notif.followup.body") : com.abhedyam.util.Txt.raw(note),
+                "REMINDER", reminder.getId(), "reminder:" + reminder.getId() + ":" + reminder.getTime()); // moved = a new push
+            return;
+        }
         dispatcher.notify(ownerId, NotificationCategory.OWNER_REMINDER, NotificationType.INFO,
             com.abhedyam.util.Txt.raw(reminder.getName()), com.abhedyam.util.Txt.raw(reminder.getText()), // the owner's own words
             "REMINDER", reminder.getId(), "reminder:" + reminder.getId());
