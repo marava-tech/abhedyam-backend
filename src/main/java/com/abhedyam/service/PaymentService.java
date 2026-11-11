@@ -53,6 +53,7 @@ public class PaymentService implements IPaymentService {
     private final RedisTemplate<String, String> redisTemplate;
     private final StatsService statsService;
     private final com.abhedyam.repository.ShopMemberRepository memberRepository;
+    private final com.abhedyam.repository.AuditRepository auditRepository;
 
     @Override
     public Payment create(Payment payment) {
@@ -226,7 +227,8 @@ public class PaymentService implements IPaymentService {
 
     /**
      * Cancels payments the owner recorded by mistake, all in one transaction (a Payment in can be several rows).
-     * Each amount goes back on its sale and the row becomes FAILED, so history keeps it ("Cancelled") and every
+     * Each amount goes back on its sale and the row becomes FAILED, so history keeps it ("Cancelled"), its Recent activity
+     * rows are deleted, and every
      * total, due and last-paid date, which only count SUCCESS, drops it. Rows already cancelled are skipped,
      * so a retry is safe; a row of another owner or a written-off row rejects the whole request.
      */
@@ -257,6 +259,7 @@ public class PaymentService implements IPaymentService {
             changed++;
         }
         paymentRepository.saveAll(rows);
+        auditRepository.deletePaymentActivities(ownerId, paymentIds);
         for (UUID customerId : customers) invalidateAllRelatedCachesOnPaymentChange(ownerId, customerId);
         log.info("Owner {} cancelled {} payment rows", ownerId, changed);
         return changed;
