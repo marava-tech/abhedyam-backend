@@ -79,6 +79,7 @@ public class CustomerService implements ICustomerService {
     private final StatsService statsService;
     private final LocationDetailsService locationDetailsService;
     private final com.abhedyam.service.interfaces.IOwnerSettingsService ownerSettings;
+    private final com.abhedyam.service.interfaces.INotificationSettingsService notificationSettings;
     
     @Autowired
     @Qualifier("virtualThreadExecutor")
@@ -884,6 +885,36 @@ public class CustomerService implements ICustomerService {
             .filter(c -> ownerId.equals(c.getOwnerId()))
             .orElseThrow(() -> new ResourceNotFoundException("Customer could not be found"));
         customer.setChasePaused(paused ? Boolean.TRUE : null);
+        customerRepository.save(customer);
+        invalidateAllRelatedCachesOnCustomerChange(ownerId);
+        return CustomerResponse.fromEntity(customer, null);
+    }
+
+    /** Collection cycle: set (count starts today) or remove (null). Spec collection-cycle.md. */
+    @Override
+    @Transactional
+    public CustomerResponse setCycle(UUID ownerId, UUID customerId, com.abhedyam.dto.CollectionCycleDto cycle) {
+        validateOwnerAccess(ownerId);
+        Customer customer = customerRepository.findById(customerId)
+            .filter(c -> ownerId.equals(c.getOwnerId()))
+            .orElseThrow(() -> new ResourceNotFoundException("Customer could not be found"));
+        if (cycle == null) {
+            customer.setCycleKind(null);
+            customer.setCycleDay(null);
+            customer.setCycleAmount(null);
+            customer.setCycleSince(null);
+        } else {
+            if (!CollectionCycle.valid(cycle.kind(), cycle.day())) {
+                throw new BusinessException(ErrorCodes.VALIDATION_ERROR, "Pick a weekday or a day of the month");
+            }
+            if (cycle.amount() == null || cycle.amount().signum() <= 0) {
+                throw new BusinessException(ErrorCodes.VALIDATION_ERROR, "Amount must be more than ₹0");
+            }
+            customer.setCycleKind(cycle.kind());
+            customer.setCycleDay(cycle.day());
+            customer.setCycleAmount(cycle.amount().setScale(2, java.math.RoundingMode.HALF_UP));
+            customer.setCycleSince(java.time.LocalDate.now(java.time.ZoneId.of(notificationSettings.forOwner(ownerId).getTimezone())));
+        }
         customerRepository.save(customer);
         invalidateAllRelatedCachesOnCustomerChange(ownerId);
         return CustomerResponse.fromEntity(customer, null);

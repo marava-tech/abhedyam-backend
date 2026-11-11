@@ -35,4 +35,7 @@ public interface ICustomerService {
     NearestCustomerResponse findNearestCustomer(NearestCustomerRequest request);
     void invalidateCustomerSummaryCache(UUID ownerId, UUID customerId);
     com.abhedyam.dto.CustomerResponse setChasePaused(java.util.UUID ownerId, java.util.UUID customerId, boolean paused);
+
+    /** null = remove the cycle. */
+    com.abhedyam.dto.CustomerResponse setCycle(java.util.UUID ownerId, java.util.UUID customerId, com.abhedyam.dto.CollectionCycleDto cycle);
 }

@@ -15,6 +15,9 @@ import java.util.UUID;
 @Repository
 public interface CustomerRepository extends JpaRepository<Customer, UUID> {
     List<Customer> findByOwnerId(UUID ownerId);
+
+    /** Customers with a collection cycle (spec collection-cycle.md). */
+    List<Customer> findByOwnerIdAndCycleKindIsNotNull(UUID ownerId);
     
     Optional<Customer> findByPhoneNormalized(String phoneNormalized);
 

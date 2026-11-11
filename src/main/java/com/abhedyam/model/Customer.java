@@ -6,6 +6,8 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
@@ -32,4 +34,18 @@ public class Customer extends User {
     /** Private no-login link for the customer (duesetu.com/k/<token>). Reset = new token, old link dead. */
     @Column(name = "link_token", length = 32)
     private String linkToken;
+
+    /** Collection cycle (spec collection-cycle.md): WEEKLY (day 1-7, Mon-Sun) or MONTHLY (day 1-31); all null = none. */
+    @Column(name = "cycle_kind", length = 10)
+    private String cycleKind;
+
+    @Column(name = "cycle_day")
+    private Integer cycleDay;
+
+    @Column(name = "cycle_amount", precision = 15, scale = 2)
+    private BigDecimal cycleAmount;
+
+    /** Day the cycle was set: earlier cycle days never count as missed. */
+    @Column(name = "cycle_since")
+    private LocalDate cycleSince;
 }
