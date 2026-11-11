@@ -109,7 +109,8 @@ public class KhataLinkService implements IKhataLinkService {
                 dues.getOverdueCount(),
                 upiAccountRepository.findByOwnerId(ownerId).map(UPIAccount::getVpa).orElse(null),
                 entries(sales, paid),
-                Instant.now());
+                Instant.now(),
+                owner.getReferralCode()); // not created here: a read; null until the owner opens Invite shops
     }
 
     /** Sales and successful payments, newest first, at most MAX_ENTRIES. */

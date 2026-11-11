@@ -16,7 +16,9 @@ public record PublicKhataResponse(
         long overdueCount,
         String upiId,
         List<Entry> entries,
-        Instant generatedAt) {
+        Instant generatedAt,
+        /** The shop's own referral code, or null if it never made one: duesetu.com/join?ref= for other shop owners. */
+        String shopReferralCode) {
 
     public record NextDue(BigDecimal amount, BigDecimal remaining, LocalDate dueDate, String status) {
     }
