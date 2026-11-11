@@ -17,9 +17,11 @@ public class PaymentDueResponse {
     private BigDecimal remaining;
     private LocalDate dueDate;
     private String note;
-    /** OPEN, PARTLY_PAID, PAID or MISSED */
+    /** OPEN, PARTLY_PAID, PAID or OVERDUE */
     private String status;
     private Instant createdAt;
     /** Extra reminder lead time (2-30), null = only the day-before one. */
     private Integer earlyReminderDays;
+    /** Set on the row a collection cycle makes (owner-wide lists only); null for a real due. */
+    private CollectionCycleDto cycle;
 }

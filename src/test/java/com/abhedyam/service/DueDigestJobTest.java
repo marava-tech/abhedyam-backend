@@ -63,7 +63,7 @@ class DueDigestJobTest {
 
     com.abhedyam.dto.OwnerDueResponse due(java.time.LocalDate date, String status, Integer remind) {
         var d = new com.abhedyam.dto.PaymentDueResponse(dueId, new java.math.BigDecimal("5000"), java.math.BigDecimal.ZERO,
-            new java.math.BigDecimal("5000"), date, "after harvest", status, Instant.EPOCH, remind);
+            new java.math.BigDecimal("5000"), date, "after harvest", status, Instant.EPOCH, remind, null);
         return new com.abhedyam.dto.OwnerDueResponse(customer, "Prava", null, "Warangal", d);
     }
 

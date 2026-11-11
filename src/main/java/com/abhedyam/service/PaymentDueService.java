@@ -2,6 +2,7 @@ package com.abhedyam.service;
 
 import com.abhedyam.constants.ErrorCodes;
 import com.abhedyam.dto.CollectionVisitRequest;
+import com.abhedyam.dto.CollectionCycleDto;
 import com.abhedyam.dto.CollectionVisitResponse;
 import com.abhedyam.dto.CustomerDuesResponse;
 import com.abhedyam.dto.OwnerDueResponse;
@@ -75,7 +76,7 @@ public class PaymentDueService implements IPaymentDueService {
     static PaymentDueResponse response(PaymentDue d, BigDecimal paid, LocalDate today) {
         return new PaymentDueResponse(d.getId(), d.getAmount(), paid, d.getAmount().subtract(paid).max(BigDecimal.ZERO),
                 d.getDueDate(), d.getNote(), DueAllocator.status(d.getAmount(), paid, d.getDueDate(), today).name(),
-                d.getCreatedAt(), d.getEarlyReminderDays());
+                d.getCreatedAt(), d.getEarlyReminderDays(), null);
     }
 
     /** Paid per due for dues of one customer and that customer's payments (any status; only SUCCESS counts). */
@@ -125,6 +126,55 @@ public class PaymentDueService implements IPaymentDueService {
     @Override
     @Transactional(readOnly = true)
     public List<OwnerDueResponse> ownerDues(UUID ownerId) {
+        List<OwnerDueResponse> out = new ArrayList<>(realDues(ownerId));
+        out.addAll(cycleDues(ownerId));
+        out.sort(Comparator.comparing((OwnerDueResponse o) -> o.getDue().getDueDate()).thenComparing(o -> o.getDue().getCreatedAt()));
+        return out;
+    }
+
+    /** One row per customer with a collection cycle: the cycle day to collect on (spec collection-cycle.md). */
+    private List<OwnerDueResponse> cycleDues(UUID ownerId) {
+        List<Customer> customers = customerRepository.findByOwnerIdAndCycleKindIsNotNull(ownerId).stream()
+                .filter(c -> Boolean.TRUE.equals(c.getIsActive()) && !Boolean.TRUE.equals(c.getChasePaused())).toList();
+        if (customers.isEmpty()) return List.of();
+        List<UUID> ids = customers.stream().map(Customer::getId).toList();
+        Map<UUID, BigDecimal> sold = amounts(saleItems.sumTotalsByCustomer(ownerId)), paidTotal = amounts(paymentRepository.sumSuccessfulByCustomer(ownerId));
+        ZoneId zone = ZoneId.of(notificationSettings.forOwner(ownerId).getTimezone());
+        Map<UUID, List<CollectionCycle.Paid>> paid = paymentRepository.findByCustomerIdInAndOwnerId(ids, ownerId).stream()
+                .filter(p -> p.getStatus() == PaymentStatus.SUCCESS)
+                .collect(Collectors.groupingBy(Payment::getCustomerId, Collectors.mapping(
+                        p -> new CollectionCycle.Paid(p.getTimestamp().atZone(zone).toLocalDate(), p.getAmount()), Collectors.toList())));
+        Map<UUID, String> villages = villages(ids);
+        LocalDate today = LocalDate.now(zone);
+        List<OwnerDueResponse> out = new ArrayList<>();
+        for (Customer c : customers) {
+            BigDecimal balance = sold.getOrDefault(c.getId(), BigDecimal.ZERO).subtract(paidTotal.getOrDefault(c.getId(), BigDecimal.ZERO));
+            CollectionCycle.Result r = CollectionCycle.of(c.getCycleKind(), c.getCycleDay(), c.getCycleAmount(), c.getCycleSince(),
+                    balance, paid.getOrDefault(c.getId(), List.of()), today);
+            if (r == null) continue;
+            var due = new PaymentDueResponse(cycleId(c.getId()), r.expected(), r.paid(), r.remaining(), r.date(), null,
+                    r.overdue() ? "OVERDUE" : r.paid().signum() > 0 ? "PARTLY_PAID" : "OPEN",
+                    (c.getCycleSince() == null ? today : c.getCycleSince()).atStartOfDay(zone).toInstant(), null,
+                    new CollectionCycleDto(c.getCycleKind(), c.getCycleDay(), c.getCycleAmount()));
+            out.add(new OwnerDueResponse(c.getId(), c.getName(), c.getPhone(), villages.get(c.getId()), due));
+        }
+        return out;
+    }
+
+    /** Same id every time for a customer, so a reminder push can point at the row. */
+    static UUID cycleId(UUID customerId) {
+        return UUID.nameUUIDFromBytes(("cycle:" + customerId).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    private Map<UUID, String> villages(List<UUID> ids) {
+        Map<UUID, String> villages = new HashMap<>();
+        for (LocationDetails l : locations.findByUserIdIn(ids)) {
+            if (l.getVillage() != null && !l.getVillage().isBlank()) villages.putIfAbsent(l.getUserId(), l.getVillage());
+        }
+        return villages;
+    }
+
+    private List<OwnerDueResponse> realDues(UUID ownerId) {
         List<PaymentDue> all = dueRepository.findByOwnerIdAndIsActiveTrue(ownerId);
         if (all.isEmpty()) return List.of();
         Map<UUID, List<PaymentDue>> byCustomer = all.stream().collect(Collectors.groupingBy(PaymentDue::getCustomerId));
@@ -133,10 +183,7 @@ public class PaymentDueService implements IPaymentDueService {
                 .collect(Collectors.groupingBy(Payment::getCustomerId));
         Map<UUID, Customer> customers = customerRepository.findAllById(ids).stream()
                 .collect(Collectors.toMap(Customer::getId, Function.identity()));
-        Map<UUID, String> villages = new HashMap<>();
-        for (LocationDetails l : locations.findByUserIdIn(ids)) {
-            if (l.getVillage() != null && !l.getVillage().isBlank()) villages.putIfAbsent(l.getUserId(), l.getVillage());
-        }
+        Map<UUID, String> villages = villages(ids);
         LocalDate today = today(ownerId);
         List<OwnerDueResponse> out = new ArrayList<>();
         byCustomer.forEach((customerId, dues) -> {
@@ -148,7 +195,6 @@ public class PaymentDueService implements IPaymentDueService {
                         response(d, paid.get(d.getId()), today)));
             }
         });
-        out.sort(Comparator.comparing((OwnerDueResponse o) -> o.getDue().getDueDate()).thenComparing(o -> o.getDue().getCreatedAt()));
         return out;
     }
 

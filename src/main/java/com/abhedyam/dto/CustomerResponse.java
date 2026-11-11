@@ -37,6 +37,9 @@ public class CustomerResponse {
     @Schema(description = "Owner stopped chasing this customer (old dues). Balance unchanged.")
     private boolean chasePaused;
 
+    @Schema(description = "Collection cycle, or null")
+    private CollectionCycleDto cycle;
+
     public static CustomerResponse fromEntity(Customer customer, String village) {
         CustomerResponse response = new CustomerResponse();
         response.setId(customer.getId());
@@ -50,6 +53,9 @@ public class CustomerResponse {
         response.setCreatedAt(customer.getCreatedAt());
         response.setUpdatedAt(customer.getUpdatedAt());
         response.setChasePaused(Boolean.TRUE.equals(customer.getChasePaused()));
+        if (customer.getCycleKind() != null) {
+            response.setCycle(new CollectionCycleDto(customer.getCycleKind(), customer.getCycleDay(), customer.getCycleAmount()));
+        }
         return response;
     }
 }

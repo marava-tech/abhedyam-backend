@@ -55,6 +55,21 @@ public class OwnerCustomerController {
                 customerService.setChasePaused(ownerId, customerId, Boolean.TRUE.equals(body.get("paused"))));
     }
 
+    @PutMapping("/{customerId}/cycle")
+    @Operation(summary = "Set a collection cycle",
+            description = "Body {kind: WEEKLY|MONTHLY, day: 1-7 (Mon-Sun) or 1-31, amount}. The next collection then shows in Upcoming collections and reminders. Saving restarts the count from today.")
+    public ApiResponse<CustomerResponse> setCycle(@PathVariable UUID ownerId, @PathVariable UUID customerId,
+            @RequestBody com.abhedyam.dto.CollectionCycleDto body) {
+        if (body == null) throw new com.abhedyam.exception.BusinessException(com.abhedyam.constants.ErrorCodes.VALIDATION_ERROR, "Pick a weekday or a day of the month");
+        return ApiResponse.success(customerService.setCycle(ownerId, customerId, body));
+    }
+
+    @DeleteMapping("/{customerId}/cycle")
+    @Operation(summary = "Remove the collection cycle")
+    public ApiResponse<CustomerResponse> deleteCycle(@PathVariable UUID ownerId, @PathVariable UUID customerId) {
+        return ApiResponse.success(customerService.setCycle(ownerId, customerId, null));
+    }
+
     @GetMapping("/{customerId}/summary")
     @Operation(summary = "Customer summary", description = "Get basic customer summary for an owner")
     public ApiResponse<CustomerBasicSummaryResponse> getCustomerSummary(
