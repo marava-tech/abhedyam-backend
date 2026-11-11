@@ -8,6 +8,11 @@ import com.abhedyam.dto.OwnerDueResponse;
 import com.abhedyam.dto.PaymentDueRequest;
 import com.abhedyam.dto.PaymentDueResponse;
 import com.abhedyam.dto.UpcomingDuesResponse;
+import com.abhedyam.dto.FollowUpRequest;
+import com.abhedyam.dto.FollowUpResponse;
+import com.abhedyam.model.Reminder;
+import com.abhedyam.model.enums.ReminderStatus;
+import com.abhedyam.model.enums.ReminderType;
 import com.abhedyam.exception.BusinessException;
 import com.abhedyam.exception.ResourceNotFoundException;
 import com.abhedyam.model.CollectionVisit;
@@ -52,6 +57,7 @@ public class PaymentDueService implements IPaymentDueService {
     private final LocationDetailsRepository locations;
     private final CollectionVisitRepository visitRepository;
     private final SaleItemRepository saleItems;
+    private final com.abhedyam.repository.ReminderRepository reminders;
     /** Its payments summary checks that the owner is the caller and owns the customer, and gives the balance. */
     private final ICustomerService customerService;
     private final INotificationSettingsService notificationSettings;
@@ -87,7 +93,11 @@ public class PaymentDueService implements IPaymentDueService {
     }
 
     private LocalDate today(UUID ownerId) {
-        return LocalDate.now(ZoneId.of(notificationSettings.forOwner(ownerId).getTimezone()));
+        return LocalDate.now(zone(ownerId));
+    }
+
+    private ZoneId zone(UUID ownerId) {
+        return ZoneId.of(notificationSettings.forOwner(ownerId).getTimezone());
     }
 
     private State load(UUID ownerId, UUID customerId) {
@@ -170,7 +180,10 @@ public class PaymentDueService implements IPaymentDueService {
                 .sorted(Comparator.comparing((CollectionVisitResponse v) -> !v.getStatus().equals("OVERDUE"))
                         .thenComparing(CollectionVisitResponse::getVisitDate))
                 .toList();
-        return new UpcomingDuesResponse(sum(upcoming), overdue.size(), sum(overdue), dues, visits);
+        List<FollowUpResponse> followUps = ownerFollowUps(ownerId).stream()
+                .filter(f -> f.getStatus().equals("OVERDUE") || !f.getDate().isAfter(end))
+                .toList();
+        return new UpcomingDuesResponse(sum(upcoming), overdue.size(), sum(overdue), dues, visits, followUps);
     }
 
     static BigDecimal sum(List<OwnerDueResponse> dues) {
@@ -300,6 +313,109 @@ public class PaymentDueService implements IPaymentDueService {
         v.setIsActive(false);
         v.setDeletedAt(Instant.now());
         visitRepository.save(v);
+    }
+
+    /** Follow-ups push at this hour (owner's time zone) on their day. */
+    static final java.time.LocalTime FOLLOW_UP_AT = java.time.LocalTime.of(10, 0);
+    private static final java.util.Set<ReminderStatus> OPEN = java.util.EnumSet.of(ReminderStatus.PENDING, ReminderStatus.SENT);
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FollowUpResponse> ownerFollowUps(UUID ownerId) {
+        List<Reminder> open = reminders.findByOwnerId(ownerId).stream()
+                .filter(r -> r.getType() == ReminderType.FOLLOW_UP && r.getCustomerId() != null
+                        && Boolean.TRUE.equals(r.getIsActive()) && OPEN.contains(r.getStatus()))
+                .toList();
+        if (open.isEmpty()) return List.of();
+        List<UUID> ids = open.stream().map(Reminder::getCustomerId).distinct().toList();
+        Map<UUID, Customer> customers = customerRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Customer::getId, Function.identity()));
+        Map<UUID, String> villages = new HashMap<>();
+        for (LocationDetails l : locations.findByUserIdIn(ids)) {
+            if (l.getVillage() != null && !l.getVillage().isBlank()) villages.putIfAbsent(l.getUserId(), l.getVillage());
+        }
+        ZoneId zone = zone(ownerId);
+        LocalDate today = LocalDate.now(zone);
+        return open.stream()
+                .filter(r -> customers.containsKey(r.getCustomerId())) // customer deleted: drop it
+                .map(r -> {
+                    Customer c = customers.get(r.getCustomerId());
+                    LocalDate date = r.getTime().atZone(zone).toLocalDate();
+                    return new FollowUpResponse(r.getId(), c.getId(), c.getName(), c.getPhone(), villages.get(c.getId()), date,
+                            r.getText() == null || r.getText().isBlank() ? null : r.getText(),
+                            date.isBefore(today) ? "OVERDUE" : "UPCOMING");
+                })
+                .sorted(Comparator.comparing(FollowUpResponse::getDate))
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public FollowUpResponse createFollowUp(UUID ownerId, UUID customerId, FollowUpRequest r) {
+        requireSelf(ownerId);
+        if (r.getDate() == null) throw invalid("Pick a date");
+        customerRepository.findById(customerId)
+                .filter(c -> ownerId.equals(c.getOwnerId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Customer could not be found"));
+        checkDate(r.getDate(), today(ownerId));
+        Reminder f = new Reminder();
+        f.setOwnerId(ownerId);
+        f.setCustomerId(customerId);
+        f.setType(ReminderType.FOLLOW_UP);
+        f.setName("Call again"); // the push builds its own text in the owner's language
+        f.setText(note(r.getNote()) == null ? "" : note(r.getNote()));
+        f.setPackages(new ArrayList<>(List.of(com.abhedyam.util.PackageConstants.BUSINESS_APP_PACKAGE)));
+        schedule(f, r.getDate(), ownerId);
+        reminders.save(f);
+        return findFollowUp(ownerFollowUps(ownerId), f.getId());
+    }
+
+    @Override
+    @Transactional
+    public FollowUpResponse updateFollowUp(UUID ownerId, UUID followUpId, FollowUpRequest r) {
+        Reminder f = ownFollowUp(ownerId, followUpId);
+        if (r.getDate() != null) {
+            checkDate(r.getDate(), today(ownerId));
+            schedule(f, r.getDate(), ownerId);
+        }
+        if (r.getNote() != null) f.setText(note(r.getNote()) == null ? "" : note(r.getNote()));
+        if (Boolean.TRUE.equals(r.getDone())) {
+            // Done = SENT and inactive (deleted is DELETED): no new enum value, which a CHECK constraint on the column might refuse.
+            f.setStatus(ReminderStatus.SENT);
+            f.setIsActive(false);
+        }
+        reminders.save(f);
+        return ownerFollowUps(ownerId).stream().filter(x -> x.getId().equals(followUpId)).findFirst()
+                .orElse(null); // done: it left the list
+    }
+
+    @Override
+    @Transactional
+    public void deleteFollowUp(UUID ownerId, UUID followUpId) {
+        Reminder f = ownFollowUp(ownerId, followUpId);
+        f.setStatus(ReminderStatus.DELETED);
+        f.setIsActive(false);
+        reminders.save(f);
+    }
+
+    /** 10 am on that day; a time already past (today after 10) is not pushed: the owner just set it in the app. */
+    private void schedule(Reminder f, LocalDate date, UUID ownerId) {
+        Instant at = date.atTime(FOLLOW_UP_AT).atZone(zone(ownerId)).toInstant();
+        f.setTime(at);
+        f.setStatus(at.isAfter(Instant.now()) ? ReminderStatus.PENDING : ReminderStatus.SENT);
+    }
+
+    private Reminder ownFollowUp(UUID ownerId, UUID id) {
+        requireSelf(ownerId);
+        return reminders.findById(id)
+                .filter(f -> ownerId.equals(f.getOwnerId()) && f.getType() == ReminderType.FOLLOW_UP
+                        && Boolean.TRUE.equals(f.getIsActive()) && OPEN.contains(f.getStatus()))
+                .orElseThrow(() -> new ResourceNotFoundException("Follow-up could not be found"));
+    }
+
+    private static FollowUpResponse findFollowUp(List<FollowUpResponse> all, UUID id) {
+        return all.stream().filter(x -> x.getId().equals(id)).findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Follow-up could not be found"));
     }
 
     private CollectionVisit ownVisit(UUID ownerId, UUID visitId) {

@@ -7,6 +7,8 @@ import com.abhedyam.dto.CustomerDuesResponse;
 import com.abhedyam.dto.PaymentDueRequest;
 import com.abhedyam.dto.PaymentDueResponse;
 import com.abhedyam.dto.UpcomingDuesResponse;
+import com.abhedyam.dto.FollowUpRequest;
+import com.abhedyam.dto.FollowUpResponse;
 import com.abhedyam.service.interfaces.IPaymentDueService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -46,6 +48,27 @@ public class PaymentDueController {
     @Operation(summary = "Delete a village visit")
     public ApiResponse<Void> deleteVisit(@PathVariable UUID ownerId, @PathVariable UUID visitId) {
         service.deleteVisit(ownerId, visitId);
+        return ApiResponse.success(null);
+    }
+
+    @PostMapping("/customers/{customerId}/follow-ups")
+    @Operation(summary = "Call a customer again on a date", description = "date (today or later), optional note. Pushes to the owner at 10 am that day; shows in Upcoming collections until done")
+    public ApiResponse<FollowUpResponse> createFollowUp(@PathVariable UUID ownerId, @PathVariable UUID customerId,
+                                                        @RequestBody FollowUpRequest request) {
+        return ApiResponse.success(service.createFollowUp(ownerId, customerId, request));
+    }
+
+    @PutMapping("/follow-ups/{followUpId}")
+    @Operation(summary = "Move, edit or mark a follow-up done", description = "Only the fields sent change; done=true removes it from the list (data is null then)")
+    public ApiResponse<FollowUpResponse> updateFollowUp(@PathVariable UUID ownerId, @PathVariable UUID followUpId,
+                                                        @RequestBody FollowUpRequest request) {
+        return ApiResponse.success(service.updateFollowUp(ownerId, followUpId, request));
+    }
+
+    @DeleteMapping("/follow-ups/{followUpId}")
+    @Operation(summary = "Delete a follow-up")
+    public ApiResponse<Void> deleteFollowUp(@PathVariable UUID ownerId, @PathVariable UUID followUpId) {
+        service.deleteFollowUp(ownerId, followUpId);
         return ApiResponse.success(null);
     }
 

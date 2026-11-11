@@ -17,4 +17,6 @@ public class UpcomingDuesResponse {
     private List<OwnerDueResponse> dues;
     /** Village visits not marked done: overdue first, then by date (same window). */
     private List<CollectionVisitResponse> visits;
+    /** "Call again on…" follow-ups not marked done: overdue first, then by date (same window). */
+    private List<FollowUpResponse> followUps;
 }
