@@ -35,6 +35,8 @@ class FcmLanguageTest {
         var request = json.readValue("{\"token\":\"t\",\"packageName\":\"p\",\"language\":\"te\"}", FcmTokenRegisterRequest.class);
         assertEquals(AppLanguage.TE, request.getLanguage());
         assertEquals("\"te\"", json.writeValueAsString(AppLanguage.TE));
+        assertEquals(AppLanguage.HI,
+                json.readValue("{\"token\":\"t\",\"packageName\":\"p\",\"language\":\"hi\"}", FcmTokenRegisterRequest.class).getLanguage());
         assertNull(json.readValue("{\"token\":\"t\",\"packageName\":\"p\"}", FcmTokenRegisterRequest.class).getLanguage());
     }
 

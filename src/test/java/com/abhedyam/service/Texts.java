@@ -28,6 +28,10 @@ final class Texts {
         return TEXT.render(t, AppLanguage.TE);
     }
 
+    static String hi(Txt t) {
+        return TEXT.render(t, AppLanguage.HI);
+    }
+
     /** Matches a Txt that reads exactly [english] in English. */
     static Txt says(String english) {
         return argThat(t -> t != null && english.equals(en(t)));

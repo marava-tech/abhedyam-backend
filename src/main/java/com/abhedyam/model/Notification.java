@@ -58,7 +58,7 @@ public class Notification extends BaseEntity {
     @Column
     private String title;
 
-    /** The title and message in the other app languages, JSON {"te": ["title", "body"]} (title/message are English). */
+    /** The title and message in the other app languages, JSON {"hi": [...], "te": ["title", "body"]} (title/message are English). */
     @Column(columnDefinition = "TEXT")
     private String texts;
 
