@@ -44,3 +44,8 @@
 **Problem:** CI Maven build failed with `release version 21 not supported`.\n
 **Solution:** Ensure GitHub Actions uses JDK 21 (Temurin) to match `pom.xml` (`<java.version>21</java.version>`).\n
 **Why:** Maven compiler `--release 21` requires a Java 21 toolchain; JDK 17 runners cannot compile it.
+
+## 2026-11-11 — Enum columns on MySQL are native `enum(...)`, and ddl-auto never widens them
+**Problem:** Adding `AppLanguage.HI` would have failed in prod: Hibernate 6 created `fcm_details.language` as MySQL `enum('EN','TE')`, so saving `HI` gives "Data truncated". Tests (H2) showed nothing; `ddl-auto: update` adds columns but never changes an existing column's type.
+**Solution:** `@JdbcTypeCode(SqlTypes.VARCHAR)` on the field (new databases get VARCHAR) plus a one-off startup step (`LanguageColumnWidening`) that ALTERs the prod column and drops a language CHECK if present (Hibernate adds `check (x in (...))` to VARCHAR enums too). Deployed with #78; the class can be deleted now.
+**Why:** Before adding a value to any `@Enumerated(STRING)` field, check the prod column type (`information_schema.columns`). New enum fields: add `@JdbcTypeCode(SqlTypes.VARCHAR)` from the start.
