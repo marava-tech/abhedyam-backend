@@ -150,6 +150,8 @@ class KhataLinkServiceTest {
         owner.setBusinessName("Sri Lakshmi Stores");
         owner.setPhone("9000000000");
         owner.setReferralCode("ABH8X29K");
+        owner.setImageUrl("https://lh3.googleusercontent.com/face"); // the owner's own photo: never on the customer's page
+        owner.setLogoUrl("https://res.cloudinary.com/logo.png");
         UPIAccount upi = new UPIAccount();
         upi.setVpa("shop@ybl");
         Instant t0 = Instant.parse("2026-11-01T10:00:00Z");
@@ -175,6 +177,11 @@ class KhataLinkServiceTest {
         assertNull(r.nextDue());
         assertEquals(List.of("PAYMENT", "SALE", "SALE"), r.entries().stream().map(PublicKhataResponse.Entry::kind).toList());
         assertFalse(r.toString().contains("9876543210"));
+        assertNull(r.shopImageUrl()); // trial / Shop: plain header
+
+        owner.setAccessUntil(Instant.now().plusSeconds(86_400));
+        owner.setPlayProductId("abhedyam_business:yearly");
+        assertEquals("https://res.cloudinary.com/logo.png", service.view("t").shopImageUrl()); // Business: the shop's logo
     }
 
     @Test

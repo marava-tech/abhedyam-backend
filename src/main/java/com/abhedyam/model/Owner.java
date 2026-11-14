@@ -35,6 +35,10 @@ public class Owner extends User {
     @Column
     private Instant trialBonusAt;
 
+    /** Shop logo (Shop details). Shown to customers (khata link, bills, statements) only on the Business plan; kept after a downgrade. */
+    @Column
+    private String logoUrl;
+
     @Column(unique = true, length = 80)
     private String publicSlug;
 

@@ -102,7 +102,7 @@ public class KhataLinkService implements IKhataLinkService {
         return new PublicKhataResponse(
                 owner.getBusinessName() != null && !owner.getBusinessName().isBlank() ? owner.getBusinessName() : owner.getName(),
                 owner.getPhone(),
-                owner.getImageUrl(),
+                Plan.of(owner) == Plan.BUSINESS ? owner.getLogoUrl() : null, // branding is Business only; Shop gets the plain header
                 c.getName(),
                 balance,
                 next == null ? null : new PublicKhataResponse.NextDue(next.getAmount(), next.getRemaining(), next.getDueDate(), next.getStatus()),
