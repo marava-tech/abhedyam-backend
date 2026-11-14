@@ -52,6 +52,9 @@ public class OwnerSessionService {
         s.setMemberId(memberId);
         s.setDeviceId(device);
         s.setDeviceName(name(deviceName));
+        // signing in again on a renamed phone keeps its name
+        if (device != null) repository.findFirstByOwnerIdAndDeviceIdAndLabelIsNotNullOrderByCreatedAtDesc(ownerId, device)
+                .map(OwnerSession::getLabel).ifPresent(s::setLabel);
         s.setLastSeenAt(Instant.now());
         s = repository.save(s);
         if (hasOthers && memberId == null) tellOtherPhones(ownerId, s.getDeviceName()); // members: "joined" push instead
@@ -73,10 +76,25 @@ public class OwnerSessionService {
         Map<UUID, String> names = new java.util.HashMap<>();
         memberRepository.findByOwnerId(ownerId).forEach(m -> names.put(m.getId(), m.getName()));
         return repository.findByOwnerIdAndRevokedAtIsNullOrderByLastSeenAtDesc(ownerId).stream()
-                .map(s -> new SessionResponse(s.getId(), s.getDeviceName() == null ? "Phone (older app version)" : s.getDeviceName(),
-                        s.getCreatedAt(), s.getLastSeenAt(), s.getId().equals(currentSessionId),
-                        s.getMemberId() == null ? null : names.get(s.getMemberId())))
+                .map(s -> {
+                    String model = s.getDeviceName() == null ? "Phone (older app version)" : s.getDeviceName();
+                    return new SessionResponse(s.getId(), s.getLabel() != null ? s.getLabel() : model,
+                            s.getCreatedAt(), s.getLastSeenAt(), s.getId().equals(currentSessionId),
+                            s.getMemberId() == null ? null : names.get(s.getMemberId()), s.getLabel(), model);
+                })
                 .toList();
+    }
+
+    /** The owner names a phone ("Ravi's phone"); blank clears it. Kept when that phone signs in again. */
+    @Transactional
+    public void rename(UUID ownerId, UUID sessionId, String label) {
+        OwnerSession s = repository.findById(sessionId)
+                .filter(x -> ownerId.equals(x.getOwnerId()) && x.getRevokedAt() == null)
+                .orElseThrow(() -> new BusinessException(ErrorCodes.NOT_FOUND, "This phone is not signed in"));
+        String l = blankToNull(label);
+        if (l != null && l.length() > 40) l = l.substring(0, 40);
+        s.setLabel(l);
+        repository.save(s);
     }
 
     /** Log one phone out: its next request gets 401 and its pushes stop. */

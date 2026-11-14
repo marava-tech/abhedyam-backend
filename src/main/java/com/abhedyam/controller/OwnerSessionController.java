@@ -36,6 +36,13 @@ public class OwnerSessionController {
         return ApiResponse.success(null);
     }
 
+    @PatchMapping("/{sessionId}")
+    @Operation(summary = "Name a phone", description = "Body {\"label\": \"Ravi's phone\"}; blank clears it. Shown in Your devices instead of the phone model.")
+    public ApiResponse<Void> rename(@PathVariable UUID ownerId, @PathVariable UUID sessionId, @RequestBody Map<String, String> body) {
+        service.rename(self(ownerId), sessionId, body.get("label"));
+        return ApiResponse.success(null);
+    }
+
     @PostMapping("/logout-others")
     @Operation(summary = "Log out all other phones")
     public ApiResponse<Map<String, Integer>> revokeOthers(@PathVariable UUID ownerId) {

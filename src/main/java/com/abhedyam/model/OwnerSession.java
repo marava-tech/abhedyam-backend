@@ -27,6 +27,10 @@ public class OwnerSession extends BaseEntity {
     @Column(length = 100)
     private String deviceName;
 
+    /** Name the owner gave this phone ("Ravi's phone"); shown instead of [deviceName], which the phone keeps resending. */
+    @Column(length = 40)
+    private String label;
+
     /** Family member / helper signed in on this phone; null = the owner. */
     @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "member_id", columnDefinition = "VARCHAR(36)")
