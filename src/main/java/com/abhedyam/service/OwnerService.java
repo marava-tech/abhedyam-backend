@@ -71,6 +71,10 @@ public class OwnerService implements IOwnerService {
             }
         }
         
+        if (request.getLogoUrl() != null) {
+            owner.setLogoUrl(request.getLogoUrl().isBlank() ? null : request.getLogoUrl().trim());
+        }
+
         if (request.getIsVerified() != null) {
             owner.setIsVerified(request.getIsVerified());
         }
@@ -116,6 +120,8 @@ public class OwnerService implements IOwnerService {
         response.setEmail(owner.getEmail());
         response.setType(owner.getType());
         response.setImageUrl(owner.getImageUrl());
+        response.setLogoUrl(owner.getLogoUrl());
+        response.setBranded(Plan.of(owner) == Plan.BUSINESS);
         response.setIsVerified(owner.getIsVerified());
         response.setPublicSlug(owner.getPublicSlug());
         response.setPublicListingEnabled(owner.getPublicListingEnabled());

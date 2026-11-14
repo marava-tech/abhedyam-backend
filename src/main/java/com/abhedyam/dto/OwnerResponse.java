@@ -30,6 +30,12 @@ public class OwnerResponse {
     
     @Schema(description = "Profile image URL", example = "https://example.com/image.jpg")
     private String imageUrl;
+
+    @Schema(description = "Shop logo (Shop details); kept on any plan")
+    private String logoUrl;
+
+    @Schema(description = "Business plan: logo + shop name go on bills, receipts, statements and the khata link")
+    private boolean branded;
     
     @Schema(description = "Verification status", example = "false")
     private Boolean isVerified;

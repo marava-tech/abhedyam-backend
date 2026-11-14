@@ -193,6 +193,7 @@ public class AccountService implements IAccountService {
         UUID o = owner.getId();
         Set<String> urls = new HashSet<>();
         urls.add(owner.getImageUrl());
+        urls.add(owner.getLogoUrl());
         for (String q : List.of(
                 "select e.imageUrl from Customer e where e.ownerId = :o",
                 "select e.imageUrl from Product e where e.ownerId = :o",

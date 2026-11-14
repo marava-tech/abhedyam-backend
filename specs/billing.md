@@ -16,6 +16,7 @@ Plan and research: `abhedyam-owner/.product/MONETIZATION_REDESIGN.md`.
 | Owner phones signed in at once | 1 | 10 |
 | Family + helpers (joined or invited) | 2 | 10 |
 - Invite past the limit → `PLAN_LIMIT`.
+- **Branding (Business only):** `owners.logo_url` (set via owner update `logoUrl`, any plan, kept on downgrade). The khata link's `shopImageUrl` is the logo on Business, null otherwise (the owner's own photo is never shown to customers). Owner responses carry `logoUrl` + `branded` so the app puts the logo on bills, receipts and statements only when `branded`.
 - `ShopMemberService.enforcePlan(owner)` runs at owner sign-in, after every RevenueCat event and after a member is removed: owner phones past the limit are logged out (most recently used stay; on Shop, signing in on a new phone logs the old one out); members past the limit (joined first, oldest first, then invites) are **paused** (`shop_members.paused_at`, sessions revoked, nothing deleted; sign-in/refresh → `PLAN_PAUSED`), invites past it are cancelled; members back within the limit are unpaused.
 
 ## API
