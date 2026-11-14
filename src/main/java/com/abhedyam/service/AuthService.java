@@ -115,6 +115,7 @@ public class AuthService {
 
         String phoneForToken = user.getPhoneNormalized() != null ? user.getPhoneNormalized() : normalizedEmail;
         UUID sessionId = sessionService.start(user.getId(), deviceId, deviceName).getId();
+        memberService.enforcePlan(user.getId()); // Shop plan: 1 phone, so the previous phone is logged out
         String token = jwtUtil.generateToken(user.getId(), phoneForToken, sessionId);
 
         return new AuthResponse(
@@ -156,8 +157,16 @@ public class AuthService {
     }
 
     private AuthResponse memberAuth(com.abhedyam.model.ShopMember member, String deviceId, String deviceName) {
+        refuseIfPaused(member);
         UUID sid = sessionService.start(member.getOwnerId(), member.getId(), deviceId, deviceName).getId();
         return memberResponse(member, sid);
+    }
+
+    private static void refuseIfPaused(com.abhedyam.model.ShopMember member) {
+        if (member.getPausedAt() != null) {
+            throw new com.abhedyam.exception.BusinessException("PLAN_PAUSED",
+                    "This shop's plan has room for fewer people now. Ask the owner to add you back");
+        }
     }
 
     /** userId is the shop owner's id, so the app's /owners/{id}/... calls work unchanged. */
@@ -187,6 +196,7 @@ public class AuthService {
                     .filter(m -> m.getStatus() == com.abhedyam.model.ShopMember.Status.ACTIVE && userId.equals(m.getOwnerId()))
                     .orElseThrow(() -> new com.abhedyam.exception.BusinessException("SESSION_REVOKED",
                             "You were removed from this shop. Ask the owner to add you again"));
+            refuseIfPaused(member);
             UUID sid = sessionService.renew(userId, jwtUtil.getSessionIdFromToken(token), deviceId, deviceName).getId();
             return memberResponse(member, sid);
         }

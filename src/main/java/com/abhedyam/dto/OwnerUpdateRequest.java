@@ -20,6 +20,9 @@ public class OwnerUpdateRequest {
     
     @Schema(description = "Profile image URL", example = "https://example.com/image.jpg")
     private String imageUrl;
+
+    @Schema(description = "Shop logo URL (uploaded first); blank removes it")
+    private String logoUrl;
     
     
     @Schema(description = "Verification status", example = "false")

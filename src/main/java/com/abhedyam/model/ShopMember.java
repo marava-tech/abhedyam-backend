@@ -36,6 +36,11 @@ public class ShopMember extends BaseEntity {
     @Column(nullable = false, length = 10)
     private Status status = Status.INVITED;
 
+    /** Over the plan's helper limit (shop moved from Business to Shop): can't sign in until the owner removes someone or
+     *  pays for Business again. Status stays ACTIVE, nothing they entered is touched. */
+    @Column
+    private Instant pausedAt;
+
     @Column(name = "invite_code", length = 6)
     private String inviteCode;
 

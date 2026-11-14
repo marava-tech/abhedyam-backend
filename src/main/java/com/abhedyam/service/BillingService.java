@@ -5,7 +5,9 @@ import com.abhedyam.exception.ResourceNotFoundException;
 import com.abhedyam.model.Owner;
 import com.abhedyam.model.enums.NotificationCategory;
 import com.abhedyam.model.enums.NotificationType;
+import com.abhedyam.repository.CustomerRepository;
 import com.abhedyam.repository.OwnerRepository;
+import com.abhedyam.repository.PaymentRepository;
 import com.abhedyam.service.interfaces.IBillingService;
 import com.abhedyam.service.interfaces.IReferralService;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,8 @@ public class BillingService implements IBillingService {
 
     public static final int TRIAL_DAYS = 30;
     public static final int FOUNDING_SEATS = 100;
+    /** The earned second free month: once, during the trial, when the shop has this many customers and payments. */
+    public static final int BONUS_DAYS = 30, BONUS_CUSTOMERS = 10, BONUS_PAYMENTS = 5;
 
     /** RevenueCat events that carry a new access end date. */
     private static final Set<String> ACCESS_EVENTS = Set.of(
@@ -45,6 +49,9 @@ public class BillingService implements IBillingService {
     private final OwnerRepository ownerRepository;
     private final IReferralService referralService;
     private final NotificationDispatcher notifications;
+    private final ShopMemberService memberService;
+    private final CustomerRepository customerRepository;
+    private final PaymentRepository paymentRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -55,8 +62,10 @@ public class BillingService implements IBillingService {
         boolean active = until != null && until.isAfter(now);
         long daysLeft = active ? (long) Math.ceil(Duration.between(now, until).toHours() / 24.0) : 0;
         long foundingLeft = Math.max(0, FOUNDING_SEATS - ownerRepository.countByFirstPaidAtIsNotNull());
+        Plan plan = Plan.of(owner);
         return new BillingStatusResponse(until, active, owner.getPlayProductId() != null,
-                owner.getPlayProductId(), daysLeft, foundingLeft);
+                owner.getPlayProductId(), daysLeft, foundingLeft, plan.name(), plan.phones, plan.helpers,
+                owner.getTrialBonusAt() != null);
     }
 
     @Override
@@ -71,6 +80,7 @@ public class BillingService implements IBillingService {
         if ("EXPIRATION".equals(type)) {
             owner.setPlayProductId(null);
             ownerRepository.save(owner);
+            memberService.enforcePlan(ownerId);
             log.info("Play subscription ended: owner={}", ownerId);
             return true;
         }
@@ -85,6 +95,7 @@ public class BillingService implements IBillingService {
         boolean firstPayment = paid && owner.getFirstPaidAt() == null;
         if (firstPayment) owner.setFirstPaidAt(Instant.now());
         ownerRepository.save(owner);
+        memberService.enforcePlan(ownerId); // Business → Shop pauses extra helpers/phones; back to Business unpauses
         log.info("Play {}: owner={}, product={}, accessUntil={}", type, ownerId, owner.getPlayProductId(), owner.getAccessUntil());
 
         if (firstPayment) referralService.onFirstPayment(owner);
@@ -131,6 +142,32 @@ public class BillingService implements IBillingService {
                 log.warn("Access reminder failed: owner={}", owner.getId(), e);
             }
         }
+    }
+
+    /** Every 15 min: trial shops that reached 10 customers and 5 payments get the second free month (once) and a push. */
+    // ponytail: two counts per trial shop per run; move to the customer/payment save path if trial shops reach thousands
+    @Scheduled(fixedDelay = 15 * 60 * 1000, initialDelay = 60 * 1000)
+    @Transactional
+    public void grantEarnedMonth() {
+        for (Owner owner : ownerRepository.findByFirstPaidAtIsNullAndPlayProductIdIsNullAndTrialBonusAtIsNullAndAccessUntilAfter(Instant.now())) {
+            if (!earnedMonth(customerRepository.countByOwnerId(owner.getId()),
+                    paymentRepository.countSuccessfulPaymentsByOwnerIdAndDateRange(owner.getId(), null, null))) continue;
+            addDays(owner, BONUS_DAYS);
+            owner.setTrialBonusAt(Instant.now());
+            ownerRepository.save(owner);
+            log.info("Earned free month: owner={}, accessUntil={}", owner.getId(), owner.getAccessUntil());
+            try {
+                notifications.notify(owner.getId(), NotificationCategory.BILLING, NotificationType.INFO,
+                        com.abhedyam.util.Txt.of("notif.billing.bonus.title"), com.abhedyam.util.Txt.of("notif.billing.bonus.body"),
+                        null, null, "trial-bonus");
+            } catch (Exception e) {
+                log.warn("Earned-month push failed: owner={}", owner.getId(), e);
+            }
+        }
+    }
+
+    static boolean earnedMonth(long customers, long payments) {
+        return customers >= BONUS_CUSTOMERS && payments >= BONUS_PAYMENTS;
     }
 
     private Owner find(UUID ownerId) {

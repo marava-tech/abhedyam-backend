@@ -24,6 +24,7 @@ class OwnerSessionServiceTest {
     @Mock private OwnerSessionRepository repo;
     @Mock private FcmDetailsRepository fcm;
     @Mock private FcmService fcmService;
+    @Mock private com.abhedyam.repository.ShopMemberRepository memberRepository;
     @org.mockito.Spy private NotificationText text = Texts.TEXT;
     @InjectMocks private OwnerSessionService service;
 
@@ -99,5 +100,28 @@ class OwnerSessionServiceTest {
 
         assertThrows(BusinessException.class, () -> service.revoke(owner, s.getId()));
         verify(repo, never()).save(any());
+    }
+
+    @Test
+    void rename_ShownInsteadOfModel_AndKeptOnNextSignIn() {
+        OwnerSession s = session("dev-a");
+        s.setDeviceName("Vivo V2250");
+        when(repo.findById(s.getId())).thenReturn(Optional.of(s));
+        when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        service.rename(owner, s.getId(), "  Ravi's phone ");
+        assertEquals("Ravi's phone", s.getLabel());
+        when(repo.findByOwnerIdAndRevokedAtIsNullOrderByLastSeenAtDesc(owner)).thenReturn(List.of(s));
+        var row = service.list(owner, null).get(0);
+        assertEquals("Ravi's phone", row.deviceName());
+        assertEquals("Vivo V2250", row.model());
+
+        // logged out, then signs in again on the same phone: the name comes back
+        when(repo.findFirstByOwnerIdAndDeviceIdAndRevokedAtIsNull(owner, "dev-a")).thenReturn(Optional.empty());
+        when(repo.findFirstByOwnerIdAndDeviceIdAndLabelIsNotNullOrderByCreatedAtDesc(owner, "dev-a")).thenReturn(Optional.of(s));
+        assertEquals("Ravi's phone", service.start(owner, "dev-a", "Vivo V2250").getLabel());
+
+        service.rename(owner, s.getId(), " ");
+        assertNull(s.getLabel());
     }
 }

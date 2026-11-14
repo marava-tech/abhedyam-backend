@@ -5,12 +5,22 @@ Plan and research: `abhedyam-owner/.product/MONETIZATION_REDESIGN.md`.
 ## Access
 - One date per owner: `owners.access_until`. Full access while it is in the future; after it the app is **read-only** (view, search, call, export, Payment in stay free; the app enforces this).
 - Signup: `access_until = now + 30 days` (`BillingService.TRIAL_DAYS`). No card.
+- **Earned second month:** every 15 min, trial shops (never paid, not paying, no bonus yet, access active) with ≥10 customers and ≥5 successful payments get +30 days once (`owners.trial_bonus_at`) and a BILLING push "You earned a second free month". Marketed as "2 months free" with that condition shown.
 - `owners.play_product_id`: the Google Play product being paid for (null = not paying). `owners.first_paid_at`: first real payment.
-- Prices live in Google Play / RevenueCat only: `abhedyam_yearly` ₹999/yr, `abhedyam_monthly` ₹129/mo, `abhedyam_founding_yearly` ₹499/yr (offering `founding`). Play products have **no free trial** (our trial is the backend one).
+- Prices live in Google Play / RevenueCat only, **yearly only** (no monthly, no lifetime prices): **Shop** `abhedyam_plan` ₹699/yr and **Business** `abhedyam_business` ₹1,299/yr; founding shops (first 100) get the **first year** at ₹349 / ₹649 (1-year introductory offer, RevenueCat offerings `founding` / `founding_business`). Play products have **no free trial** (our trial is the backend one). Decisions: app repo `.product/BUSINESS_PLAN.md`.
 - Founding seats: `100 − count(first_paid_at not null)`, returned as `foundingLeft`. The app shows the founding offering while seats are left (soft limit).
 
+## Plans and limits (`Plan`)
+| | Shop (trial, Shop, read-only) | Business (`play_product_id` starts with `abhedyam_business`, access active) |
+|---|---|---|
+| Owner phones signed in at once | 1 | 10 |
+| Family + helpers (joined or invited) | 2 | 10 |
+- Invite past the limit → `PLAN_LIMIT`.
+- **Branding (Business only):** `owners.logo_url` (set via owner update `logoUrl`, any plan, kept on downgrade). The khata link's `shopImageUrl` is the logo on Business, null otherwise (the owner's own photo is never shown to customers). Owner responses carry `logoUrl` + `branded` so the app puts the logo on bills, receipts and statements only when `branded`.
+- `ShopMemberService.enforcePlan(owner)` runs at owner sign-in, after every RevenueCat event and after a member is removed: owner phones past the limit are logged out (most recently used stay; on Shop, signing in on a new phone logs the old one out); members past the limit (joined first, oldest first, then invites) are **paused** (`shop_members.paused_at`, sessions revoked, nothing deleted; sign-in/refresh → `PLAN_PAUSED`), invites past it are cancelled; members back within the limit are unpaused.
+
 ## API
-- `GET /api/v1/billing/me` → `{accessUntil, active, paying, playProductId, daysLeft, foundingLeft}`.
+- `GET /api/v1/billing/me` → `{accessUntil, active, paying, playProductId, daysLeft, foundingLeft, plan (SHOP|BUSINESS), maxPhones, maxHelpers, extraMonthEarned}`. Members list rows carry `paused`.
 - `POST /api/v1/billing/revenuecat` (public): RevenueCat webhook. `Authorization` must equal `REVENUECAT_WEBHOOK_AUTH`; blank config = every call is rejected (401).
   - `INITIAL_PURCHASE`, `RENEWAL`, `PRODUCT_CHANGE`, `UNCANCELLATION`, `NON_RENEWING_PURCHASE`, `SUBSCRIPTION_EXTENDED` with `expiration_at_ms` → `access_until = max(access_until, expiry)`, `play_product_id = product_id`.
   - The same minus `SUBSCRIPTION_EXTENDED`, with `period_type != TRIAL`, is a payment; the first one sets `first_paid_at` and rewards the referrer.

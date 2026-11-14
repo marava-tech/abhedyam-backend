@@ -31,6 +31,14 @@ public class Owner extends User {
     @Column
     private Instant firstPaidAt;
 
+    /** When the earned second free month was added (10 customers + 5 payments during the trial); null = not yet. */
+    @Column
+    private Instant trialBonusAt;
+
+    /** Shop logo (Shop details). Shown to customers (khata link, bills, statements) only on the Business plan; kept after a downgrade. */
+    @Column
+    private String logoUrl;
+
     @Column(unique = true, length = 80)
     private String publicSlug;
 
