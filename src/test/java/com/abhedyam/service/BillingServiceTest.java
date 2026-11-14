@@ -33,7 +33,8 @@ class BillingServiceTest {
     private final PartnerRepository partners = mock(PartnerRepository.class);
     private final PartnerEarningRepository earnings = mock(PartnerEarningRepository.class);
     private final ReferralService referralService = new ReferralService(owners, referrals, partners, earnings);
-    private final BillingService billing = new BillingService(owners, referralService, mock(NotificationDispatcher.class));
+    private final BillingService billing = new BillingService(owners, referralService, mock(NotificationDispatcher.class),
+            mock(ShopMemberService.class), mock(com.abhedyam.repository.CustomerRepository.class), mock(com.abhedyam.repository.PaymentRepository.class));
 
     private Owner friend;
     private Owner referrer;
@@ -187,5 +188,28 @@ class BillingServiceTest {
         if (expiry != null) e.put("expiration_at_ms", expiry.toEpochMilli());
         if (periodType != null) e.put("period_type", periodType);
         return e;
+    }
+
+    @Test
+    void plan_BusinessOnlyWhilePaidUp() {
+        Owner o = owner();
+        o.setAccessUntil(Instant.now().plus(10, ChronoUnit.DAYS));
+        assertEquals(Plan.SHOP, Plan.of(o)); // trial
+        o.setPlayProductId("abhedyam_plan:yearly");
+        assertEquals(Plan.SHOP, Plan.of(o));
+        o.setPlayProductId("abhedyam_business:yearly");
+        assertEquals(Plan.BUSINESS, Plan.of(o));
+        assertEquals(10, Plan.of(o).phones);
+        o.setAccessUntil(Instant.now().minusSeconds(1));
+        assertEquals(Plan.SHOP, Plan.of(o)); // lapsed
+        assertEquals(1, Plan.SHOP.phones);
+        assertEquals(2, Plan.SHOP.helpers);
+    }
+
+    @Test
+    void earnedMonth_Needs10CustomersAnd5Payments() {
+        assertTrue(BillingService.earnedMonth(10, 5));
+        assertFalse(BillingService.earnedMonth(9, 50));
+        assertFalse(BillingService.earnedMonth(50, 4));
     }
 }

@@ -31,6 +31,10 @@ public class Owner extends User {
     @Column
     private Instant firstPaidAt;
 
+    /** When the earned second free month was added (10 customers + 5 payments during the trial); null = not yet. */
+    @Column
+    private Instant trialBonusAt;
+
     @Column(unique = true, length = 80)
     private String publicSlug;
 

@@ -48,6 +48,7 @@ class ShopMemberServiceTest {
 
     @Test
     void invite_GivesReadableCodeAndLink_Valid48h() {
+        when(ownerRepository.findById(owner)).thenReturn(Optional.of(shop(null)));
         when(repo.findByInviteCode(anyString())).thenReturn(Optional.empty());
         when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
         MemberInviteRequest req = new MemberInviteRequest();
@@ -116,5 +117,72 @@ class ShopMemberServiceTest {
         when(repo.findById(m.getId())).thenReturn(Optional.of(m));
         assertThrows(BusinessException.class, () -> service.remove(owner, m.getId()));
         verifyNoInteractions(sessionService);
+    }
+
+    private com.abhedyam.model.Owner shop(String product) {
+        com.abhedyam.model.Owner o = new com.abhedyam.model.Owner();
+        o.setId(owner);
+        o.setAccessUntil(Instant.now().plusSeconds(86400));
+        o.setPlayProductId(product);
+        return o;
+    }
+
+    private ShopMember joined(int minutesAgo) {
+        ShopMember m = invited(null);
+        m.setStatus(ShopMember.Status.ACTIVE);
+        m.setCreatedAt(Instant.now().minusSeconds(60L * minutesAgo));
+        return m;
+    }
+
+    @Test
+    void shopPlan_ThirdPerson_Refused() {
+        when(ownerRepository.findById(owner)).thenReturn(Optional.of(shop("abhedyam_plan:yearly")));
+        when(repo.findByOwnerIdAndStatusNotOrderByCreatedAtAsc(owner, ShopMember.Status.REMOVED)).thenReturn(List.of(joined(2), joined(1)));
+        MemberInviteRequest req = new MemberInviteRequest();
+        req.setName("Ravi");
+        req.setRole("HELPER");
+        BusinessException e = assertThrows(BusinessException.class, () -> service.invite(owner, req));
+        assertEquals("PLAN_LIMIT", e.getErrorCode());
+    }
+
+    @Test
+    void enforce_ShopPlan_PausesThirdMember_CancelsInvite_LogsOutOlderPhone() {
+        ShopMember a = joined(3), b = joined(2), c = joined(1);
+        ShopMember pending = invited(Instant.now().plusSeconds(3600));
+        pending.setCreatedAt(Instant.now().minusSeconds(600)); // invited before c joined: joined people still go first
+        when(ownerRepository.findById(owner)).thenReturn(Optional.of(shop(null)));
+        when(repo.findByOwnerIdAndStatusNotOrderByCreatedAtAsc(owner, ShopMember.Status.REMOVED)).thenReturn(List.of(pending, a, b, c));
+        com.abhedyam.model.OwnerSession newPhone = new com.abhedyam.model.OwnerSession(), oldPhone = new com.abhedyam.model.OwnerSession(),
+                helperPhone = new com.abhedyam.model.OwnerSession();
+        newPhone.setId(UUID.randomUUID());
+        oldPhone.setId(UUID.randomUUID());
+        helperPhone.setId(UUID.randomUUID());
+        helperPhone.setMemberId(a.getId());
+        when(sessionRepository.findByOwnerIdAndRevokedAtIsNullOrderByLastSeenAtDesc(owner)).thenReturn(List.of(newPhone, helperPhone, oldPhone));
+
+        service.enforcePlan(owner);
+
+        assertNull(a.getPausedAt());
+        assertNull(b.getPausedAt());
+        assertNotNull(c.getPausedAt());
+        assertEquals(ShopMember.Status.ACTIVE, c.getStatus()); // paused, not removed
+        assertEquals(ShopMember.Status.REMOVED, pending.getStatus());
+        verify(sessionService).revokeMember(owner, c.getId());
+        verify(sessionService).revoke(owner, oldPhone.getId());
+        verify(sessionService, never()).revoke(owner, newPhone.getId());
+        verify(sessionService, never()).revoke(owner, helperPhone.getId());
+    }
+
+    @Test
+    void enforce_BackOnBusiness_Unpauses() {
+        ShopMember a = joined(3), b = joined(2), c = joined(1);
+        c.setPausedAt(Instant.now());
+        when(ownerRepository.findById(owner)).thenReturn(Optional.of(shop("abhedyam_business:yearly")));
+        when(repo.findByOwnerIdAndStatusNotOrderByCreatedAtAsc(owner, ShopMember.Status.REMOVED)).thenReturn(List.of(a, b, c));
+
+        service.enforcePlan(owner);
+
+        assertNull(c.getPausedAt());
+        verify(sessionService, never()).revokeMember(any(), any());
     }
 }

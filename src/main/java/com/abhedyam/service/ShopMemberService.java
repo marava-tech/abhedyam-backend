@@ -29,7 +29,6 @@ import java.util.*;
 public class ShopMemberService {
 
     static final Duration INVITE_VALID = Duration.ofHours(48);
-    static final int MAX_MEMBERS = 10; // ponytail: sanity cap; per-plan limits come with monetization
     private static final String ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I: read aloud on a call
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -48,8 +47,11 @@ public class ShopMemberService {
     public MemberResponse invite(UUID ownerId, MemberInviteRequest request) {
         ShopMember.Role role = role(request.getRole());
         String name = request.getName().trim();
-        if (repository.findByOwnerIdAndStatusNotOrderByCreatedAtAsc(ownerId, ShopMember.Status.REMOVED).size() >= MAX_MEMBERS) {
-            throw new BusinessException(ErrorCodes.VALIDATION_ERROR, "A shop can have up to " + MAX_MEMBERS + " people. Remove someone first");
+        Plan plan = Plan.of(ownerRepository.findById(ownerId).orElseThrow());
+        if (repository.findByOwnerIdAndStatusNotOrderByCreatedAtAsc(ownerId, ShopMember.Status.REMOVED).size() >= plan.helpers) {
+            throw new BusinessException("PLAN_LIMIT", plan == Plan.SHOP
+                    ? "The Shop plan has room for " + plan.helpers + " people. Business has room for " + Plan.BUSINESS.helpers
+                    : "A shop can have up to " + plan.helpers + " people. Remove someone first");
         }
         ShopMember m = new ShopMember();
         m.setOwnerId(ownerId);
@@ -95,6 +97,43 @@ public class ShopMemberService {
         m.setInviteCode(null);
         repository.save(m);
         sessionService.revokeMember(ownerId, memberId);
+        enforcePlan(ownerId); // a paused helper may fit again
+    }
+
+    /**
+     * Brings a shop within its plan's limits; run at owner sign-in, after every Play event and after a removal.
+     * Owner phones: the most recently used stay signed in, the rest are logged out. People: joined members first
+     * (oldest first), then invites; past the limit a member is paused (logged out, kept) and an invite is cancelled.
+     * Members back under the limit are unpaused. The owner picks who stays by removing someone.
+     */
+    @Transactional
+    public void enforcePlan(UUID ownerId) {
+        Plan plan = ownerRepository.findById(ownerId).map(Plan::of).orElse(Plan.SHOP);
+        List<OwnerSession> phones = sessionRepository.findByOwnerIdAndRevokedAtIsNullOrderByLastSeenAtDesc(ownerId).stream()
+                .filter(s -> s.getMemberId() == null).toList();
+        for (OwnerSession s : phones.subList(Math.min(plan.phones, phones.size()), phones.size())) sessionService.revoke(ownerId, s.getId());
+
+        List<ShopMember> people = new ArrayList<>(repository.findByOwnerIdAndStatusNotOrderByCreatedAtAsc(ownerId, ShopMember.Status.REMOVED));
+        people.sort(Comparator.comparing((ShopMember m) -> m.getStatus() == ShopMember.Status.ACTIVE ? 0 : 1)); // stable: keeps oldest first
+        for (int i = 0; i < people.size(); i++) {
+            ShopMember m = people.get(i);
+            boolean fits = i < plan.helpers;
+            if (m.getStatus() == ShopMember.Status.INVITED) {
+                if (!fits) {
+                    m.setStatus(ShopMember.Status.REMOVED);
+                    m.setRemovedAt(Instant.now());
+                    m.setInviteCode(null);
+                    repository.save(m);
+                }
+            } else if (fits && m.getPausedAt() != null) {
+                m.setPausedAt(null);
+                repository.save(m);
+            } else if (!fits && m.getPausedAt() == null) {
+                m.setPausedAt(Instant.now());
+                repository.save(m);
+                sessionService.revokeMember(ownerId, m.getId());
+            }
+        }
     }
 
     @Transactional(readOnly = true)
@@ -180,6 +219,6 @@ public class ShopMemberService {
         boolean expired = invited && (m.getInviteExpiresAt() == null || m.getInviteExpiresAt().isBefore(Instant.now()));
         return new MemberResponse(m.getId(), m.getName(), m.getRole().name(), m.getStatus().name(),
                 invited ? m.getInviteCode() : null, invited && m.getInviteCode() != null ? link(m.getInviteCode()) : null,
-                m.getInviteExpiresAt(), expired, m.getEmail(), m.getJoinedAt(), lastSeen.get(m.getId()));
+                m.getInviteExpiresAt(), expired, m.getEmail(), m.getJoinedAt(), lastSeen.get(m.getId()), m.getPausedAt() != null);
     }
 }

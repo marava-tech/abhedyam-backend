@@ -23,6 +23,9 @@ public interface OwnerRepository extends JpaRepository<Owner, UUID> {
 
     long countByFirstPaidAtIsNotNull();
 
+    /** Trial shops that have not earned the second free month yet. */
+    java.util.List<Owner> findByFirstPaidAtIsNullAndPlayProductIdIsNullAndTrialBonusAtIsNullAndAccessUntilAfter(java.time.Instant now);
+
     List<Owner> findByPlayProductIdIsNullAndIsActiveTrueAndCreatedAtAfter(Instant after);
 
     long countByPartnerId(String partnerId);
