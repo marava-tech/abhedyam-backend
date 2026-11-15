@@ -73,6 +73,17 @@ public class SaleService implements ISaleService {
     public SaleDetailResponse createSale(SaleCreateRequest request) {
         UUID ownerId = SecurityUtil.getCurrentUserId();
         String transactionId = UUID.randomUUID().toString();
+        // Saved on a phone without internet: dated when it was made (never future, at most a year back).
+        Instant soldAt = PaymentService.checkPaidAt(request.getSoldAt(), Instant.now());
+        String clientKey = request.getIdempotencyKey() == null || request.getIdempotencyKey().isBlank()
+                ? null : request.getIdempotencyKey().trim();
+        if (clientKey != null) { // sent before (maybe hours ago from an offline phone): answer with that sale
+            var earlier = saleItemRepository.findFirstByOwnerIdAndClientKey(ownerId, clientKey);
+            if (earlier.isPresent()) {
+                log.info("Repeat of sale {} for owner {} answered from transaction {}", clientKey, ownerId, earlier.get().getTransactionId());
+                return getSaleByTransactionId(earlier.get().getTransactionId());
+            }
+        }
 
         try {
             String clientRedisKey = clientIdempotencyRedisKey(ownerId, request);
@@ -122,6 +133,7 @@ public class SaleService implements ISaleService {
 
                 SaleItem saleItem = createSaleItem(customer.getId(), ownerId, productId, itemPrice,
                         quantity, itemTotal, transactionId, request.getDueDate());
+                saleItem.setClientKey(clientKey);
 
                 SaleItem savedItem = saleItemRepository.save(saleItem);
                 saleItems.add(savedItem);
@@ -132,8 +144,9 @@ public class SaleService implements ISaleService {
 
             boolean walkIn = Boolean.TRUE.equals(request.getWalkIn()) && request.getCustomerId() == null;
             SalePricing.checkPaid(totalAmount, request.getPaidAmount(), walkIn);
+            if (soldAt != null) saleItemRepository.backdate(transactionId, soldAt);
             if (request.getPaidAmount() != null && request.getPaidAmount().signum() > 0) {
-                recordPaidAtSale(saleItems, request.getPaidAmount(), request.getPaymentMedium());
+                recordPaidAtSale(saleItems, request.getPaidAmount(), request.getPaymentMedium(), soldAt);
                 saleItems = saleItemRepository.findByTransactionId(transactionId);
             }
 
@@ -452,7 +465,7 @@ public class SaleService implements ISaleService {
         return null;
     }
 
-    private void recordPaidAtSale(List<SaleItem> saleItems, BigDecimal paid, PaymentMedium medium) {
+    private void recordPaidAtSale(List<SaleItem> saleItems, BigDecimal paid, PaymentMedium medium, Instant paidAt) {
         List<PaymentAllocator.Open> open = saleItems.stream()
                 .map(si -> new PaymentAllocator.Open(si.getId(), si.getRemainingAmount()))
                 .toList();
@@ -462,6 +475,7 @@ public class SaleService implements ISaleService {
             one.setAmount(piece.amount());
             one.setMedium(medium != null ? medium : PaymentMedium.CASH);
             one.setStatus(PaymentStatus.SUCCESS);
+            one.setPaidAt(paidAt); // null = now
             paymentService.createManualPayment(one);
         }
     }

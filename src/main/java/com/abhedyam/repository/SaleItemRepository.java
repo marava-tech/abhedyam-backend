@@ -19,6 +19,13 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, UUID> {
     List<SaleItem> findByCustomerId(UUID customerId);
     List<SaleItem> findByCustomerIdAndOwnerId(UUID customerId, UUID ownerId);
     List<SaleItem> findByTransactionId(String transactionId);
+
+    java.util.Optional<SaleItem> findFirstByOwnerIdAndClientKey(UUID ownerId, String clientKey);
+
+    /** A sale entered later (saved offline): dated when it was made, not when it reached the server. */
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true)
+    @Query("UPDATE SaleItem s SET s.createdAt = :at WHERE s.transactionId = :transactionId")
+    int backdate(@Param("transactionId") String transactionId, @Param("at") Instant at);
     
     @Query("SELECT si FROM SaleItem si WHERE si.id IN :saleItemIds")
     List<SaleItem> findByIdIn(@Param("saleItemIds") List<UUID> saleItemIds);
