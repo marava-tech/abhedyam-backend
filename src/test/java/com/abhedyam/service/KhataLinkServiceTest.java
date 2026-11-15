@@ -177,11 +177,7 @@ class KhataLinkServiceTest {
         assertNull(r.nextDue());
         assertEquals(List.of("PAYMENT", "SALE", "SALE"), r.entries().stream().map(PublicKhataResponse.Entry::kind).toList());
         assertFalse(r.toString().contains("9876543210"));
-        assertNull(r.shopImageUrl()); // trial / Shop: plain header
-
-        owner.setAccessUntil(Instant.now().plusSeconds(86_400));
-        owner.setPlayProductId("abhedyam_business:yearly");
-        assertEquals("https://res.cloudinary.com/logo.png", service.view("t").shopImageUrl()); // Business: the shop's logo
+        assertEquals("https://res.cloudinary.com/logo.png", r.shopImageUrl()); // the shop's logo on every plan, never the owner's photo
     }
 
     @Test

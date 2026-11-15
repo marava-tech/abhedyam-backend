@@ -9,7 +9,7 @@ Plan: `abhedyam-owner/.product/BUSINESS_PLAN.md` step 5. Unlimited shops on Busi
 
 ## API (owner only; members get 403 NOT_ALLOWED)
 - `GET /api/v1/owners/{id}/shops` → main shop first, then extra shops oldest first: `{id, name, main, current, paused}`.
-- `POST /api/v1/owners/{id}/shops` `{businessName}` → Business only (else 400 `PLAN_LIMIT`). Creates the shop and returns an `AuthResponse` for it with `isNewUser=true` (the app runs shop setup).
+- `POST /api/v1/owners/{id}/shops` `{businessName, phone?}` → Business only (else 400 `PLAN_LIMIT`). Returns an `AuthResponse` for the new shop. Bill phone = `phone` (10 digits) or the main shop's; `phone_normalized` stays empty on extra shops (unique per account, they never sign in by phone; the owner update also leaves it alone for extra shops). The main shop's settings (setup answers in `otherFlags`, villages, location tools, Home tools) are copied, so the app opens the new shop on Home with no setup and no referral question (2026-11-15, app plan `.product/MULTI_SHOP_REDESIGN.md`).
 - `POST /api/v1/owners/{id}/shops/{shopId}/switch` → `AuthResponse` for that shop. The target must be the main shop or one of its extra shops (else 404).
 - Adding or switching ends this phone's sign-in to the shop it leaves, so Your devices lists each phone once.
 

@@ -56,7 +56,9 @@ public class OwnerService implements IOwnerService {
         if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
             String normalizedPhone = PhoneUtil.normalizePhone(request.getPhone());
             owner.setPhone(PhoneUtil.extractPhoneWithoutCountryCode(normalizedPhone));
-            owner.setPhoneNormalized(normalizedPhone);
+            // An extra shop never signs in by phone and often shares the main shop's number: only the bill phone is
+            // kept (phone_normalized is unique per account).
+            if (owner.getParentOwnerId() == null) owner.setPhoneNormalized(normalizedPhone);
         }
         
         if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
@@ -121,7 +123,7 @@ public class OwnerService implements IOwnerService {
         response.setType(owner.getType());
         response.setImageUrl(owner.getImageUrl());
         response.setLogoUrl(owner.getLogoUrl());
-        response.setBranded(ownerRepository.plan(owner) == Plan.BUSINESS);
+        response.setBranded(owner.getLogoUrl() != null); // logo on bills on every plan (owner decision 2026-11-15)
         response.setIsVerified(owner.getIsVerified());
         response.setPublicSlug(owner.getPublicSlug());
         response.setPublicListingEnabled(owner.getPublicListingEnabled());

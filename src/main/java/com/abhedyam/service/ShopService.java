@@ -5,14 +5,18 @@ import com.abhedyam.dto.ShopResponse;
 import com.abhedyam.exception.BusinessException;
 import com.abhedyam.exception.ResourceNotFoundException;
 import com.abhedyam.model.Owner;
+import com.abhedyam.model.OwnerSettings;
 import com.abhedyam.model.enums.UserType;
 import com.abhedyam.repository.OwnerRepository;
+import com.abhedyam.repository.OwnerSettingsRepository;
+import com.abhedyam.util.PhoneUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,6 +31,7 @@ public class ShopService {
 
     private final OwnerRepository ownerRepository;
     private final AuthService authService;
+    private final OwnerSettingsRepository ownerSettingsRepository;
 
     /** Main shop first, then the extra shops oldest first. */
     @Transactional(readOnly = true)
@@ -41,11 +46,20 @@ public class ShopService {
         return shops;
     }
 
-    /** Adds a shop (Business only) and signs this phone in to it; isNewUser=true so the app runs shop setup. */
+    /**
+     * Adds a shop (Business only) and signs this phone in to it. The bill phone defaults to the main shop's, and the
+     * main shop's settings (setup answers, villages, location tools, Home tools) are copied, so the app opens the new
+     * shop straight on Home: no setup questions, no referral code (that is for new accounts).
+     */
     @Transactional
-    public AuthResponse add(UUID currentShopId, UUID sessionId, String businessName, String deviceId, String deviceName) {
+    public AuthResponse add(UUID currentShopId, UUID sessionId, String businessName, String phone, String deviceId, String deviceName) {
         String name = businessName == null ? "" : businessName.trim();
         if (name.isEmpty() || name.length() > 100) throw new BusinessException("VALIDATION_ERROR", "Enter the shop name");
+        String billPhone = null;
+        if (phone != null && !phone.isBlank()) {
+            if (!PhoneUtil.isValidPhone(phone)) throw new BusinessException("VALIDATION_ERROR", "Enter a 10-digit phone number");
+            billPhone = PhoneUtil.extractPhoneWithoutCountryCode(PhoneUtil.normalizePhone(phone));
+        }
         Owner main = ownerRepository.main(find(currentShopId));
         if (Plan.of(main) != Plan.BUSINESS) {
             throw new BusinessException("PLAN_LIMIT", "More shops come with the Business plan");
@@ -56,9 +70,23 @@ public class ShopService {
         shop.setType(UserType.BUSINESS);
         shop.setIsVerified(false);
         shop.setParentOwnerId(main.getId());
+        shop.setPhone(billPhone != null ? billPhone : main.getPhone()); // phone_normalized stays empty: see OwnerService
         shop = ownerRepository.save(shop);
+        copySettings(main.getId(), shop.getId());
         log.info("Shop added: {} under main shop {}", shop.getId(), main.getId());
-        return authService.shopAuth(shop, currentShopId, sessionId, deviceId, deviceName, true);
+        return authService.shopAuth(shop, currentShopId, sessionId, deviceId, deviceName, false);
+    }
+
+    private void copySettings(UUID from, UUID to) {
+        ownerSettingsRepository.findByOwnerId(from).ifPresent(m -> {
+            OwnerSettings s = new OwnerSettings();
+            s.setOwnerId(to);
+            s.setIsDarkModeEnabled(m.getIsDarkModeEnabled());
+            s.setVillageModeEnabled(m.getVillageModeEnabled());
+            s.setLocationToolsEnabled(m.getLocationToolsEnabled());
+            if (m.getOtherFlags() != null) s.setOtherFlags(new HashMap<>(m.getOtherFlags()));
+            ownerSettingsRepository.save(s);
+        });
     }
 
     /** Signs this phone in to another of the owner's shops. */
