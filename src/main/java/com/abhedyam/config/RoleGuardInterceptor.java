@@ -28,6 +28,7 @@ public class RoleGuardInterceptor implements HandlerInterceptor {
             "PUT /api/v1/owners/*/notification-settings",
             "POST /api/v1/upi-accounts/**", "PATCH /api/v1/upi-accounts/**", "PUT /api/v1/upi-accounts/**", "DELETE /api/v1/upi-accounts/**",
             "* /api/v1/owners/*/members", "* /api/v1/owners/*/members/**",
+            "* /api/v1/owners/*/shops", "* /api/v1/owners/*/shops/**",
             "GET /api/v1/owners/*/sessions", "DELETE /api/v1/owners/*/sessions/*", "PATCH /api/v1/owners/*/sessions/*", "POST /api/v1/owners/*/sessions/logout-others",
             "DELETE /api/v1/owner/account", "POST /api/v1/owner/account/**",
             "POST /api/v1/referrals/apply",

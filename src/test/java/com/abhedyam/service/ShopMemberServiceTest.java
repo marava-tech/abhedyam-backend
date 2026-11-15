@@ -26,7 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class ShopMemberServiceTest {
 
     @Mock private ShopMemberRepository repo;
-    @Mock private OwnerRepository ownerRepository;
+    @Mock(answer = org.mockito.Answers.CALLS_REAL_METHODS) private OwnerRepository ownerRepository; // main()/plan() are default methods
     @Mock private OwnerSessionRepository sessionRepository;
     @Mock private OwnerSessionService sessionService;
     @Mock private FcmService fcmService;
@@ -184,5 +184,44 @@ class ShopMemberServiceTest {
 
         assertNull(c.getPausedAt());
         verify(sessionService, never()).revokeMember(any(), any());
+    }
+
+    /** An extra shop of [owner]'s main shop. */
+    private com.abhedyam.model.Owner extraShop() {
+        com.abhedyam.model.Owner o = new com.abhedyam.model.Owner();
+        o.setId(UUID.randomUUID());
+        o.setParentOwnerId(owner);
+        return o;
+    }
+
+    @Test
+    void extraShop_MainOnShop_EveryoneLoggedOut() {
+        com.abhedyam.model.Owner extra = extraShop();
+        com.abhedyam.model.OwnerSession phone = new com.abhedyam.model.OwnerSession();
+        phone.setId(UUID.randomUUID());
+        when(ownerRepository.findById(extra.getId())).thenReturn(Optional.of(extra));
+        when(ownerRepository.findById(owner)).thenReturn(Optional.of(shop("abhedyam_plan:yearly")));
+        when(sessionRepository.findByOwnerIdAndRevokedAtIsNullOrderByLastSeenAtDesc(extra.getId())).thenReturn(List.of(phone));
+
+        service.enforcePlan(extra.getId());
+
+        assertTrue(ownerRepository.paused(extra));
+        verify(sessionService).revoke(extra.getId(), phone.getId());
+        verify(repo, never()).save(any()); // nobody paused or removed: the shop comes back as it was
+    }
+
+    @Test
+    void extraShop_UsesMainShopsBusinessLimits() {
+        com.abhedyam.model.Owner extra = extraShop();
+        when(ownerRepository.findById(extra.getId())).thenReturn(Optional.of(extra));
+        when(ownerRepository.findById(owner)).thenReturn(Optional.of(shop("abhedyam_business:yearly")));
+        when(repo.findByOwnerIdAndStatusNotOrderByCreatedAtAsc(extra.getId(), ShopMember.Status.REMOVED)).thenReturn(List.of(joined(2), joined(1)));
+        when(repo.findByInviteCode(anyString())).thenReturn(Optional.empty());
+        when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+        MemberInviteRequest req = new MemberInviteRequest();
+        req.setName("Sita");
+        req.setRole("HELPER");
+
+        assertEquals("Sita", service.invite(extra.getId(), req).name()); // 3rd person: fine on Business
     }
 }

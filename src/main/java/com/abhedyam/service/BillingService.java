@@ -56,7 +56,8 @@ public class BillingService implements IBillingService {
     @Override
     @Transactional(readOnly = true)
     public BillingStatusResponse status(UUID ownerId) {
-        Owner owner = find(ownerId);
+        Owner shop = find(ownerId);
+        Owner owner = ownerRepository.main(shop); // an extra shop lives on its main shop's plan
         Instant now = Instant.now();
         Instant until = owner.getAccessUntil();
         boolean active = until != null && until.isAfter(now);
@@ -65,7 +66,7 @@ public class BillingService implements IBillingService {
         Plan plan = Plan.of(owner);
         return new BillingStatusResponse(until, active, owner.getPlayProductId() != null,
                 owner.getPlayProductId(), daysLeft, foundingLeft, plan.name(), plan.phones, plan.helpers,
-                owner.getTrialBonusAt() != null);
+                owner.getTrialBonusAt() != null, shop.getParentOwnerId() == null);
     }
 
     @Override
@@ -73,8 +74,9 @@ public class BillingService implements IBillingService {
     public boolean applyRevenueCatEvent(Map<String, Object> event) {
         UUID ownerId = parseOwnerId(event.get("app_user_id"));
         if (ownerId == null) return false;
-        Owner owner = ownerRepository.findById(ownerId).orElse(null);
+        Owner owner = ownerRepository.findById(ownerId).map(ownerRepository::main).orElse(null);
         if (owner == null) return false;
+        ownerId = owner.getId(); // bought from an extra shop: the plan belongs to the main shop
 
         String type = String.valueOf(event.get("type"));
         if ("EXPIRATION".equals(type)) {
@@ -105,7 +107,7 @@ public class BillingService implements IBillingService {
     @Override
     @Transactional
     public void grantDays(UUID ownerId, int days) {
-        Owner owner = find(ownerId);
+        Owner owner = ownerRepository.main(find(ownerId));
         addDays(owner, days);
         ownerRepository.save(owner);
     }
@@ -113,7 +115,7 @@ public class BillingService implements IBillingService {
     @Override
     @Transactional
     public void endAccess(UUID ownerId) {
-        Owner owner = find(ownerId);
+        Owner owner = ownerRepository.main(find(ownerId));
         owner.setAccessUntil(Instant.now());
         ownerRepository.save(owner);
     }

@@ -56,7 +56,8 @@ public class AccountExportService implements IAccountExportService {
     public String requestExport(UUID ownerId) {
         // ponytail: read-then-write is not atomic; two taps in the same millisecond could both pass. Fine at this volume.
         String email = tx.execute(s -> {
-            Owner owner = ownerRepository.findById(ownerId).orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+            Owner owner = ownerRepository.main( // an extra shop's export goes to the Gmail of the main shop
+                    ownerRepository.findById(ownerId).orElseThrow(() -> new ResourceNotFoundException("Account not found")));
             if (owner.getEmail() == null || owner.getEmail().isBlank()) {
                 throw new BusinessException("EMAIL_REQUIRED", "Add an email address to your profile to receive your export");
             }
@@ -81,7 +82,7 @@ public class AccountExportService implements IAccountExportService {
     @Override
     public boolean sendForDeletion(UUID ownerId, Instant deletesAt) {
         try {
-            String email = ownerRepository.findById(ownerId).map(Owner::getEmail).orElse(null);
+            String email = ownerRepository.findById(ownerId).map(ownerRepository::main).map(Owner::getEmail).orElse(null);
             if (email == null || email.isBlank()) return false;
             String date = java.time.LocalDate.now(ZoneId.of("Asia/Kolkata")).toString();
             String when = DateTimeFormatter.ofPattern("d MMM yyyy, h:mm a").withZone(ZoneId.of("Asia/Kolkata")).format(deletesAt);

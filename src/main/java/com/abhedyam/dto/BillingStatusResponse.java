@@ -15,5 +15,6 @@ public record BillingStatusResponse(
         @Schema(description = "SHOP (also during the trial) or BUSINESS", example = "SHOP") String plan,
         @Schema(description = "Phones the owner can be signed in on at once", example = "1") int maxPhones,
         @Schema(description = "Family members + helpers the shop can have", example = "2") int maxHelpers,
-        @Schema(description = "The second free month was earned (10 customers + 5 payments)") boolean extraMonthEarned) {
+        @Schema(description = "The second free month was earned (10 customers + 5 payments)") boolean extraMonthEarned,
+        @Schema(description = "false on an extra shop: the plan is bought and shown on the main shop") boolean mainShop) {
 }

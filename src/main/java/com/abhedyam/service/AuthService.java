@@ -169,10 +169,36 @@ public class AuthService {
         }
     }
 
+    private void refuseIfPaused(Owner shop) {
+        if (ownerRepository.paused(shop)) {
+            throw new com.abhedyam.exception.BusinessException("PLAN_PAUSED",
+                    "This shop opens again on the Business plan. Your records are safe");
+        }
+    }
+
+    /**
+     * Owner token for one of the owner's shops (shop switcher, new shop). The current phone's sign-in to the shop it
+     * leaves ends, so Your devices shows each phone once. The token's phone/email is the main shop's.
+     */
+    @Transactional
+    public AuthResponse shopAuth(Owner shop, UUID leavingShopId, UUID leavingSessionId, String deviceId, String deviceName, boolean isNewShop) {
+        refuseIfPaused(shop);
+        if (leavingSessionId != null && !leavingShopId.equals(shop.getId())) sessionService.revoke(leavingShopId, leavingSessionId);
+        UUID sid = sessionService.start(shop.getId(), deviceId, deviceName).getId();
+        memberService.enforcePlan(shop.getId());
+        Owner main = ownerRepository.main(shop);
+        String phone = main.getPhoneNormalized() != null ? main.getPhoneNormalized() : main.getEmail();
+        AuthResponse r = new AuthResponse(jwtUtil.generateToken(shop.getId(), phone, sid), shop.getId().toString(), phone,
+                main.getName(), isNewShop, UserType.BUSINESS, null, shop.getCreatedAt());
+        r.setShopName(shop.getBusinessName());
+        return r;
+    }
+
     /** userId is the shop owner's id, so the app's /owners/{id}/... calls work unchanged. */
     private AuthResponse memberResponse(com.abhedyam.model.ShopMember member, UUID sessionId) {
         Owner owner = ownerRepository.findById(member.getOwnerId()).filter(o -> Boolean.TRUE.equals(o.getIsActive()))
                 .orElseThrow(() -> new com.abhedyam.exception.BusinessException("SESSION_REVOKED", "This shop is closed"));
+        refuseIfPaused(owner);
         String phone = owner.getPhoneNormalized() != null ? owner.getPhoneNormalized() : owner.getEmail();
         AuthResponse r = new AuthResponse(
                 jwtUtil.generateToken(owner.getId(), phone, sessionId, member.getId(), member.getRole().name()),
@@ -202,6 +228,7 @@ public class AuthService {
         }
         if (ownerRepository.existsById(userId)) {
             Owner owner = ownerRepository.findById(userId).orElseThrow();
+            refuseIfPaused(owner);
             String tokenPhone = owner.getPhoneNormalized() != null ? owner.getPhoneNormalized() : owner.getEmail();
             // logged out from another phone → refused, so the app goes to sign in
             UUID sessionId = sessionService.renew(owner.getId(), jwtUtil.getSessionIdFromToken(token), deviceId, deviceName).getId();
