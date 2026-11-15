@@ -32,12 +32,13 @@ public class ShopController {
     }
 
     @PostMapping
-    @Operation(summary = "Add a shop", description = "Body {\"businessName\"}. Business plan only (else 400 PLAN_LIMIT). "
-            + "Returns a token for the new shop (isNewUser=true: run shop setup); this phone leaves the current shop.")
+    @Operation(summary = "Add a shop", description = "Body {\"businessName\", \"phone\"?}. Business plan only (else 400 PLAN_LIMIT). "
+            + "Phone (for bills) defaults to the main shop's; the main shop's settings are copied. "
+            + "Returns a token for the new shop; this phone leaves the current shop.")
     public ApiResponse<AuthResponse> add(@PathVariable UUID ownerId, @RequestBody Map<String, String> body,
                                          @RequestHeader(value = "X-Device-Id", required = false) String deviceId,
                                          @RequestHeader(value = "X-Device-Name", required = false) String deviceName) {
-        return ApiResponse.success(service.add(self(ownerId), SecurityUtil.getCurrentSessionId(), body.get("businessName"), deviceId, deviceName));
+        return ApiResponse.success(service.add(self(ownerId), SecurityUtil.getCurrentSessionId(), body.get("businessName"), body.get("phone"), deviceId, deviceName));
     }
 
     @PostMapping("/{shopId}/switch")
