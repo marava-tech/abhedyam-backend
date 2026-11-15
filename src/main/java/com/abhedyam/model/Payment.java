@@ -17,7 +17,8 @@ import java.util.UUID;
     @Index(name = "idx_payments_owner_id", columnList = "owner_id"),
     @Index(name = "idx_payments_customer_id", columnList = "customer_id"),
     @Index(name = "idx_payments_sale_item_id", columnList = "sale_item_id"),
-    @Index(name = "idx_payments_created_at", columnList = "created_at")
+    @Index(name = "idx_payments_created_at", columnList = "created_at"),
+        @Index(name = "idx_payments_owner_client_key", columnList = "owner_id, client_key")
 })
 @Getter
 @Setter
@@ -57,6 +58,11 @@ public class Payment extends BaseEntity {
     @Column(columnDefinition = "VARCHAR(36)")
     private UUID dueId;
     
+    /** The phone's id for the Payment in that made this row (all rows of one Payment in share it). Kept forever, so an
+     *  entry saved offline and sent again hours later is never recorded twice. Null = older app / not from Payment in. */
+    @Column(name = "client_key", length = 64)
+    private String clientKey;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PaymentStatus status = PaymentStatus.PENDING;

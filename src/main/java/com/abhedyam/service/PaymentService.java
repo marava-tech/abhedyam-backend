@@ -168,18 +168,55 @@ public class PaymentService implements IPaymentService {
     @Override
     @Transactional
     public com.abhedyam.dto.CollectPaymentResponse collectFromCustomer(UUID ownerId, com.abhedyam.dto.CollectPaymentRequest request) {
-        String key = request.getIdempotencyKey() == null || request.getIdempotencyKey().isBlank()
-                ? null : "payment:idempotency:client:" + ownerId + ":" + request.getIdempotencyKey().trim();
+        String clientKey = request.getIdempotencyKey() == null || request.getIdempotencyKey().isBlank()
+                ? null : request.getIdempotencyKey().trim();
+        if (clientKey != null && clientKey.length() > 64) {
+            throw new BusinessException(ErrorCodes.VALIDATION_ERROR, "idempotencyKey is too long");
+        }
+        if (clientKey != null) { // sent before (maybe hours ago from an offline phone): answer with what was recorded then
+            List<Payment> earlier = paymentRepository.findByOwnerIdAndClientKey(ownerId, clientKey);
+            if (!earlier.isEmpty()) {
+                log.info("Repeat of payment {} for owner {} answered from the earlier rows", clientKey, ownerId);
+                return earlierResponse(request.getCustomerId(), earlier);
+            }
+        }
+        // Redis only catches two copies arriving at the same moment (the first not committed yet).
+        String key = clientKey == null ? null : "payment:idempotency:client:" + ownerId + ":" + clientKey;
         if (key != null && !claimOnce(key)) {
             log.warn("Duplicate payment request ignored: {}", key);
             return new com.abhedyam.dto.CollectPaymentResponse(request.getCustomerId(), request.getAmount(), List.of());
         }
         try {
-            return collect(ownerId, request, false);
+            com.abhedyam.dto.CollectPaymentResponse made = collect(ownerId, request, false);
+            if (clientKey != null) {
+                List<Payment> rows = paymentRepository.findAllById(made.getPayments().stream().map(PaymentResponse::getId).toList());
+                rows.forEach(p -> p.setClientKey(clientKey));
+                paymentRepository.saveAll(rows);
+            }
+            return made;
         } catch (RuntimeException e) {
             if (key != null) release(key); // not recorded, so a retry must go through
             throw e;
         }
+    }
+
+    static com.abhedyam.dto.CollectPaymentResponse earlierResponse(UUID customerId, List<Payment> rows) {
+        List<PaymentResponse> out = new java.util.ArrayList<>();
+        BigDecimal total = BigDecimal.ZERO;
+        for (Payment p : rows) {
+            PaymentResponse r = new PaymentResponse();
+            r.setId(p.getId());
+            r.setCustomerId(p.getCustomerId());
+            r.setOwnerId(p.getOwnerId());
+            r.setSaleItemId(p.getSaleItemId());
+            r.setAmount(p.getAmount());
+            r.setMedium(p.getMedium());
+            r.setTimestamp(p.getTimestamp());
+            r.setReference(p.getReference());
+            out.add(r);
+            total = total.add(p.getAmount());
+        }
+        return new com.abhedyam.dto.CollectPaymentResponse(customerId, total, out);
     }
 
     /** True the first time a key is seen in 10 minutes. Redis down = allow (never block taking money). */
