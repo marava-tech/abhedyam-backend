@@ -15,6 +15,8 @@ import java.util.UUID;
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     List<Payment> findByOwnerId(UUID ownerId);
+
+    List<Payment> findByOwnerIdAndClientKey(UUID ownerId, String clientKey);
     Page<Payment> findByOwnerId(UUID ownerId, Pageable pageable);
     List<Payment> findByCustomerId(UUID customerId);
     List<Payment> findByCustomerIdAndOwnerId(UUID customerId, UUID ownerId);

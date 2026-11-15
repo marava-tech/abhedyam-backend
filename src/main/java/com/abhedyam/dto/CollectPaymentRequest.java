@@ -28,7 +28,7 @@ public class CollectPaymentRequest {
     @Schema(description = "Optional: the due this payment is for (\"Got paid\" on a due); it is filled first")
     private UUID dueId;
 
-    @Schema(description = "Random id the phone makes once per Payment in screen. A repeat (double tap, retry) within 10 minutes is not recorded again.")
+    @Schema(description = "Random id (max 64 chars) the phone makes once per Payment in. A repeat with the same id, at any time later (double tap, retry, sent again after being offline), is not recorded again: the answer lists the rows recorded the first time.")
     private String idempotencyKey;
 
     @Schema(description = "Optional: when the customer paid, for a payment entered later. Not in the future, at most a year back. Default now.",

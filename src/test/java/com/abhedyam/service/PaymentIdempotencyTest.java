@@ -32,6 +32,7 @@ class PaymentIdempotencyTest {
     @Test
     void repeatedKey_RecordsNothing() {
         UUID ownerId = UUID.randomUUID();
+        when(paymentRepository.findByOwnerIdAndClientKey(ownerId, "k1")).thenReturn(java.util.List.of());
         when(redisTemplate.opsForValue()).thenReturn(ops);
         when(ops.setIfAbsent(eq("payment:idempotency:client:" + ownerId + ":k1"), eq("1"), any(Duration.class))).thenReturn(false);
 
@@ -43,6 +44,35 @@ class PaymentIdempotencyTest {
         CollectPaymentResponse r = paymentService.collectFromCustomer(ownerId, req);
 
         assertTrue(r.getPayments().isEmpty());
-        verifyNoInteractions(paymentRepository, customerRepository);
+        verify(paymentRepository, never()).save(any());
+        verifyNoInteractions(customerRepository);
+    }
+
+    /** Saved offline, sent again hours later (Redis forgot it): the earlier rows come back, nothing new is recorded. */
+    @Test
+    void keySeenBefore_ReturnsEarlierRows() {
+        UUID ownerId = UUID.randomUUID();
+        UUID customerId = UUID.randomUUID();
+        com.abhedyam.model.Payment p = new com.abhedyam.model.Payment();
+        p.setId(UUID.randomUUID());
+        p.setCustomerId(customerId);
+        p.setAmount(new BigDecimal("300"));
+        com.abhedyam.model.Payment q = new com.abhedyam.model.Payment();
+        q.setId(UUID.randomUUID());
+        q.setCustomerId(customerId);
+        q.setAmount(new BigDecimal("200"));
+        when(paymentRepository.findByOwnerIdAndClientKey(ownerId, "k1")).thenReturn(java.util.List.of(p, q));
+
+        CollectPaymentRequest req = new CollectPaymentRequest();
+        req.setCustomerId(customerId);
+        req.setAmount(new BigDecimal("500"));
+        req.setIdempotencyKey(" k1 ");
+
+        CollectPaymentResponse r = paymentService.collectFromCustomer(ownerId, req);
+
+        assertEquals(java.util.List.of(p.getId(), q.getId()), r.getPayments().stream().map(x -> x.getId()).toList());
+        assertEquals(0, new BigDecimal("500").compareTo(r.getTotalCollected()));
+        verify(paymentRepository, never()).save(any());
+        verifyNoInteractions(customerRepository, redisTemplate);
     }
 }
