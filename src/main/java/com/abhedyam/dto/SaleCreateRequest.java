@@ -36,6 +36,11 @@ public class SaleCreateRequest {
     @JsonDeserialize(using = FlexibleInstantDeserializer.class)
     private Instant dueDate;
 
+    @Schema(description = "Optional: when the sale was made, for a sale saved on the phone without internet and sent later. Not in the future, at most a year back. Default now.",
+            example = "2026-11-15T10:30:00Z")
+    @JsonDeserialize(using = FlexibleInstantDeserializer.class)
+    private Instant soldAt;
+
     @PositiveOrZero(message = "Paid amount cannot be negative")
     @Schema(description = "Amount paid at the time of sale; the rest stays due", example = "500.00")
     private BigDecimal paidAmount;
