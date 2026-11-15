@@ -42,5 +42,23 @@ public interface OwnerRepository extends JpaRepository<Owner, UUID> {
 
     /** Owners disabled (account deleted) before the given time. Only disableAccount sets these two fields on an owner. */
     List<Owner> findByIsActiveFalseAndDeletedAtBefore(Instant before);
+
+    /** Extra shops of a main shop (Business plan), oldest first. */
+    List<Owner> findByParentOwnerIdOrderByCreatedAtAsc(UUID parentOwnerId);
+
+    /** The main shop: billing, the plan and the Gmail live there. A main shop is its own main shop. */
+    default Owner main(Owner o) {
+        return o.getParentOwnerId() == null ? o : findById(o.getParentOwnerId()).orElse(o);
+    }
+
+    /** The plan of this shop = the plan of its main shop. */
+    default com.abhedyam.service.Plan plan(Owner o) {
+        return com.abhedyam.service.Plan.of(main(o));
+    }
+
+    /** An extra shop whose main shop is not on Business: nobody can sign in to it until Business is bought again. Nothing is deleted. */
+    default boolean paused(Owner o) {
+        return o.getParentOwnerId() != null && plan(o) != com.abhedyam.service.Plan.BUSINESS;
+    }
 }
 

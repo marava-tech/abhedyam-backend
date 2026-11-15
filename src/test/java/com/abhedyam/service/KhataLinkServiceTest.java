@@ -44,7 +44,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 class KhataLinkServiceTest {
 
     @Mock private CustomerRepository customerRepository;
-    @Mock private OwnerRepository ownerRepository;
+    @Mock(answer = org.mockito.Answers.CALLS_REAL_METHODS) private OwnerRepository ownerRepository; // main()/plan() are default methods
     @Mock private SaleItemRepository saleItemRepository;
     @Mock private PaymentRepository paymentRepository;
     @Mock private ProductRepository productRepository;

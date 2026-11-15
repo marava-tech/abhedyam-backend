@@ -88,6 +88,8 @@ public class AccountService implements IAccountService {
 
     @Override
     public void disableAccount(UUID ownerId) {
+        // the extra shops can only be reached through the main shop's Gmail: they go with it
+        for (Owner shop : ownerRepository.findByParentOwnerIdOrderByCreatedAtAsc(ownerId)) disableAccount(shop.getId());
         String firebaseUid = tx.execute(status -> {
             Owner owner = ownerRepository.findById(ownerId)
                     .orElseThrow(() -> new ResourceNotFoundException("Account not found"));

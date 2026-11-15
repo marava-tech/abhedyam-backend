@@ -47,7 +47,7 @@ public class ShopMemberService {
     public MemberResponse invite(UUID ownerId, MemberInviteRequest request) {
         ShopMember.Role role = role(request.getRole());
         String name = request.getName().trim();
-        Plan plan = Plan.of(ownerRepository.findById(ownerId).orElseThrow());
+        Plan plan = ownerRepository.plan(ownerRepository.findById(ownerId).orElseThrow());
         if (repository.findByOwnerIdAndStatusNotOrderByCreatedAtAsc(ownerId, ShopMember.Status.REMOVED).size() >= plan.helpers) {
             throw new BusinessException("PLAN_LIMIT", plan == Plan.SHOP
                     ? "The Shop plan has room for " + plan.helpers + " people. Business has room for " + Plan.BUSINESS.helpers
@@ -108,7 +108,13 @@ public class ShopMemberService {
      */
     @Transactional
     public void enforcePlan(UUID ownerId) {
-        Plan plan = ownerRepository.findById(ownerId).map(Plan::of).orElse(Plan.SHOP);
+        Owner owner = ownerRepository.findById(ownerId).orElse(null);
+        if (owner == null) return;
+        if (ownerRepository.paused(owner)) { // an extra shop without Business on the main shop: everyone is logged out
+            for (OwnerSession s : sessionRepository.findByOwnerIdAndRevokedAtIsNullOrderByLastSeenAtDesc(ownerId)) sessionService.revoke(ownerId, s.getId());
+            return;
+        }
+        Plan plan = ownerRepository.plan(owner);
         List<OwnerSession> phones = sessionRepository.findByOwnerIdAndRevokedAtIsNullOrderByLastSeenAtDesc(ownerId).stream()
                 .filter(s -> s.getMemberId() == null).toList();
         for (OwnerSession s : phones.subList(Math.min(plan.phones, phones.size()), phones.size())) sessionService.revoke(ownerId, s.getId());
@@ -133,6 +139,9 @@ public class ShopMemberService {
                 repository.save(m);
                 sessionService.revokeMember(ownerId, m.getId());
             }
+        }
+        if (owner.getParentOwnerId() == null) {
+            for (Owner shop : ownerRepository.findByParentOwnerIdOrderByCreatedAtAsc(ownerId)) enforcePlan(shop.getId());
         }
     }
 

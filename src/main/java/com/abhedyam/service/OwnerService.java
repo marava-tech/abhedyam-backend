@@ -117,11 +117,11 @@ public class OwnerService implements IOwnerService {
         response.setName(owner.getName());
         response.setBusinessName(owner.getBusinessName());
         response.setPhone(owner.getPhone());
-        response.setEmail(owner.getEmail());
+        response.setEmail(ownerRepository.main(owner).getEmail()); // extra shops have no Gmail of their own
         response.setType(owner.getType());
         response.setImageUrl(owner.getImageUrl());
         response.setLogoUrl(owner.getLogoUrl());
-        response.setBranded(Plan.of(owner) == Plan.BUSINESS);
+        response.setBranded(ownerRepository.plan(owner) == Plan.BUSINESS);
         response.setIsVerified(owner.getIsVerified());
         response.setPublicSlug(owner.getPublicSlug());
         response.setPublicListingEnabled(owner.getPublicListingEnabled());

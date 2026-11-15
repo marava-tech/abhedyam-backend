@@ -28,7 +28,7 @@ import static org.mockito.Mockito.*;
 /** The money paths: Play webhook → access, first payment → referral reward, code rules. */
 class BillingServiceTest {
 
-    private final OwnerRepository owners = mock(OwnerRepository.class);
+    private final OwnerRepository owners = mock(OwnerRepository.class, org.mockito.Answers.CALLS_REAL_METHODS);
     private final ReferralRepository referrals = mock(ReferralRepository.class);
     private final PartnerRepository partners = mock(PartnerRepository.class);
     private final PartnerEarningRepository earnings = mock(PartnerEarningRepository.class);
@@ -170,6 +170,25 @@ class BillingServiceTest {
         friend.setFirstPaidAt(Instant.now());
         assertEquals("ALREADY_PAID", assertThrows(BusinessException.class,
                 () -> referralService.apply(friend.getId(), "ABHTEST1")).getErrorCode());
+    }
+
+    @Test
+    void extraShop_PurchaseLandsOnMainShop_AndShowsMainShopsPlan() {
+        Owner main = owner(), extra = owner();
+        extra.setParentOwnerId(main.getId());
+        extra.setAccessUntil(null);
+        Instant year = Instant.now().plus(365, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS);
+        Map<String, Object> e = event("INITIAL_PURCHASE", extra, year, null);
+        e.put("product_id", "abhedyam_business:yearly");
+
+        billing.applyRevenueCatEvent(e);
+
+        assertEquals(year, main.getAccessUntil());
+        assertNull(extra.getPlayProductId());
+        var status = billing.status(extra.getId());
+        assertEquals("BUSINESS", status.plan());
+        assertTrue(status.active());
+        assertFalse(status.mainShop());
     }
 
     private Owner owner() {

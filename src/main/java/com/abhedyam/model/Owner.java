@@ -58,5 +58,10 @@ public class Owner extends User {
     /** Partner (agent) whose code this shop used; they earn when the shop first pays. */
     @Column(length = 36)
     private String partnerId;
+
+    /** Business plan: an extra shop of the same owner points to the main shop (signed in with the Gmail); null = a main shop. */
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.VARCHAR)
+    @Column(columnDefinition = "VARCHAR(36)")
+    private java.util.UUID parentOwnerId;
 }
 
