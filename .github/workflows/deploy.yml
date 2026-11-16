@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
 
+# One deploy at a time, newest wins: two merges close together once let the older build finish last and
+# put old code live (2026-11-16, #94/#95).
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
 permissions:
   contents: read
   packages: write
