@@ -139,19 +139,8 @@ public class OwnerService implements IOwnerService {
         
         long totalCustomers = customerRepository.countByOwnerId(ownerId);
         
-        BigDecimal totalSalesAmount = saleItemRepository.sumTotalsByCustomer(ownerId).stream()
-            .map(r -> new BigDecimal(r[1].toString()))
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-        // Balance counts write-offs (they close the due); "collected" does not (no money came in).
-        BigDecimal settledAmount = paymentRepository.sumSuccessfulByCustomer(ownerId).stream()
-            .map(r -> new BigDecimal(r[1].toString()))
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalCollectedAmount = paymentRepository.sumCollected(ownerId);
-
-        BigDecimal totalPendingAmount = totalSalesAmount.subtract(settledAmount);
-        if (totalPendingAmount.compareTo(BigDecimal.ZERO) < 0) {
-            totalPendingAmount = BigDecimal.ZERO;
-        }
+        BigDecimal totalPendingAmount = toCollect(ownerId);
         
         long totalVillages = locationDetailsRepository.countVillagesByOwnerId(ownerId);
         
@@ -177,6 +166,19 @@ public class OwnerService implements IOwnerService {
         );
     }
     
+    @Override
+    @Transactional(readOnly = true)
+    public BigDecimal toCollect(UUID ownerId) {
+        BigDecimal sales = saleItemRepository.sumTotalsByCustomer(ownerId).stream()
+            .map(r -> new BigDecimal(r[1].toString()))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Balance counts write-offs (they close the due); "collected" does not (no money came in).
+        BigDecimal settled = paymentRepository.sumSuccessfulByCustomer(ownerId).stream()
+            .map(r -> new BigDecimal(r[1].toString()))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return sales.subtract(settled).max(BigDecimal.ZERO);
+    }
+
     private void validateOwnerAccess(UUID ownerId) {
         UUID currentOwnerId = SecurityUtil.getCurrentUserId();
         if (ownerId == null || !ownerId.equals(currentOwnerId)) {

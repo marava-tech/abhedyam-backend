@@ -41,6 +41,15 @@ public class ShopController {
         return ApiResponse.success(service.add(self(ownerId), SecurityUtil.getCurrentSessionId(), body.get("businessName"), body.get("phone"), deviceId, deviceName));
     }
 
+    @PatchMapping("/{shopId}")
+    @Operation(summary = "Rename a shop / pick its colour", description = "Body {\"businessName\"?, \"colour\"? (0-7)}. Any of the owner's shops.")
+    public ApiResponse<ShopResponse> update(@PathVariable UUID ownerId, @PathVariable UUID shopId, @RequestBody Map<String, Object> body) {
+        Object name = body.get("businessName");
+        Object colour = body.get("colour");
+        return ApiResponse.success(service.update(self(ownerId), shopId,
+                name == null ? null : name.toString(), colour instanceof Number n ? n.intValue() : null));
+    }
+
     @PostMapping("/{shopId}/switch")
     @Operation(summary = "Open another shop", description = "Returns a token for that shop. 400 PLAN_PAUSED for an extra shop while the main shop is not on Business.")
     public ApiResponse<AuthResponse> switchTo(@PathVariable UUID ownerId, @PathVariable UUID shopId,
