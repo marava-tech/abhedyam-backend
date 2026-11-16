@@ -31,4 +31,8 @@ public class StockPurchase extends BaseEntity {
 
     @Column(length = 200)
     private String note;
+
+    /** The phone's id for this Save. A repeat (timeout, then Save again) returns the first purchase, not a second. */
+    @Column(length = 64)
+    private String clientKey;
 }

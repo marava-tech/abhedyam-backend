@@ -23,5 +23,6 @@ public class PurchaseRequest {
     @Schema(description = "Default today") private LocalDate boughtOn;
     @Schema(example = "12000") private BigDecimal totalPaid;
     private String note;
+    @Schema(description = "The phone's id for this Save: sending it again returns the same purchase") private String idempotencyKey;
     private List<Line> items;
 }

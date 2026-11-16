@@ -79,3 +79,6 @@ purchases, cancel restores, deleted purchase ignored; paidBack/profit; create wi
   `totalPaid`. Lines without a cost still share what is left, as before.
 - `newItem.price` is optional (0 = selling price not set yet; the app asks after saving). Items with price 0 are left
   out of `potentialProfit`.
+
+## Repeat-safe Save
+`POST` takes an optional `idempotencyKey` (the phone's id for that Save, stored as `stock_purchases.client_key`). Sending the same key again returns the first purchase: no second purchase, no double stock (a timeout, then Save again).

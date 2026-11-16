@@ -89,6 +89,11 @@ public class PurchaseService implements IPurchaseService {
     @Transactional
     public PurchaseResponse create(UUID ownerId, PurchaseRequest request) {
         requireSelf(ownerId);
+        String key = request.getIdempotencyKey() == null || request.getIdempotencyKey().isBlank() ? null : request.getIdempotencyKey().trim();
+        if (key != null) {
+            var earlier = purchases.findFirstByOwnerIdAndClientKey(ownerId, key);
+            if (earlier.isPresent()) return build(ownerId, List.of(earlier.get())).get(0);
+        }
         List<PurchaseRequest.Line> req = request.getItems() == null ? List.of() : request.getItems();
         if (req.isEmpty()) throw invalid("Add at least one item");
 
@@ -130,6 +135,7 @@ public class PurchaseService implements IPurchaseService {
         purchase.setBoughtOn(on);
         purchase.setTotalPaid(total);
         purchase.setNote(trim(request.getNote(), 200));
+        purchase.setClientKey(key);
         purchase = purchases.save(purchase);
 
         String note = purchase.getSupplier() == null ? "Purchase" : "Purchase from " + purchase.getSupplier();

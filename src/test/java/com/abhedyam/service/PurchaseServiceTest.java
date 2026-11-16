@@ -105,6 +105,18 @@ class PurchaseServiceTest {
     }
 
     @Test
+    void sameSaveSentTwiceIsOnePurchase() {
+        UUID rice = item("Rice", "60", null);
+        PurchaseRequest r = new PurchaseRequest();
+        r.setTotalPaid(new BigDecimal("500"));
+        r.setIdempotencyKey("k-1");
+        r.setItems(new ArrayList<>(List.of(line(rice, "10", null))));
+        UUID first = purchases.create(owner, r).getId();
+        assertEquals(first, purchases.create(owner, r).getId()); // timeout, then Save again
+        assertEquals(0, new BigDecimal("10").compareTo(itemView(rice).getStock()));
+    }
+
+    @Test
     void purchaseAddsStockAndFillsBuyingPrices() {
         UUID rice = item("Rice", "60", null), oil = item("Oil", "120", "2");
         PurchaseResponse p = buy("1000", " Ramesh  traders ", line(rice, "10", null), line(oil, "5", null));
