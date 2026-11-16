@@ -3,6 +3,9 @@ name: Deploy to Production
 on:
   push:
     branches: [main]
+  # "Run workflow" button in Actions: deploys main as it is, for when a merge's push event got lost
+  # (2026-11-16: a 502 during the #104 merge started no deploy).
+  workflow_dispatch:
 
 # One deploy at a time, newest wins: two merges close together once let the older build finish last and
 # put old code live (2026-11-16, #94/#95).
