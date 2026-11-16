@@ -34,6 +34,10 @@ public class UserNotificationController {
             .collect(Collectors.toList());
         return ApiResponse.success(responses);
     }
+
+    @GetMapping("/unread-count")
+    @Operation(summary = "Unread count", description = "How many unread notifications the user has (the Home bell), without the list.")
+    public ApiResponse<Long> getUnreadCount(@PathVariable UUID userId) {
+        return ApiResponse.success(notificationService.countUnreadForUser(userId));
+    }
 }
-
-

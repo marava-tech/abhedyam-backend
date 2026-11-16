@@ -67,6 +67,14 @@ public class NotificationService implements INotificationService {
         }
         return getMyNotifications(unreadOnly);
     }
+
+    @Override
+    public long countUnreadForUser(UUID userId) {
+        if (!SecurityUtil.getCurrentUserId().equals(userId)) {
+            throw new BusinessException("UNAUTHORIZED", "You can only access your own notifications");
+        }
+        return notificationRepository.countUnreadByOwnerIdOrUserId(userId);
+    }
     
     @Override
     @Transactional
