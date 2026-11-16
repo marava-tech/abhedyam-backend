@@ -168,7 +168,8 @@ public class SaleService implements ISaleService {
             try {
                 auditService.logSaleCreation(firstSaleItemId != null ? firstSaleItemId : UUID.randomUUID(),
                         ownerId, customer.getId(), customer.getName(), totalAmount, transactionId,
-                        ActivityText.itemsSummary(activityLines), request.getPaidAmount());
+                        ActivityText.itemsSummary(activityLines), request.getPaidAmount(),
+                        ActivityText.saleFacts(activityLines, request.getPaidAmount(), totalAmount));
             } catch (Exception e) {
                 log.warn("Audit logging failed, sale still created: {}", e.getMessage());
             }

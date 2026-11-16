@@ -426,6 +426,7 @@ public class StatsService implements IStatsService {
                                                         audit.getDetail(),
                                                         audit.getTimestamp());
                                         if (audit.getAddedBy() != null) r.setAddedBy(memberNames.get(audit.getAddedBy()));
+                                        r.setFacts(ActivityText.read(audit.getFacts()));
                                         return r;
                                 })
                                 .collect(Collectors.toList());

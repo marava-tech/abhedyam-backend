@@ -53,6 +53,11 @@ public class Audit extends BaseEntity {
     @Column(length = 255)
     private String detail;
 
+    /** The facts behind headline/detail as JSON (items, paid, total, medium, reminder time…): the app writes the
+     *  sentence in the owner's language from these instead of parsing English text. Null on rows from before. */
+    @Column(columnDefinition = "TEXT")
+    private String facts;
+
     @Column(nullable = false)
     private Instant timestamp;
 }

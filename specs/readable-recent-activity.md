@@ -38,3 +38,15 @@ for existing fields.
 ## Out of Scope
 Backfilling old rows, localisation (Telugu/Hindi text), changing which events
 appear in the feed, cancel/undo from the feed.
+
+## Update 2026-11-16: facts, not sentences
+The app no longer regex-parses `headline` / `detail` (English) to translate them. Each new activity row also stores
+`facts` (JSON, `audit.facts` TEXT column, added by `ddl-auto: update`) and `GET /stats/recent-activities` returns it:
+- sale (SALE/CREATE): `{items: [{name, qty}] (first 3), more, paid, total}`
+- sale cancelled (SALE/DELETE): no facts; `customerId` / `customerName` are now set on the row
+- payment (PAYMENT/UPDATE): `{medium, product}`
+- reminder: `{at (ISO instant), personal}`
+- item added (PRODUCT): `{name}`
+The app writes the line in the owner's language from `type`, `action`, `customerName`, `amount` and `facts`;
+rows from before (no facts) show their stored `headline` / `detail` as is. `headline` / `detail` stay for
+older apps and the admin dashboard.

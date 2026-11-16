@@ -101,4 +101,43 @@ final class ActivityText {
     static String clip(String s) {
         return s == null || s.length() <= MAX_DETAIL ? s : s.substring(0, MAX_DETAIL - 1) + "…";
     }
+
+    private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
+
+    /** Facts of a sale: the first 3 items (name, qty), how many more, paid and total. */
+    static String saleFacts(List<Line> lines, BigDecimal paid, BigDecimal total) {
+        java.util.Map<String, Object> f = new java.util.LinkedHashMap<>();
+        List<java.util.Map<String, Object>> items = new java.util.ArrayList<>();
+        if (lines != null) {
+            for (Line l : lines.subList(0, Math.min(3, lines.size()))) {
+                java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                m.put("name", l.name());
+                if (l.qty() != null) m.put("qty", l.qty().stripTrailingZeros());
+                items.add(m);
+            }
+            if (lines.size() > 3) f.put("more", lines.size() - 3);
+        }
+        f.put("items", items);
+        f.put("paid", paid == null ? BigDecimal.ZERO : paid);
+        f.put("total", total == null ? BigDecimal.ZERO : total);
+        return write(f);
+    }
+
+    static String write(java.util.Map<String, Object> facts) {
+        try {
+            return JSON.writeValueAsString(facts);
+        } catch (Exception e) {
+            return null; // facts are a nicety: the row still has its headline and detail
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    static java.util.Map<String, Object> read(String facts) {
+        if (facts == null || facts.isBlank()) return null;
+        try {
+            return JSON.readValue(facts, java.util.Map.class);
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }
