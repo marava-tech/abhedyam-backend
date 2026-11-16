@@ -12,7 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/feedbacks")
@@ -29,10 +28,10 @@ public class FeedbackController {
         return ApiResponse.success(feedbackService.create(request));
     }
     
-    @GetMapping("/user/{userId}")
-    @Operation(summary = "Get feedback by user", description = "Fetch feedback entries for the specified user")
-    public ApiResponse<List<Feedback>> getByUserId(@PathVariable UUID userId) {
-        return ApiResponse.success(feedbackService.getByUserId(userId));
+    @GetMapping("/me")
+    @Operation(summary = "My feedback", description = "Feedback sent by the signed-in user (known from the token)")
+    public ApiResponse<List<Feedback>> mine() {
+        return ApiResponse.success(feedbackService.mine());
     }
 }
 

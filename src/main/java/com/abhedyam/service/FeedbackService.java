@@ -51,17 +51,8 @@ public class FeedbackService implements IFeedbackService {
     
     @Override
     @Transactional(readOnly = true)
-    public List<Feedback> getByUserId(UUID userId) {
-        UUID currentUserId = SecurityUtil.getCurrentUserId();
-        if (!currentUserId.equals(userId)) {
-            throw new BusinessException("UNAUTHORIZED", "You can only view your feedback");
-        }
-        
-        if (!userRepository.existsById(userId)) {
-            throw new ResourceNotFoundException("User not found");
-        }
-        
-        return feedbackRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    public List<Feedback> mine() {
+        return feedbackRepository.findByUserIdOrderByCreatedAtDesc(SecurityUtil.getCurrentUserId());
     }
 }
 
