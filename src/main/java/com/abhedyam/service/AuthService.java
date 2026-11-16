@@ -89,10 +89,7 @@ public class AuthService {
             newOwner.setType(UserType.BUSINESS);
             newOwner.setAccessUntil(Instant.now().plus(BillingService.TRIAL_DAYS, ChronoUnit.DAYS));
             newOwner.setIsVerified(false);
-
-            if (googleUser.getPicture() != null && !googleUser.getPicture().trim().isEmpty()) {
-                newOwner.setImageUrl(googleUser.getPicture());
-            }
+            // No Google account photo (owner 2026-11-16): the app shows its character until the owner uploads a shop photo.
 
             user = ownerRepository.save(newOwner);
             isNewUser = true;
@@ -103,10 +100,6 @@ public class AuthService {
         if (googleUser.getName() != null && !googleUser.getName().trim().isEmpty() &&
                 (user.getName() == null || user.getName().trim().isEmpty() || user.getName().equals("User"))) {
             user.setName(googleUser.getName());
-        }
-        if (googleUser.getPicture() != null && !googleUser.getPicture().trim().isEmpty() &&
-                (user.getImageUrl() == null || user.getImageUrl().trim().isEmpty())) {
-            user.setImageUrl(googleUser.getPicture());
         }
         if (user.getFirebaseUid() == null || !user.getFirebaseUid().equals(googleUser.getFirebaseUid())) {
             user.setFirebaseUid(googleUser.getFirebaseUid());
