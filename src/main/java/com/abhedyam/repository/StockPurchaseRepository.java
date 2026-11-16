@@ -10,4 +10,6 @@ import java.util.UUID;
 @Repository
 public interface StockPurchaseRepository extends JpaRepository<StockPurchase, UUID> {
     List<StockPurchase> findByOwnerIdOrderByBoughtOnDescCreatedAtDesc(UUID ownerId);
+
+    java.util.Optional<StockPurchase> findFirstByOwnerIdAndClientKey(UUID ownerId, String clientKey);
 }
