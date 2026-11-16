@@ -26,5 +26,11 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
            "AND (n.isRead = false OR n.isRead IS NULL) " +
            "ORDER BY n.timestamp DESC")
     List<Notification> findUnreadByOwnerIdOrUserId(@Param("userId") UUID userId);
+
+    /** The Home bell's number: same rows as findUnreadByOwnerIdOrUserId, counted in the database. */
+    @Query("SELECT COUNT(n) FROM Notification n WHERE (n.ownerId = :userId OR n.userId = :userId) " +
+           "AND (n.isActive = true OR n.isActive IS NULL) " +
+           "AND (n.isRead = false OR n.isRead IS NULL)")
+    long countUnreadByOwnerIdOrUserId(@Param("userId") UUID userId);
 }
 

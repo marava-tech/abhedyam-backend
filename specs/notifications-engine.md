@@ -138,3 +138,8 @@ own phone via the Remind sheet, never auto-sent).
 - Deferring pushes means an owner may see a payment at 08:00 instead of 23:00; acceptable for now.
 - Broadcast removal could break an admin workflow: grep and ask before deleting.
 - `findAll()` may already be unreachable; confirm before calling it a vulnerability.
+
+## Unread count (Home bell)
+`GET /api/v1/users/{userId}/notifications/unread-count` → `data: <number>`. Same rows as `?unreadOnly=true`, counted in
+the database, so the bell no longer downloads the whole unread list to show a number. Only your own (403-style
+UNAUTHORIZED otherwise, as the list).

@@ -11,6 +11,7 @@ public interface INotificationService {
     Notification getById(UUID id);
     List<Notification> getMyNotifications(Boolean unreadOnly);
     List<Notification> getNotificationsForUser(UUID userId, Boolean unreadOnly);
+    long countUnreadForUser(UUID userId);
     Notification markAsRead(UUID id);
     List<Notification> markMultipleAsRead(NotificationMarkReadRequest request);
 }
