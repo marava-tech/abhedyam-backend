@@ -30,6 +30,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -175,6 +176,32 @@ class BulkImportDryRunTest {
 
         // Verify writes occurred
         verify(customerService).create(any());
+    }
+
+    @Test
+    void sameFileSentTwiceImportsOnce() throws Exception {
+        byte[] bytes = createSampleWorkbook();
+        MockMultipartFile file = new MockMultipartFile("file", "test.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", bytes);
+        Customer mockCustomer = new Customer();
+        mockCustomer.setId(UUID.randomUUID());
+        mockCustomer.setOwnerId(ownerId);
+        when(customerRepository.findByPhoneNormalized(any()))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(mockCustomer));
+        when(customerService.create(any())).thenReturn(mockCustomer);
+        SaleItem itemResponse = new SaleItem();
+        itemResponse.setId(UUID.randomUUID());
+        SaleDetailResponse saleResponse = new SaleDetailResponse();
+        saleResponse.setTransactionId("tx-123");
+        saleResponse.setItems(List.of(itemResponse));
+        when(saleService.createSale(any())).thenReturn(saleResponse);
+
+        BulkImportResult first = bulkImportService.importData(ownerId, file, false);
+        BulkImportResult again = bulkImportService.importData(ownerId, file, false);
+
+        assertThat(again).isSameAs(first);
+        verify(saleService, times(2)).createSale(any()); // the two rows of the first import, nothing more
     }
 
     @Test

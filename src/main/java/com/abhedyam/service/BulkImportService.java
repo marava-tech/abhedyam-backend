@@ -28,6 +28,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
+import java.util.HexFormat;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -65,10 +72,56 @@ public class BulkImportService implements IBulkImportService {
         return importData(ownerId, file, false);
     }
 
+    /**
+     * Same file sent again (a timeout after the server saved, then "try again") returns the first result instead of
+     * importing every sale and payment twice. Key: owner + SHA-256 of the file; a call still running is waited on.
+     * ponytail: in memory, one backend instance, cleared on restart; move to a table if imports are ever retried later.
+     */
+    private final Map<String, CompletableFuture<BulkImportResult>> imported = new ConcurrentHashMap<>();
+    private final Map<String, Instant> importedAt = new ConcurrentHashMap<>();
+    private static final Duration REPEAT_WINDOW = Duration.ofDays(1);
+
     @Override
     public BulkImportResult importData(UUID ownerId, MultipartFile file, boolean dryRun) {
         validateOwnerAccess(ownerId);
         validateFile(file);
+        if (dryRun) return doImport(ownerId, file, true);
+
+        Instant cutoff = Instant.now().minus(REPEAT_WINDOW);
+        importedAt.entrySet().removeIf(e -> {
+            boolean old = e.getValue().isBefore(cutoff);
+            if (old) imported.remove(e.getKey());
+            return old;
+        });
+        String key = ownerId + ":" + sha256(file);
+        CompletableFuture<BulkImportResult> mine = new CompletableFuture<>();
+        CompletableFuture<BulkImportResult> earlier = imported.putIfAbsent(key, mine);
+        if (earlier != null) {
+            log.info("Import of the same file again for owner {}: returning the first result", ownerId);
+            return earlier.join();
+        }
+        importedAt.put(key, Instant.now());
+        try {
+            BulkImportResult result = doImport(ownerId, file, false);
+            mine.complete(result);
+            return result;
+        } catch (RuntimeException e) {
+            imported.remove(key); // nothing (or not all) saved: a retry must really run
+            importedAt.remove(key);
+            mine.completeExceptionally(e);
+            throw e;
+        }
+    }
+
+    private static String sha256(MultipartFile file) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(file.getBytes()));
+        } catch (IOException | NoSuchAlgorithmException e) {
+            throw new BusinessException(ErrorCodes.VALIDATION_ERROR, "Could not read the uploaded file");
+        }
+    }
+
+    private BulkImportResult doImport(UUID ownerId, MultipartFile file, boolean dryRun) {
 
         int customersCreated = 0;
         int salesImported = 0;
