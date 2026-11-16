@@ -3,6 +3,7 @@ package com.abhedyam.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 import com.abhedyam.model.Notification;
@@ -55,7 +56,8 @@ class NotificationDispatcherTest {
         Notification n = send(NotificationCategory.OWNER_REMINDER, null, day);
         assertEquals(DeliveryStatus.SENT, n.getDeliveryStatus());
         verify(fcm).sendNotificationToUser(eq(owner), org.mockito.ArgumentMatchers.<java.util.function.Function<String, String[]>>argThat(
-            t -> java.util.Arrays.equals(t.apply("te"), new String[] {"T", "B"})), any(), any());
+            t -> java.util.Arrays.equals(t.apply("te"), new String[] {"T", "B"})), any(), argThat(d -> owner.toString().equals(d.get("shopId"))));
+        verify(fcm).sendToOtherShops(eq(owner), any(), any()); // the owner's phones open in another shop
     }
 
     @Test
