@@ -55,7 +55,7 @@ public class AuditService implements IAuditService {
     @Override
     @Async("virtualThreadExecutor")
     @Transactional
-    public void logSaleCreation(UUID saleId, UUID ownerId, UUID customerId, String customerName, BigDecimal amount, String transactionId, String itemsSummary, BigDecimal paid) {
+    public void logSaleCreation(UUID saleId, UUID ownerId, UUID customerId, String customerName, BigDecimal amount, String transactionId, String itemsSummary, BigDecimal paid, String facts) {
         try {
             Audit audit = new Audit();
             audit.setOwnerId(ownerId);
@@ -67,6 +67,7 @@ public class AuditService implements IAuditService {
             audit.setCustomerName(customerName);
             audit.setHeadline(String.format("Sale to %s", customerName));
             audit.setDetail(ActivityText.saleDetail(itemsSummary, paid, amount));
+            audit.setFacts(facts);
             audit.setDescription(String.format("Sale of %s to %s. %s", ActivityText.money(amount), customerName, audit.getDetail()));
             audit.setTimestamp(Instant.now());
             
@@ -90,6 +91,8 @@ public class AuditService implements IAuditService {
             audit.setAction(AuditAction.DELETE);
             audit.setEntityId(saleId);
             audit.setAmount(amount.negate());
+            audit.setCustomerId(customerId);
+            audit.setCustomerName(customerName);
             audit.setHeadline(String.format("Sale of ₹%s cancelled for %s", amount, customerName));
             audit.setDescription(String.format("Sale transaction cancelled for customer %s. Refunded amount: ₹%s. Transaction ID: %s", 
                 customerName, amount, transactionId));
@@ -116,6 +119,7 @@ public class AuditService implements IAuditService {
             audit.setEntityId(productId);
             audit.setAmount(BigDecimal.ZERO);
             audit.setHeadline(String.format("Product '%s' added to inventory", productName));
+            audit.setFacts(ActivityText.write(java.util.Map.of("name", productName == null ? "" : productName)));
             audit.setDescription(String.format("Added new product '%s' to inventory with product code: %s", 
                 productName, productCode));
             audit.setTimestamp(Instant.now());
@@ -159,6 +163,10 @@ public class AuditService implements IAuditService {
             audit.setCustomerId(customerId);
             audit.setCustomerName(customerName);
             audit.setDetail(ActivityText.reminderDetail(reminderTime));
+            java.util.Map<String, Object> rf = new java.util.LinkedHashMap<>();
+            if (reminderTime != null) rf.put("at", reminderTime.toString());
+            rf.put("personal", customerId == null);
+            audit.setFacts(ActivityText.write(rf));
 
             if (customerId != null && customerName != null) {
                 headline = String.format("Reminder set for %s", customerName);
@@ -212,6 +220,10 @@ public class AuditService implements IAuditService {
             audit.setCustomerName(customerName);
             audit.setHeadline(String.format("Payment from %s", customerName));
             audit.setDetail(ActivityText.paymentDetail(medium, productName));
+            java.util.Map<String, Object> pf = new java.util.LinkedHashMap<>();
+            if (medium != null) pf.put("medium", medium);
+            if (productName != null && !productName.isBlank()) pf.put("product", productName);
+            audit.setFacts(ActivityText.write(pf));
             
             String description = String.format("Received %s from %s for '%s'", 
                 ActivityText.money(amount), customerName, productName);

@@ -52,7 +52,10 @@ public class RecentActivityResponse {
     @Schema(description = "Family member / helper who made this (by Ravi); null = the owner")
     private String addedBy;
 
+    @Schema(description = "The facts behind the line, for the app to word in the owner's language: sale {items:[{name,qty}], more, paid, total}; payment {medium, product}; reminder {at, personal}; product {name}. Null on older rows.", accessMode = Schema.AccessMode.READ_ONLY)
+    private java.util.Map<String, Object> facts;
+
     public RecentActivityResponse(UUID id, AuditType type, AuditAction action, String headline, String description, BigDecimal amount, UUID entityId, UUID customerId, String customerName, String detail, Instant timestamp) {
-        this(id, type, action, headline, description, amount, entityId, customerId, customerName, detail, timestamp, null);
+        this(id, type, action, headline, description, amount, entityId, customerId, customerName, detail, timestamp, null, null);
     }
 }

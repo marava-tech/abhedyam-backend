@@ -13,7 +13,7 @@ public interface IAuditService {
     List<Audit> getAll();
     List<Audit> getByOwnerId(UUID ownerId);
     Audit update(UUID id, Audit auditDetails);
-    void logSaleCreation(UUID saleId, UUID ownerId, UUID customerId, String customerName, BigDecimal amount, String transactionId, String itemsSummary, BigDecimal paid);
+    void logSaleCreation(UUID saleId, UUID ownerId, UUID customerId, String customerName, BigDecimal amount, String transactionId, String itemsSummary, BigDecimal paid, String facts);
     void logSaleCancellation(UUID saleId, UUID ownerId, UUID customerId, String customerName, BigDecimal amount, String transactionId);
     void logProductCreation(UUID productId, UUID ownerId, String productName, String productCode);
     void logReminderCreation(UUID reminderId, UUID ownerId, UUID customerId, String customerName, String reminderName, String reminderText, Instant reminderTime);
