@@ -13,5 +13,5 @@ public record ShopResponse(
         @Schema(description = "The shop this phone is in now") boolean current,
         @Schema(description = "Can't be opened until the main shop is on Business again (nothing deleted)") boolean paused,
         @Schema(description = "Left to collect from this shop's customers (Home's \"To collect\")") BigDecimal toCollect,
-        @Schema(description = "Colour the owner picked (palette index 0-7), null = the app picks") Integer colour) {
+        @Schema(description = "Shop logo (Shop details); null = the app shows its default picture") String photo) {
 }
