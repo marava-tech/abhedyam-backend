@@ -100,40 +100,18 @@ class ShopServiceTest {
     }
 
     @Test
-    void list_ShowsEachShopsToCollectAndColour() {
+    void list_ShowsEachShopsToCollectAndPhoto() {
         Owner main = shop(null, "abhedyam_business:yearly");
         Owner extra = shop(main.getId(), null);
-        extra.setShopColour(3);
+        extra.setLogoUrl("https://s3.marava.tech/logo.jpg");
         when(owners.findByParentOwnerIdOrderByCreatedAtAsc(main.getId())).thenReturn(List.of(extra));
         when(ownerService.toCollect(main.getId())).thenReturn(new java.math.BigDecimal("594100"));
         when(ownerService.toCollect(extra.getId())).thenReturn(java.math.BigDecimal.ZERO);
 
         var list = shops.list(main.getId());
         assertEquals(new java.math.BigDecimal("594100"), list.get(0).toCollect());
-        assertNull(list.get(0).colour());
+        assertNull(list.get(0).photo()); // no logo: the app shows its default picture
         assertEquals(java.math.BigDecimal.ZERO, list.get(1).toCollect());
-        assertEquals(3, list.get(1).colour());
-    }
-
-    @Test
-    void update_RenamesAndRecolours_OwnShopsOnly() {
-        Owner main = shop(null, "abhedyam_business:yearly");
-        Owner extra = shop(main.getId(), null);
-        Owner stranger = shop(null, null);
-        when(owners.save(any(Owner.class))).thenAnswer(i -> i.getArgument(0));
-
-        var r = shops.update(extra.getId(), main.getId(), " Marava Main ", 5); // from an extra shop, the main one
-        assertEquals("Marava Main", r.name());
-        assertEquals(5, r.colour());
-        assertTrue(r.main());
-        shops.update(main.getId(), extra.getId(), null, 2); // colour only: the name stays
-        assertEquals(2, extra.getShopColour());
-        assertEquals("Shop " + extra.getId(), extra.getBusinessName());
-
-        assertThrows(ResourceNotFoundException.class, () -> shops.update(main.getId(), stranger.getId(), "Mine now", null));
-        assertEquals("VALIDATION_ERROR", assertThrows(BusinessException.class,
-                () -> shops.update(main.getId(), extra.getId(), "  ", null)).getErrorCode());
-        assertEquals("VALIDATION_ERROR", assertThrows(BusinessException.class,
-                () -> shops.update(main.getId(), extra.getId(), null, 8)).getErrorCode());
+        assertEquals("https://s3.marava.tech/logo.jpg", list.get(1).photo());
     }
 }

@@ -50,24 +50,7 @@ public class ShopService {
 
     private ShopResponse response(Owner s, boolean main, UUID currentShopId) {
         return new ShopResponse(s.getId(), s.getBusinessName(), main, s.getId().equals(currentShopId),
-                !main && ownerRepository.paused(s), ownerService.toCollect(s.getId()), s.getShopColour());
-    }
-
-    /** Rename a shop and/or pick its colour (More → Your shops). Any of the owner's shops, paused ones too. */
-    @Transactional
-    public ShopResponse update(UUID currentShopId, UUID shopId, String businessName, Integer colour) {
-        Owner main = ownerRepository.main(find(currentShopId));
-        Owner shop = mine(main, shopId);
-        if (businessName != null) {
-            String name = businessName.trim();
-            if (name.isEmpty() || name.length() > 100) throw new BusinessException("VALIDATION_ERROR", "Enter the shop name");
-            shop.setBusinessName(name);
-        }
-        if (colour != null) {
-            if (colour < 0 || colour > 7) throw new BusinessException("VALIDATION_ERROR", "Pick a colour");
-            shop.setShopColour(colour);
-        }
-        return response(ownerRepository.save(shop), shop.getId().equals(main.getId()), currentShopId);
+                !main && ownerRepository.paused(s), ownerService.toCollect(s.getId()), s.getLogoUrl());
     }
 
     /** [shopId] if it is the main shop or one of its open extra shops, else 404. */
