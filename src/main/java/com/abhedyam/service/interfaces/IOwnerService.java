@@ -11,5 +11,8 @@ public interface IOwnerService {
     OwnerResponse updateCurrentOwner(OwnerUpdateRequest request);
     OwnerResponse updateOwnerForOwner(UUID ownerId, OwnerUpdateRequest request);
     OwnerSummaryResponse getOwnerSummary(UUID ownerId);
+
+    /** Left to collect: all sales minus payments and write-offs, never below zero. No access check. */
+    java.math.BigDecimal toCollect(UUID ownerId);
 }
 

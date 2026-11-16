@@ -23,7 +23,8 @@ class ShopServiceTest {
     private final OwnerRepository owners = mock(OwnerRepository.class, org.mockito.Answers.CALLS_REAL_METHODS);
     private final AuthService auth = mock(AuthService.class);
     private final OwnerSettingsRepository settings = mock(OwnerSettingsRepository.class);
-    private final ShopService shops = new ShopService(owners, auth, settings);
+    private final com.abhedyam.service.interfaces.IOwnerService ownerService = mock(com.abhedyam.service.interfaces.IOwnerService.class);
+    private final ShopService shops = new ShopService(owners, auth, settings, ownerService);
 
     private Owner shop(UUID parent, String product) {
         Owner o = new Owner();
@@ -96,5 +97,43 @@ class ShopServiceTest {
         assertTrue(list.get(0).main());
         assertTrue(list.get(1).current());
         assertTrue(list.get(1).paused());
+    }
+
+    @Test
+    void list_ShowsEachShopsToCollectAndColour() {
+        Owner main = shop(null, "abhedyam_business:yearly");
+        Owner extra = shop(main.getId(), null);
+        extra.setShopColour(3);
+        when(owners.findByParentOwnerIdOrderByCreatedAtAsc(main.getId())).thenReturn(List.of(extra));
+        when(ownerService.toCollect(main.getId())).thenReturn(new java.math.BigDecimal("594100"));
+        when(ownerService.toCollect(extra.getId())).thenReturn(java.math.BigDecimal.ZERO);
+
+        var list = shops.list(main.getId());
+        assertEquals(new java.math.BigDecimal("594100"), list.get(0).toCollect());
+        assertNull(list.get(0).colour());
+        assertEquals(java.math.BigDecimal.ZERO, list.get(1).toCollect());
+        assertEquals(3, list.get(1).colour());
+    }
+
+    @Test
+    void update_RenamesAndRecolours_OwnShopsOnly() {
+        Owner main = shop(null, "abhedyam_business:yearly");
+        Owner extra = shop(main.getId(), null);
+        Owner stranger = shop(null, null);
+        when(owners.save(any(Owner.class))).thenAnswer(i -> i.getArgument(0));
+
+        var r = shops.update(extra.getId(), main.getId(), " Marava Main ", 5); // from an extra shop, the main one
+        assertEquals("Marava Main", r.name());
+        assertEquals(5, r.colour());
+        assertTrue(r.main());
+        shops.update(main.getId(), extra.getId(), null, 2); // colour only: the name stays
+        assertEquals(2, extra.getShopColour());
+        assertEquals("Shop " + extra.getId(), extra.getBusinessName());
+
+        assertThrows(ResourceNotFoundException.class, () -> shops.update(main.getId(), stranger.getId(), "Mine now", null));
+        assertEquals("VALIDATION_ERROR", assertThrows(BusinessException.class,
+                () -> shops.update(main.getId(), extra.getId(), "  ", null)).getErrorCode());
+        assertEquals("VALIDATION_ERROR", assertThrows(BusinessException.class,
+                () -> shops.update(main.getId(), extra.getId(), null, 8)).getErrorCode());
     }
 }

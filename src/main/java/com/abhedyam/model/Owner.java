@@ -23,6 +23,10 @@ public class Owner extends User {
     @Column
     private Instant accessUntil;
 
+    /** The shop's colour in the app's switcher (palette index 0-7); null = picked by the app. */
+    @Column
+    private Integer shopColour;
+
     /** Google Play product the owner pays for; null while on trial or after it lapsed. */
     @Column(length = 80)
     private String playProductId;
