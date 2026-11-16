@@ -60,6 +60,7 @@ public class SaleService implements ISaleService {
     private final StatsService statsService;
     private final LocationDetailsService locationDetailsService;
     private final InventoryService inventoryService;
+    private final com.abhedyam.service.interfaces.IPaymentDueService paymentDueService;
 
     private static final String IDEMPOTENCY_PREFIX = "sale:idempotency:";
     private static final int IDEMPOTENCY_TTL_MINUTES = 5;
@@ -149,6 +150,8 @@ public class SaleService implements ISaleService {
                 recordPaidAtSale(saleItems, request.getPaidAmount(), request.getPaymentMedium(), soldAt);
                 saleItems = saleItemRepository.findByTransactionId(transactionId);
             }
+            BigDecimal paidNow = request.getPaidAmount() == null ? BigDecimal.ZERO : request.getPaidAmount();
+            paymentDueService.addFromSale(ownerId, customer.getId(), totalAmount.subtract(paidNow), request.getDueDate());
 
             try {
                 redisTemplate.opsForValue().set(redisKey, transactionId, IDEMPOTENCY_TTL_MINUTES, TimeUnit.MINUTES);

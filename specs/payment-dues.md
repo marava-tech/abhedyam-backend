@@ -41,5 +41,10 @@ Status: `PAID` (paid = amount) · `OVERDUE` (date before today, owner's time zon
 - `GET /owners/{ownerId}/dues` also returns `visits[]`: `{id, village, visitDate, note, status UPCOMING|OVERDUE, owingCount, owingAmount}` (who owes in that village now, same max(0, sales - paid) rule as village totals), overdue first then by date.
 - Day-before push "Visit Hanamkonda tomorrow" · "6 customers owe ₹18,400" (`relatedEntityType=VISIT`). Due reminders now carry `relatedEntityType=DUE` + the due id, so the app opens Upcoming collections with that due highlighted.
 
+## Due date from New sale
+A sale sent with `dueDate` and something left unpaid adds a due: amount = total − paid now, date = `dueDate` in the
+owner's time zone. Same reminders and lists as any due. A date already past when the sale reaches the server (sent
+late from an offline phone) adds nothing. A repeat of the same sale (idempotency key) adds nothing again.
+
 ## Later slices
 App Dues card + sheet (slice 2), message the customer from a due (3), owner push + digest by dues (4), Home "Due this week" (5). Optional sale link and a split helper in New sale only if asked.

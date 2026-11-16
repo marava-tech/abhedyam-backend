@@ -25,6 +25,10 @@ public interface IPaymentDueService {
 
     PaymentDueResponse create(UUID ownerId, UUID customerId, PaymentDueRequest request);
 
+    /** A New sale with a due date: what is left unpaid becomes a due on that date (owner's day). Never throws for a
+     *  date already past (an offline sale sent late): then nothing is added. Server-side callers only. */
+    void addFromSale(UUID ownerId, UUID customerId, java.math.BigDecimal unpaid, java.time.Instant dueDate);
+
     PaymentDueResponse update(UUID ownerId, UUID customerId, UUID dueId, PaymentDueRequest request);
 
     void delete(UUID ownerId, UUID customerId, UUID dueId);
