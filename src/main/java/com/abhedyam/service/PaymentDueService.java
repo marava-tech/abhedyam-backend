@@ -221,7 +221,9 @@ public class PaymentDueService implements IPaymentDueService {
         }
         List<OwnerDueResponse> dues = new ArrayList<>(overdue);
         dues.addAll(upcoming);
-        List<CollectionVisitResponse> visits = !ownerSettings.villageMode(ownerId) ? List.of() : ownerVisits(ownerId).stream()
+        // A customer with a due listed here is counted by that due, not again in their village's visit.
+        Set<UUID> withDue = dues.stream().map(OwnerDueResponse::getCustomerId).collect(Collectors.toSet());
+        List<CollectionVisitResponse> visits = !ownerSettings.villageMode(ownerId) ? List.of() : ownerVisits(ownerId, withDue).stream()
                 .filter(v -> v.getStatus().equals("OVERDUE") || !v.getVisitDate().isAfter(end))
                 .sorted(Comparator.comparing((CollectionVisitResponse v) -> !v.getStatus().equals("OVERDUE"))
                         .thenComparing(CollectionVisitResponse::getVisitDate))
@@ -307,11 +309,17 @@ public class PaymentDueService implements IPaymentDueService {
     @Override
     @Transactional(readOnly = true)
     public List<CollectionVisitResponse> ownerVisits(UUID ownerId) {
+        return ownerVisits(ownerId, Set.of());
+    }
+
+    /** [skip]: customers left out of each village's owing (Upcoming lists their own due, so they'd count twice). */
+    private List<CollectionVisitResponse> ownerVisits(UUID ownerId, Set<UUID> skip) {
         List<CollectionVisit> visits = visitRepository.findByOwnerIdAndIsActiveTrueAndDoneAtIsNull(ownerId);
         if (visits.isEmpty()) return List.of();
         Map<UUID, String> villageByCustomer = new HashMap<>();
         for (Object[] row : locations.findCustomerVillagesByOwnerId(ownerId)) {
-            villageByCustomer.put(UUID.fromString(row[0].toString()), (String) row[1]);
+            UUID id = UUID.fromString(row[0].toString());
+            if (!skip.contains(id)) villageByCustomer.put(id, (String) row[1]);
         }
         Map<String, VillagePendingCalculator.Owing> owing = VillagePendingCalculator.owingByVillage(
                 amounts(saleItems.sumTotalsByCustomer(ownerId)), amounts(paymentRepository.sumSuccessfulByCustomer(ownerId)),

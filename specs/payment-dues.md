@@ -38,7 +38,7 @@ Status: `PAID` (paid = amount) · `OVERDUE` (date before today, owner's time zon
 
 ## Upcoming collections: village visits
 - `collection_visits`: `ownerId, village, visitDate, note, doneAt`. `POST /owners/{ownerId}/collection-visits {village, visitDate, note}`, `PUT .../{visitId} {visitDate?, note?, done?}` (done = leaves the list), `DELETE`.
-- `GET /owners/{ownerId}/dues` also returns `visits[]`: `{id, village, visitDate, note, status UPCOMING|OVERDUE, owingCount, owingAmount}` (who owes in that village now, same max(0, sales - paid) rule as village totals), overdue first then by date.
+- `GET /owners/{ownerId}/dues` also returns `visits[]`: `{id, village, visitDate, note, status UPCOMING|OVERDUE, owingCount, owingAmount}` (who owes in that village now, same max(0, sales - paid) rule as village totals; customers with a due in `dues[]` are left out, since that due already counts them), overdue first then by date.
 - Day-before push "Visit Hanamkonda tomorrow" · "6 customers owe ₹18,400" (`relatedEntityType=VISIT`). Due reminders now carry `relatedEntityType=DUE` + the due id, so the app opens Upcoming collections with that due highlighted.
 
 ## Due date from New sale
