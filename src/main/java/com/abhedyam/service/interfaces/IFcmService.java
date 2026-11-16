@@ -21,5 +21,7 @@ public interface IFcmService {
     /** Each phone gets {title, body} in its own app language: {@code textIn} takes a language code ("en", "hi", "te"). */
     int sendNotificationToUser(UUID userId, java.util.function.Function<String, String[]> textIn, String packageName,
                                java.util.Map<String, String> data);
-}
 
+    /** Business plan: the same push to the owner's phones open in their other shops, titled with this shop's name. */
+    int sendToOtherShops(UUID shopId, java.util.function.Function<String, String[]> textIn, java.util.Map<String, String> data);
+}

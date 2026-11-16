@@ -14,6 +14,10 @@ Plan: `abhedyam-owner/.product/BUSINESS_PLAN.md` step 5. Unlimited shops on Busi
 - `POST /api/v1/owners/{id}/shops/{shopId}/switch` → `AuthResponse` for that shop. The target must be the main shop or one of its extra shops (else 404).
 - Adding or switching ends this phone's sign-in to the shop it leaves, so Your devices lists each phone once.
 
+## Pushes for every shop
+- A phone registers its push token under the shop it is in. So an inbox push (`NotificationDispatcher`) goes to that shop's phones **and** (`FcmService.sendToOtherShops`) to the owner's own phones open in another of their shops: owner sessions only (`member_id` null), never helpers, never paused shops.
+- Every inbox push carries `shopId`; the other-shop copy also has `shopName` and the title starts with it ("Test Shop 2 · Prava paid ₹1,000"). The app switches to `shopId` before opening the item.
+
 ## When Business ends
 - Extra shops are **paused**, nothing is deleted: everyone signed in to them (owner phones, helpers) is logged out, and sign-in, refresh and switch return 400 `PLAN_PAUSED` until Business is bought again. Runs from `enforcePlan(main)` after every Play event.
 - Back on Business: the shops open again; helpers sign in again.

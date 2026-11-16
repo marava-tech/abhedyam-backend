@@ -104,12 +104,18 @@ public class NotificationDispatcher {
 
     private void push(Notification n) {
         fcm.sendNotificationToUser(n.getOwnerId(), n::textIn, PackageConstants.BUSINESS_APP_PACKAGE, dataFor(n)); // each phone in its language
+        try {
+            fcm.sendToOtherShops(n.getOwnerId(), n::textIn, dataFor(n)); // the owner's phones open in another shop
+        } catch (Exception e) {
+            log.warn("Other-shop push failed for notification {}: {}", n.getId(), e.getMessage());
+        }
     }
 
     /** What the app needs to open the right screen when the push is tapped. FCM data values must be strings, never null. */
     static Map<String, String> dataFor(Notification n) {
         Map<String, String> d = new HashMap<>();
         if (n.getId() != null) d.put("notificationId", n.getId().toString());
+        if (n.getOwnerId() != null) d.put("shopId", n.getOwnerId().toString()); // the app switches to it first on tap
         if (n.getCategory() != null) d.put("category", n.getCategory().name());
         if (n.getRelatedEntityType() != null) d.put("relatedEntityType", n.getRelatedEntityType());
         if (n.getRelatedEntityId() != null) d.put("relatedEntityId", n.getRelatedEntityId().toString());
