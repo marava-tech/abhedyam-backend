@@ -42,6 +42,8 @@ public class LocationDetailsService implements ILocationDetailsService {
     private final RedisTemplate<String, String> redisTemplate;
     private final com.abhedyam.repository.SaleItemRepository saleItemRepository;
     private final com.abhedyam.repository.PaymentRepository paymentRepository;
+    private final com.abhedyam.repository.PaymentDueRepository paymentDueRepository;
+    private final com.abhedyam.repository.CollectionVisitRepository collectionVisitRepository;
 
     private static final String VILLAGES_CACHE_PREFIX = "villages:";
 
@@ -129,15 +131,29 @@ public class LocationDetailsService implements ILocationDetailsService {
         for (Object[] row : locationDetailsRepository.findCustomerVillagesByOwnerId(ownerId)) {
             customerVillage.put(java.util.UUID.fromString(row[0].toString()), (String) row[1]);
         }
-        java.util.Map<String, java.math.BigDecimal> pendingByVillage =
-                VillagePendingCalculator.pendingByVillage(sales, paid, customerVillage);
+        java.util.Map<String, VillagePendingCalculator.Owing> owing =
+                VillagePendingCalculator.owingByVillage(sales, paid, customerVillage);
+        java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
+        java.util.Map<String, Long> overdue = VillagePendingCalculator.overdueByVillage(
+                paymentDueRepository.findByOwnerIdAndIsActiveTrue(ownerId), today, sales, paid, customerVillage);
+        java.util.Map<String, java.time.LocalDate> nextVisit = new java.util.HashMap<>();
+        for (var v : collectionVisitRepository.findByOwnerIdAndIsActiveTrueAndDoneAtIsNull(ownerId)) {
+            if (v.getVillage() != null && v.getVisitDate() != null) {
+                nextVisit.merge(VillagePendingCalculator.key(v.getVillage()), v.getVisitDate(), (x, y) -> x.isBefore(y) ? x : y);
+            }
+        }
 
         List<VillageResponse> villages = villagePage.getContent().stream()
                 .map(result -> {
                     String village = (String) result[0];
                     Long customerCount = ((Number) result[1]).longValue();
+                    String k = VillagePendingCalculator.key(village);
+                    VillagePendingCalculator.Owing o = owing.get(k);
                     return new VillageResponse(village, customerCount,
-                            pendingByVillage.getOrDefault(VillagePendingCalculator.key(village), java.math.BigDecimal.ZERO));
+                            o == null ? java.math.BigDecimal.ZERO : o.amount(),
+                            o == null ? 0L : o.customers(),
+                            overdue.getOrDefault(k, 0L),
+                            nextVisit.get(k));
                 })
                 .toList();
 

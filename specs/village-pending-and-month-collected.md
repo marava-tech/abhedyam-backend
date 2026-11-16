@@ -32,3 +32,12 @@ Today `GET /owners/{id}/summary` only returns all-time collected, and
 
 ## Compatibility
 Fields are additive; old clients ignore them.
+
+## Update 2026-11-16: what the Home villages row needs
+The paginated `GET /location-details/villages` also returns, per village:
+- `owingCount`: customers here who owe anything (same `max(0, sales - paid)` rule as `pendingAmount`).
+- `overdueCount`: customers here who still owe and have an active due whose date is before today (Asia/Kolkata).
+  A due dated today is not missed yet. Several late dues of one customer count once.
+- `nextVisit`: the earliest planned collection visit for this village that is not done (can be in the past = a
+  missed visit), or null. Village names match case- and space-insensitively, like `pendingAmount`.
+Additive; the non-paginated/search lists keep these null.

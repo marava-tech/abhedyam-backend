@@ -48,4 +48,23 @@ final class VillagePendingCalculator {
         });
         return result;
     }
+
+    /** Per village key: customers who still owe and have an active due whose date has passed. */
+    static Map<String, Long> overdueByVillage(java.util.List<com.abhedyam.model.PaymentDue> activeDues,
+                                              java.time.LocalDate today,
+                                              Map<UUID, BigDecimal> salesByCustomer,
+                                              Map<UUID, BigDecimal> paidByCustomer,
+                                              Map<UUID, String> villageByCustomer) {
+        java.util.Set<UUID> late = new java.util.HashSet<>();
+        for (var d : activeDues) {
+            if (d.getDueDate() != null && d.getDueDate().isBefore(today)) late.add(d.getCustomerId());
+        }
+        Map<String, Long> result = new HashMap<>();
+        for (UUID c : late) {
+            String village = villageByCustomer.get(c);
+            BigDecimal pending = salesByCustomer.getOrDefault(c, BigDecimal.ZERO).subtract(paidByCustomer.getOrDefault(c, BigDecimal.ZERO));
+            if (village != null && pending.signum() > 0) result.merge(key(village), 1L, Long::sum);
+        }
+        return result;
+    }
 }
