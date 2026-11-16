@@ -97,14 +97,11 @@ public class InvoiceReceiptService {
             throw new ResourceNotFoundException("Sale information is incomplete");
         }
         
-        List<SaleItem> saleItems;
-        if (saleItemId != null) {
-            saleItems = List.of(requestedSaleItem);
-        } else {
-            saleItems = saleItemRepository.findByTransactionId(transactionId);
-            if (saleItems.isEmpty()) {
-                throw new ResourceNotFoundException("Sale transaction could not be found");
-            }
+        // a bill is the whole sale (every item sold together), whichever of its items was picked: the bill number
+        // comes from the sale, so a one-item bill would share its number with the sale's other items
+        List<SaleItem> saleItems = saleItemRepository.findByTransactionId(transactionId);
+        if (saleItems.isEmpty()) {
+            throw new ResourceNotFoundException("Sale transaction could not be found");
         }
         
         SaleItem firstItem = saleItems.get(0);

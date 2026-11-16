@@ -95,7 +95,7 @@
 | POST | `/notifications/mark-read` |
 | GET | `/invoices/customer/{customerId}` |
 | GET | `/receipts/customer/{customerId}` |
-| GET | `/feedbacks/user/{userId}` |
+| GET | `/feedbacks/me` |
 | POST | `/feedbacks` |
 | GET | `/app-usage-guide` |
 
