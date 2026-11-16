@@ -269,8 +269,6 @@ public class InvoiceReceiptService {
                 .map(Payment::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
-        BigDecimal pendingAmount = totalAmount.subtract(totalPaid);
-        
         SaleItemStatus itemStatus = determineSaleItemStatus(totalPaid, totalAmount);
         
         Payment latestPayment = allPayments.isEmpty() ? null : allPayments.get(0);
@@ -323,7 +321,9 @@ public class InvoiceReceiptService {
         receiptData.setPaymentHistoryTillNow(paymentHistory);
         
         ReceiptResponse.BalanceInfo balanceInfo = new ReceiptResponse.BalanceInfo();
-        balanceInfo.setPendingAmount(pendingAmount);
+        // The customer's whole balance (every sale minus every successful payment), like the customer list and khata,
+        // not just this one sale item: a customer with two bills showed half of what they owed.
+        balanceInfo.setPendingAmount(customerBalance(customerId, ownerId));
         receiptData.setBalance(balanceInfo);
         
         receiptData.setStatus(itemStatus.name());
@@ -380,6 +380,23 @@ public class InvoiceReceiptService {
         return RECEIPT_PREFIX + suffix;
     }
     
+    private BigDecimal customerBalance(UUID customerId, UUID ownerId) {
+        return balance(saleItemRepository.findByCustomerIdAndOwnerId(customerId, ownerId),
+                paymentRepository.findByCustomerIdAndOwnerId(customerId, ownerId));
+    }
+
+    /** Every sale minus every successful payment (failed / pending payments don't count). */
+    static BigDecimal balance(List<SaleItem> sales, List<Payment> payments) {
+        BigDecimal sold = sales.stream()
+                .map(si -> si.getPrice().multiply(si.getQuantity() != null ? si.getQuantity() : BigDecimal.ONE))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal paid = payments.stream()
+                .filter(p -> p.getStatus() == PaymentStatus.SUCCESS)
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return sold.subtract(paid);
+    }
+
     private String formatDate(Instant instant) {
         if (instant == null) {
             return "";
