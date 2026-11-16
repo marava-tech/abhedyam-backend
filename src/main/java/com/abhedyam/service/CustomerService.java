@@ -771,7 +771,9 @@ public class CustomerService implements ICustomerService {
             totalPaid,
             pendingAmount,
             lastPaidAmount,
-            BigDecimal.valueOf(distanceKm).setScale(3, java.math.RoundingMode.HALF_UP) // to the metre: the app shows "350 m" under 1 km
+            BigDecimal.valueOf(distanceKm).setScale(3, java.math.RoundingMode.HALF_UP), // to the metre: the app shows "350 m" under 1 km
+            nearestLocation.getLatitude(),
+            nearestLocation.getLongitude()
         );
     }
 

@@ -39,5 +39,11 @@ public class NearestCustomerResponse {
     
     @Schema(description = "Distance from owner location in kilometers, 3 decimals (to the metre)", example = "2.534")
     private BigDecimal distance;
+
+    @Schema(description = "Customer's saved latitude (for directions)", example = "17.385")
+    private BigDecimal latitude;
+
+    @Schema(description = "Customer's saved longitude (for directions)", example = "78.4867")
+    private BigDecimal longitude;
 }
 
