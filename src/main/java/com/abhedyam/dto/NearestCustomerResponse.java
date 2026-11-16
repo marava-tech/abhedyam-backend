@@ -37,7 +37,7 @@ public class NearestCustomerResponse {
     @Schema(description = "Last paid amount", example = "1000.00")
     private BigDecimal lastPaidAmount;
     
-    @Schema(description = "Distance from owner location in kilometers", example = "2.5")
+    @Schema(description = "Distance from owner location in kilometers, 3 decimals (to the metre)", example = "2.534")
     private BigDecimal distance;
 }
 
