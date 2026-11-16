@@ -77,7 +77,7 @@ public class OwnerSessionService {
         memberRepository.findByOwnerId(ownerId).forEach(m -> names.put(m.getId(), m.getName()));
         return repository.findByOwnerIdAndRevokedAtIsNullOrderByLastSeenAtDesc(ownerId).stream()
                 .map(s -> {
-                    String model = s.getDeviceName() == null ? "Phone (older app version)" : s.getDeviceName();
+                    String model = s.getDeviceName(); // null: the app words it in the owner's language
                     return new SessionResponse(s.getId(), s.getLabel() != null ? s.getLabel() : model,
                             s.getCreatedAt(), s.getLastSeenAt(), s.getId().equals(currentSessionId),
                             s.getMemberId() == null ? null : names.get(s.getMemberId()), s.getLabel(), model);
