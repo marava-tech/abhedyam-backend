@@ -257,6 +257,21 @@ public class PaymentDueService implements IPaymentDueService {
     }
 
     @Override
+    public void addFromSale(UUID ownerId, UUID customerId, BigDecimal unpaid, Instant dueDate) {
+        if (dueDate == null || unpaid == null || unpaid.signum() <= 0) return;
+        ZoneId zone = zone(ownerId);
+        LocalDate date = dueDate.atZone(zone).toLocalDate();
+        if (date.isBefore(LocalDate.now(zone))) return;
+        // Fits by itself: the sale raised the balance by exactly this amount.
+        PaymentDue d = new PaymentDue();
+        d.setOwnerId(ownerId);
+        d.setCustomerId(customerId);
+        d.setAmount(unpaid);
+        d.setDueDate(date);
+        dueRepository.save(d);
+    }
+
+    @Override
     @Transactional
     public PaymentDueResponse update(UUID ownerId, UUID customerId, UUID dueId, PaymentDueRequest r) {
         State s = load(ownerId, customerId);
