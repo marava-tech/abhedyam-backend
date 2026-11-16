@@ -197,7 +197,7 @@ public class InvoiceReceiptService {
         creditInfo.setNote(CREDIT_SALE_NOTE);
         invoiceData.setCredit(creditInfo);
         
-        invoiceData.setCreatedAt(Instant.now());
+        invoiceData.setCreatedAt(invoiceCreatedAt); // the sale time (the app shows it as the bill time), not when the bill was opened
         
         InvoiceResponse response = new InvoiceResponse();
         response.setInvoice(invoiceData);
