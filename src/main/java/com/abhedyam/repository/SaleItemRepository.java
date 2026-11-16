@@ -22,6 +22,12 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, UUID> {
 
     java.util.Optional<SaleItem> findFirstByOwnerIdAndClientKey(UUID ownerId, String clientKey);
 
+    /** Sales report totals for [from, to): sales amount, bills, customers, units sold. Always one row. */
+    @Query("SELECT COALESCE(SUM(s.price * s.quantity), 0), COUNT(DISTINCT s.transactionId), " +
+           "COUNT(DISTINCT s.customerId), COALESCE(SUM(s.quantity), 0) FROM SaleItem s " +
+           "WHERE s.ownerId = :ownerId AND s.isActive = true AND s.createdAt >= :from AND s.createdAt < :to")
+    List<Object[]> periodTotals(@Param("ownerId") UUID ownerId, @Param("from") Instant from, @Param("to") Instant to);
+
     /** A sale entered later (saved offline): dated when it was made, not when it reached the server. */
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true)
     @Query("UPDATE SaleItem s SET s.createdAt = :at WHERE s.transactionId = :transactionId")
