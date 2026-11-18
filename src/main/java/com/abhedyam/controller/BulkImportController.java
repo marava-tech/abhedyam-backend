@@ -2,6 +2,11 @@ package com.abhedyam.controller;
 
 import com.abhedyam.dto.ApiResponse;
 import com.abhedyam.dto.BulkImportResult;
+import com.abhedyam.dto.CustomerBatchRequest;
+import com.abhedyam.dto.CustomerBatchResult;
+import com.abhedyam.service.interfaces.ICustomerBatchService;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.RequestBody;
 import com.abhedyam.service.interfaces.IBulkImportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,6 +39,7 @@ public class BulkImportController {
     private static final String XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     private final IBulkImportService bulkImportService;
+    private final ICustomerBatchService customerBatchService;
 
     @GetMapping("/bulk-import/template")
     @Operation(summary = "Download bulk import template", description = "Download the sample Excel template for owner data import")
@@ -60,5 +66,14 @@ public class BulkImportController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "dryRun", defaultValue = "false") boolean dryRun) {
         return ApiResponse.success(bulkImportService.importData(ownerId, file, dryRun));
+    }
+
+    @PostMapping("/owners/{ownerId}/customers/batch")
+    @Operation(summary = "Bring in old records", description = "Add many customers (from contacts or a typed list), each with an optional old balance. Bad rows are skipped with a code; dryRun=true saves nothing")
+    public ApiResponse<CustomerBatchResult> saveBatch(
+            @PathVariable UUID ownerId,
+            @Valid @RequestBody CustomerBatchRequest request,
+            @RequestParam(value = "dryRun", defaultValue = "false") boolean dryRun) {
+        return ApiResponse.success(customerBatchService.save(ownerId, request, dryRun));
     }
 }

@@ -420,6 +420,11 @@ public class BulkImportService implements IBulkImportService {
             raw = formatter.formatCellValue(cell).trim();
         }
 
+        return cleanPhoneText(raw);
+    }
+
+    /** "098480 12345", "+91 98480…", "919848012345" → +919848012345; blank → null; anything else throws. */
+    static String cleanPhoneText(String raw) {
         if (raw == null || raw.isBlank()) {
             return null;
         }
