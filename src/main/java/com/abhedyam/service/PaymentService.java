@@ -63,6 +63,19 @@ public class PaymentService implements IPaymentService {
     @Override
     @Transactional
     public PaymentResponse createManualPayment(PaymentCreateRequest request) {
+        return createManualPayment(request, true);
+    }
+
+    /**
+     * Money taken with a sale: the sale's activity row already says what was paid, so no second "Payment from" row
+     * (Recent activity showed a paid-now sale twice).
+     */
+    @Transactional
+    public PaymentResponse createPaymentWithSale(PaymentCreateRequest request) {
+        return createManualPayment(request, false);
+    }
+
+    private PaymentResponse createManualPayment(PaymentCreateRequest request, boolean logActivity) {
         UUID currentUserId = SecurityUtil.getCurrentUserId();
         
         if (request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
@@ -121,7 +134,7 @@ public class PaymentService implements IPaymentService {
         
         if (savedPayment.getStatus() == PaymentStatus.SUCCESS) {
             updateSaleItemBalance(saleItem, savedPayment.getAmount(), true);
-            auditService.logPaymentSuccess(
+            if (logActivity) auditService.logPaymentSuccess(
                 savedPayment.getId(),
                 paymentOwnerId,
                 customer.getId(),
@@ -132,7 +145,7 @@ public class PaymentService implements IPaymentService {
                 savedPayment.getReference(),
                 savedPayment.getMedium() != null ? savedPayment.getMedium().name() : null
             );
-        } else {
+        } else if (logActivity) {
             auditService.logPaymentCreation(
                 savedPayment.getId(),
                 paymentOwnerId,
