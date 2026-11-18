@@ -1,6 +1,7 @@
 package com.abhedyam.service;
 
 import com.abhedyam.constants.ErrorCodes;
+import com.abhedyam.dto.GotMoreRequest;
 import com.abhedyam.dto.ItemListResponse;
 import com.abhedyam.dto.ItemRequest;
 import com.abhedyam.dto.ItemResponse;
@@ -121,10 +122,31 @@ public class ItemService implements IItemService {
                 .filter(i -> i.getStock() != null)
                 .collect(Collectors.toMap(Inventory::getProductId, Inventory::getStock, (a, b) -> a));
         Map<UUID, Sales> sales = sales(ownerId, Instant.now());
+        Map<UUID, BigDecimal> stockUps = lastStockUps(ownerId);
         Instant now = Instant.now();
         return products.stream()
-                .map(p -> toResponse(p, stock.get(p.getId()), sales.getOrDefault(p.getId(), Sales.NONE), now))
+                .map(p -> toResponse(p, stock.get(p.getId()), sales.getOrDefault(p.getId(), Sales.NONE), stockUps.get(p.getId()), now))
                 .toList();
+    }
+
+    /** The quantity of each item's newest stock-up (starting count or Got more). */
+    private Map<UUID, BigDecimal> lastStockUps(UUID ownerId) {
+        Map<UUID, Instant> at = new HashMap<>();
+        Map<UUID, BigDecimal> qty = new HashMap<>();
+        for (Object[] row : movementRepository.stockUps(ownerId)) {
+            UUID pid = (UUID) row[0];
+            Instant when = (Instant) row[2];
+            if (at.containsKey(pid) && !when.isAfter(at.get(pid))) continue;
+            at.put(pid, when);
+            qty.put(pid, (BigDecimal) row[1]);
+        }
+        return qty;
+    }
+
+    /** Running out at: a quarter of the last stock-up rounded up, at least 1; none before the first stock-up. */
+    static BigDecimal autoLowLevel(BigDecimal lastStockUp) {
+        if (lastStockUp == null || lastStockUp.signum() <= 0) return null;
+        return lastStockUp.divide(BigDecimal.valueOf(4), 0, RoundingMode.UP).max(BigDecimal.ONE);
     }
 
     private Map<UUID, Sales> sales(UUID ownerId, Instant now) {
@@ -233,6 +255,22 @@ public class ItemService implements IItemService {
     }
 
     @Override
+    @Transactional
+    public List<ItemResponse> gotMore(UUID ownerId, GotMoreRequest request) {
+        requireSelf(ownerId);
+        if (request == null || request.getLines() == null || request.getLines().isEmpty()) throw invalid("Pick at least one item");
+        List<ItemResponse> out = new java.util.ArrayList<>();
+        for (GotMoreRequest.Line line : request.getLines()) {
+            StockChangeRequest one = new StockChangeRequest();
+            one.setType(StockChangeRequest.Type.RECEIVED);
+            one.setQuantity(line.getQuantity());
+            one.setNote(request.getNote());
+            out.add(changeStock(ownerId, line.getItemId(), one));
+        }
+        return out;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public PageResponse<StockMovementResponse> movements(UUID ownerId, UUID itemId, int page, int size) {
         requireSelf(ownerId);
@@ -246,20 +284,21 @@ public class ItemService implements IItemService {
 
     private ItemResponse toResponse(Product p, BigDecimal rawStock) {
         Map<UUID, Sales> sales = sales(p.getOwnerId(), Instant.now());
-        return toResponse(p, rawStock, sales.getOrDefault(p.getId(), Sales.NONE), Instant.now());
+        return toResponse(p, rawStock, sales.getOrDefault(p.getId(), Sales.NONE), lastStockUps(p.getOwnerId()).get(p.getId()), Instant.now());
     }
 
-    static ItemResponse toResponse(Product p, BigDecimal rawStock, Sales sales, Instant now) {
+    static ItemResponse toResponse(Product p, BigDecimal rawStock, Sales sales, BigDecimal lastStockUp, Instant now) {
         boolean tracked = p.tracksStock();
         BigDecimal stock = tracked ? (rawStock == null ? BigDecimal.ZERO : rawStock).stripTrailingZeros() : null;
         Instant cutoff = now.minus(Duration.ofDays(NOT_SELLING_DAYS));
         Instant since = sales.lastSoldAt() != null ? sales.lastSoldAt() : p.getCreatedAt();
         boolean notSelling = tracked && stock.signum() > 0 && since != null && since.isBefore(cutoff);
+        boolean auto = tracked && p.getLowStockLevel() == null;
+        BigDecimal low = auto ? autoLowLevel(lastStockUp) : p.getLowStockLevel();
         ItemResponse.Status status;
         if (!tracked) status = ItemResponse.Status.UNTRACKED;
         else if (stock.signum() <= 0) status = ItemResponse.Status.OUT;
-        // An item that is not selling is not "running low": buying more of it would be wrong (To buy, digest).
-        else if (!notSelling && p.getLowStockLevel() != null && stock.compareTo(p.getLowStockLevel()) <= 0) status = ItemResponse.Status.LOW;
+        else if (low != null && stock.compareTo(low) <= 0) status = ItemResponse.Status.LOW;
         else status = ItemResponse.Status.OK;
         BigDecimal value = tracked && stock.signum() > 0 && p.getCostPrice() != null
                 ? stock.multiply(p.getCostPrice()).setScale(2, RoundingMode.HALF_UP) : null;
@@ -270,9 +309,9 @@ public class ItemService implements IItemService {
         }
         return new ItemResponse(p.getId(), p.getName(), p.getPrice(), p.getCostPrice(),
                 p.getUnit() == null ? StockUnit.PCS : p.getUnit(), tracked, stock,
-                p.getLowStockLevel() == null ? null : p.getLowStockLevel().stripTrailingZeros(),
+                low == null ? null : low.stripTrailingZeros(),
                 status, value, p.getImageUrl(), p.getUpdatedAt(),
-                sales.last30().stripTrailingZeros(), sales.lastSoldAt(), daysLeft, notSelling);
+                sales.last30().stripTrailingZeros(), sales.lastSoldAt(), daysLeft, notSelling, auto && low != null);
     }
 
     private static StockMovementResponse toMovement(StockMovement m) {

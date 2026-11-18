@@ -12,6 +12,10 @@ import java.util.UUID;
 public interface StockMovementRepository extends JpaRepository<StockMovement, UUID> {
     Page<StockMovement> findByOwnerIdAndProductIdOrderByCreatedAtDesc(UUID ownerId, UUID productId, Pageable pageable);
 
+    /** (productId, quantity, createdAt) of every stock-up (OPENING / RECEIVED): the newest one sets the automatic running-out level. */
+    @org.springframework.data.jpa.repository.Query("select m.productId, m.quantity, m.createdAt from StockMovement m where m.ownerId = :ownerId and m.type in (com.abhedyam.model.enums.StockMovementType.OPENING, com.abhedyam.model.enums.StockMovementType.RECEIVED)")
+    java.util.List<Object[]> stockUps(@org.springframework.data.repository.query.Param("ownerId") UUID ownerId);
+
     boolean existsByOwnerIdAndProductId(UUID ownerId, UUID productId);
 
     java.util.List<StockMovement> findByOwnerIdAndProductIdInOrderByCreatedAtAsc(UUID ownerId, java.util.Collection<UUID> productIds);

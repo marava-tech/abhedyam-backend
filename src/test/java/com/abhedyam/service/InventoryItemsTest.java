@@ -247,8 +247,43 @@ class InventoryItemsTest {
         ItemResponse after = items.update(owner, id, r);
         assertEquals("Dal", after.getName());
         assertEquals(StockUnit.KG, after.getUnit());
-        assertNull(after.getLowStockLevel());
+        assertEquals(0, new BigDecimal("2").compareTo(after.getLowStockLevel()), "cleared level falls back to automatic: 5 / 4 rounded up");
+        assertTrue(after.isLowStockAuto());
         assertEquals(0, new BigDecimal("80").compareTo(after.getCostPrice()));
+    }
+
+    @Test
+    void runningOutLevelFollowsTheLastStockUp() {
+        UUID id = item("Sugar", "20", null, null).getId();
+        assertEquals(0, new BigDecimal("5").compareTo(items.list(owner, IItemService.Filter.ALL, null, 0, 10).getItems().getContent().get(0).getLowStockLevel()));
+        change(id, StockChangeRequest.Type.COUNT, "6", null);  // a fix is not a stock-up: level stays 5
+        assertEquals(ItemResponse.Status.OK, change(id, StockChangeRequest.Type.COUNT, "6", null).getStatus());
+        ItemResponse after = change(id, StockChangeRequest.Type.RECEIVED, "40", null);  // 46 now, level 10
+        assertEquals(0, new BigDecimal("10").compareTo(after.getLowStockLevel()));
+        assertEquals(ItemResponse.Status.LOW, change(id, StockChangeRequest.Type.COUNT, "10", null).getStatus());
+    }
+
+    @Test
+    void gotMoreAddsToSeveralItemsAllOrNothing() {
+        UUID rice = item("Rice", "10", null, null).getId();
+        UUID soap = item("Soap", null, null, null).getId();
+        com.abhedyam.dto.GotMoreRequest r = new com.abhedyam.dto.GotMoreRequest();
+        r.setLines(List.of(line(rice, "5"), line(soap, "12")));
+        List<ItemResponse> out = items.gotMore(owner, r);
+        assertEquals(0, new BigDecimal("15").compareTo(out.get(0).getStock()));
+        assertTrue(out.get(1).isTrackStock(), "got more starts counting an untracked item");
+        assertEquals(0, new BigDecimal("12").compareTo(out.get(1).getStock()));
+
+        r.setLines(List.of(line(rice, "5"), line(soap, "0")));
+        assertThrows(BusinessException.class, () -> items.gotMore(owner, r));
+        assertEquals(0, new BigDecimal("15").compareTo(stock.currentStock(owner, rice)), "a bad line saves nothing");
+    }
+
+    private static com.abhedyam.dto.GotMoreRequest.Line line(UUID id, String qty) {
+        com.abhedyam.dto.GotMoreRequest.Line l = new com.abhedyam.dto.GotMoreRequest.Line();
+        l.setItemId(id);
+        l.setQuantity(new BigDecimal(qty));
+        return l;
     }
 
     @Test

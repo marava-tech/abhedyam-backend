@@ -69,3 +69,12 @@ owner can't touch another owner's items.
 The daily digest ends with "Buy soon: Oil (out), Dal (1 kg left) +1 more" (out first, then low; 2 names max).
 When nobody owes money but stock is low, the digest is still sent, titled "Stock running low". A stock error never
 blocks the money digest. Same DUE_DIGEST category and mute switch.
+
+## Stock made simple (2026-11-18, app plan `.product/STOCK_SIMPLE_PLAN.md`)
+- **Automatic running-out level**: when the owner has not set `lowStockLevel`, it is a quarter of the item's newest
+  stock-up (OPENING or RECEIVED) rounded up, at least 1; none before the first stock-up. `lowStockLevel` in the
+  response is the level in use; `lowStockAuto = true` when it was worked out. Sending 0 on edit goes back to automatic.
+- LOW no longer skips items that are not selling: an item at or below its level is LOW.
+- **Got more**: `POST /owners/{id}/items/stock/received` `{lines: [{itemId, quantity}], note?}` → the updated items.
+  One RECEIVED movement per line, one transaction (a bad line saves nothing). Untracked items start counting.
+- Purchases, to-buy and the sales stats stay until the new app is on Play, then go in their own PR.
