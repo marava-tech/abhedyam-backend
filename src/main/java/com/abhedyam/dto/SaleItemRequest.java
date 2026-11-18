@@ -28,4 +28,7 @@ public class SaleItemRequest {
     @Digits(integer = 5, fraction = 3, message = "Quantity can have at most 3 decimals")
     @Schema(description = "Units sold (default 1)", example = "2.5")
     private BigDecimal quantity;
+
+    @Schema(description = "A 'just an amount' line (no item picked): its product stays hidden from Stock and the item pickers", example = "false")
+    private Boolean amountOnly;
 }
