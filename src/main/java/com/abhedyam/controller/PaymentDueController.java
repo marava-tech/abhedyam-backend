@@ -1,5 +1,6 @@
 package com.abhedyam.controller;
 
+import com.abhedyam.dto.NearbyCustomersResponse;
 import com.abhedyam.dto.ApiResponse;
 import com.abhedyam.dto.CollectionVisitRequest;
 import com.abhedyam.dto.CollectionVisitResponse;
@@ -29,6 +30,13 @@ public class PaymentDueController {
     @Operation(summary = "Upcoming and overdue dues", description = "Upcoming collections: overdue dues first, then unpaid dues within `days` (default 7, max 365), plus open village visits in the same window. Paid dues and done visits are left out.")
     public ApiResponse<UpcomingDuesResponse> upcoming(@PathVariable UUID ownerId, @RequestParam(defaultValue = "7") int days) {
         return ApiResponse.success(service.upcoming(ownerId, days));
+    }
+
+    @GetMapping("/nearby")
+    @Operation(summary = "Nearby customers who owe", description = "Customers who owe and have a saved location, closest to lat,lng first (limit 1-50, default 20). Each row has overdueDays (oldest overdue due) and nextDueDate. owingWithoutLocation counts those who owe but have no location. No village-name filter.")
+    public ApiResponse<NearbyCustomersResponse> nearby(@PathVariable UUID ownerId, @RequestParam double lat, @RequestParam double lng,
+            @RequestParam(defaultValue = "20") int limit) {
+        return ApiResponse.success(service.nearby(ownerId, lat, lng, limit));
     }
 
     @PostMapping("/collection-visits")

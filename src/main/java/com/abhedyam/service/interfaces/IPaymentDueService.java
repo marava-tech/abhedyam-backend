@@ -3,6 +3,7 @@ package com.abhedyam.service.interfaces;
 import com.abhedyam.dto.CollectionVisitRequest;
 import com.abhedyam.dto.CollectionVisitResponse;
 import com.abhedyam.dto.CustomerDuesResponse;
+import com.abhedyam.dto.NearbyCustomersResponse;
 import com.abhedyam.dto.OwnerDueResponse;
 import com.abhedyam.dto.UpcomingDuesResponse;
 import com.abhedyam.dto.PaymentDueRequest;
@@ -19,6 +20,9 @@ public interface IPaymentDueService {
 
     /** Every active due of the owner with its paid part, sorted by date. No access check: server-side callers only. */
     List<OwnerDueResponse> ownerDues(UUID ownerId);
+
+    /** Customers who owe, with a saved location, closest to (lat, lng) first (spec nearby-customers.md). */
+    NearbyCustomersResponse nearby(UUID ownerId, double lat, double lng, int limit);
 
     /** Overdue dues, then unpaid dues up to [days] from today. Caller must be the owner. */
     UpcomingDuesResponse upcoming(UUID ownerId, int days);
