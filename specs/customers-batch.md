@@ -23,6 +23,12 @@ Answer: `{ saved, newCustomers, withAmount, totalOwes, problems: [ { row, code }
 - Problem codes: `NO_NAME`, `BAD_PHONE` (not 10 digits), `PHONE_TAKEN` (the phone is another shop's customer), `DUPLICATE`, `BAD_AMOUNT` (negative), `BAD_DATE` (not yyyy-MM-dd), `FAILED` (anything else, logged). A bad row is skipped and the others still save.
 - `dryRun=true` checks the rows and counts, and saves nothing.
 
-## Not in this slice
+## From an Excel file (slice 4, 2026-11-18)
 
-The Excel file path keeps its 8 columns until the app's Excel step (slice 4) moves it to Name, Phone, Village, Owes, Due date over this same code.
+`POST /api/v1/owners/{ownerId}/bulk-import?dryRun=false&label=Old%20balance` (multipart `file`, .xlsx up to 10 MB, 2000 rows). Answer: the same `CustomerBatchResult` as above, with `row` = the row number Excel shows.
+
+- Columns: Name, Phone, Village, Owes, Due date. The header row (one of the first 5 rows) can be in English, Telugu or Hindi and in any order; without one, the first sheet is read in that order from row 1.
+- Phone as a number cell or text; Owes as a number or text like `₹4,000` / `Rs. 4000` (other text: `BAD_AMOUNT`); Due date as a date cell, `dd/mm/yyyy` or `yyyy-mm-dd` (other text: `BAD_DATE`).
+- Every row then goes through the batch code above. The idempotency key is the file's SHA-256, so the same file again finds its customers and old-balance sales instead of adding them twice.
+- `GET /api/v1/bulk-import/template?lang=en|te|hi`: the empty 5-column file, made in code.
+- The old 8-column template (product, price, paid, paid date, deadline) is gone (owner decision 3a, no users yet).
