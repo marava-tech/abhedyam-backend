@@ -42,14 +42,10 @@ public class OwnerSettingsService implements IOwnerSettingsService {
     public OwnerSettingsResponse updateOwnerSettings(UUID ownerId, OwnerSettingsUpdateRequest request) {
         validateOwnerAccess(ownerId);
         
-        OwnerSettings settings = ownerSettingsRepository.findByOwnerId(ownerId)
-                .orElseGet(() -> {
-                OwnerSettings newSettings = new OwnerSettings();
-                newSettings.setId(ownerId);
-                newSettings.setOwnerId(ownerId);
-                newSettings.setIsDarkModeEnabled(false);
-                return newSettings;
-                });
+        // Row lock: two PATCHes at once (e.g. Simple view + Home tiles) each merge only their own otherFlags key;
+        // without the lock both read the old map and the later save drops the other's key.
+        ownerSettingsRepository.insertDefaultsIfAbsent(ownerId.toString());
+        OwnerSettings settings = ownerSettingsRepository.lockByOwnerId(ownerId).orElseThrow();
         
         if (request.getIsDarkModeEnabled() != null) {
             settings.setIsDarkModeEnabled(request.getIsDarkModeEnabled());
