@@ -9,6 +9,7 @@ import com.abhedyam.dto.SaleItemRequest;
 import com.abhedyam.exception.BusinessException;
 import com.abhedyam.model.Customer;
 import com.abhedyam.repository.CustomerRepository;
+import com.abhedyam.repository.SaleItemRepository;
 import com.abhedyam.service.interfaces.ICustomerBatchService;
 import com.abhedyam.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class CustomerBatchService implements ICustomerBatchService {
     private final CustomerRepository customerRepository;
     private final CustomerService customerService;
     private final SaleService saleService;
+    private final SaleItemRepository saleItemRepository;
 
     @Override
     public CustomerBatchResult save(UUID ownerId, CustomerBatchRequest request, boolean dryRun) {
@@ -50,6 +52,7 @@ public class CustomerBatchService implements ICustomerBatchService {
         int saved = 0, newCustomers = 0, withAmount = 0;
         BigDecimal total = BigDecimal.ZERO;
         List<CustomerBatchResult.Problem> problems = new ArrayList<>();
+        List<CustomerBatchResult.RowResult> rows = new ArrayList<>();
         Set<String> seen = new HashSet<>();
 
         for (int i = 0; i < request.getRows().size(); i++) {
@@ -64,7 +67,13 @@ public class CustomerBatchService implements ICustomerBatchService {
                         : customerRepository.findFirstByOwnerIdAndNameIgnoreCase(ownerId, c.name());
                 if (existing.isPresent() && !ownerId.equals(existing.get().getOwnerId())) throw new RowProblem("PHONE_TAKEN");
 
-                if (!dryRun) {
+                String saleKey = key + ":" + rowNo;
+                // Already in the shop: their balance there is the truth, so the old balance is not added again (a second,
+                // edited file would double what they owe). Unless this same list added it before: then it is a retry.
+                boolean retry = existing.isPresent() && c.owes().signum() > 0
+                        && saleItemRepository.findFirstByOwnerIdAndClientKey(ownerId, saleKey).isPresent();
+                boolean add = existing.isEmpty() || retry;
+                if (!dryRun && add) {
                     Customer customer = existing.orElseGet(() -> {
                         CustomerCreateRequest create = new CustomerCreateRequest();
                         create.setName(c.name());
@@ -72,30 +81,36 @@ public class CustomerBatchService implements ICustomerBatchService {
                         create.setVillage(blankToNull(row.getVillage()));
                         return customerService.create(create);
                     });
-                    if (c.owes().signum() > 0) saleService.createSale(oldBalance(customer.getId(), label, c, key + ":" + rowNo));
+                    if (c.owes().signum() > 0) saleService.createSale(oldBalance(customer.getId(), label, c, saleKey));
                 }
                 saved++;
-                if (existing.isEmpty()) newCustomers++;
-                if (c.owes().signum() > 0) {
-                    withAmount++;
-                    total = total.add(c.owes());
+                if (add) {
+                    newCustomers++;
+                    if (c.owes().signum() > 0) {
+                        withAmount++;
+                        total = total.add(c.owes());
+                    }
                 }
+                rows.add(new CustomerBatchResult.RowResult(rowNo, c.name(), c.owes(), add ? "ADDED" : "EXISTING"));
             } catch (RowProblem p) {
                 problems.add(new CustomerBatchResult.Problem(rowNo, p.code));
+                rows.add(new CustomerBatchResult.RowResult(rowNo, blankToNull(row.getName()), row.getOwes(), p.code));
             } catch (Exception e) {
                 log.warn("Batch row {} for owner {} failed: {}", rowNo, ownerId, e.getMessage());
                 problems.add(new CustomerBatchResult.Problem(rowNo, "FAILED"));
+                rows.add(new CustomerBatchResult.RowResult(rowNo, blankToNull(row.getName()), row.getOwes(), "FAILED"));
             }
         }
         log.info("Customer batch for owner {} (dryRun={}): {} saved, {} new, {} problems", ownerId, dryRun, saved, newCustomers, problems.size());
         return CustomerBatchResult.builder().saved(saved).newCustomers(newCustomers).withAmount(withAmount)
-                .totalOwes(total).problems(problems).build();
+                .totalOwes(total).problems(problems).rows(rows).build();
     }
 
     /** Validates one row; the match key is the phone, else the name ignoring case (the same rule as the file import). */
     static Checked check(CustomerBatchRequest.Row row) {
         String name = blankToNull(row.getName());
         if (name == null) throw new RowProblem("NO_NAME");
+        name = name.replaceAll("\\s+", " "); // "Ramesh  Kumar" and "Ramesh Kumar" are one person
         String phone;
         try {
             phone = BulkImportService.cleanPhoneText(row.getPhone());

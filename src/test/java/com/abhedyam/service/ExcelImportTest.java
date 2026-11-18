@@ -96,7 +96,8 @@ class ExcelImportTest {
                 new UserPrincipal(owner, "9999999999"), null, Collections.emptyList()));
         CustomerBatchService batch = mock(CustomerBatchService.class);
         when(batch.save(eq(owner), any(), eq(false))).thenAnswer(i -> CustomerBatchResult.builder().saved(1).totalOwes(BigDecimal.TEN)
-                .problems(List.of(new CustomerBatchResult.Problem(2, "BAD_PHONE"))).build());
+                .problems(List.of(new CustomerBatchResult.Problem(2, "BAD_PHONE")))
+                .rows(List.of(new CustomerBatchResult.RowResult(1, "A", BigDecimal.TEN, "ADDED"), new CustomerBatchResult.RowResult(2, "B", null, "BAD_PHONE"))).build());
         BulkImportService excel = new BulkImportService(batch);
         byte[] bytes = xlsx(List.of(List.of("Name", "Phone", "Owes"), List.of("A", "", 10), List.of("B", "123", 5)));
         var file = new MockMultipartFile("file", "old.xlsx", null, bytes);
@@ -105,6 +106,7 @@ class ExcelImportTest {
         excel.importData(owner, file, false, "పాత బాకీ");
 
         assertThat(result.getProblems()).containsExactly(new CustomerBatchResult.Problem(3, "BAD_PHONE"));
+        assertThat(result.getRows()).extracting(CustomerBatchResult.RowResult::row).containsExactly(2, 3);
         ArgumentCaptor<CustomerBatchRequest> sent = ArgumentCaptor.forClass(CustomerBatchRequest.class);
         verify(batch, org.mockito.Mockito.times(2)).save(eq(owner), sent.capture(), eq(false));
         assertThat(sent.getAllValues().get(0).getIdempotencyKey()).isEqualTo(sent.getAllValues().get(1).getIdempotencyKey());
