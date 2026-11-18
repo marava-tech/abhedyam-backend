@@ -86,7 +86,8 @@ public class BulkImportService implements IBulkImportService {
         request.setLabel(label == null || label.length() <= 60 ? label : label.substring(0, 60));
         request.setRows(parsed.rows());
         if (parsed.rows().isEmpty()) {
-            return CustomerBatchResult.builder().totalOwes(BigDecimal.ZERO).problems(parsed.problems()).build();
+            return CustomerBatchResult.builder().totalOwes(BigDecimal.ZERO).problems(parsed.problems())
+                    .rows(parsed.problems().stream().map(p -> new CustomerBatchResult.RowResult(p.row(), null, null, p.code())).toList()).build();
         }
 
         CustomerBatchResult result = customerBatchService.save(ownerId, request, dryRun);
@@ -97,6 +98,13 @@ public class BulkImportService implements IBulkImportService {
         }
         problems.sort((a, b) -> Integer.compare(a.row(), b.row()));
         result.setProblems(problems);
+        List<CustomerBatchResult.RowResult> rows = new ArrayList<>();
+        for (CustomerBatchResult.Problem p : parsed.problems()) rows.add(new CustomerBatchResult.RowResult(p.row(), null, null, p.code()));
+        for (CustomerBatchResult.RowResult r : result.getRows() == null ? List.<CustomerBatchResult.RowResult>of() : result.getRows()) {
+            rows.add(new CustomerBatchResult.RowResult(parsed.sheetRows().get(r.row() - 1), r.name(), r.owes(), r.status()));
+        }
+        rows.sort((a, b) -> Integer.compare(a.row(), b.row()));
+        result.setRows(rows);
         return result;
     }
 

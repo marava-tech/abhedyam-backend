@@ -12,13 +12,14 @@ App plan: `abhedyam-android/.product/IMPORT_PLAN.md` (slice 1). One request save
   "rows": [ { "name": "Ramesh", "phone": "98480 12345", "village": "Kondapur", "owes": 4000, "dueDate": "2026-12-01" } ] }
 ```
 
-Answer: `{ saved, newCustomers, withAmount, totalOwes, problems: [ { row, code } ] }`. `row` counts from 1.
+Answer: `{ saved, newCustomers, withAmount, totalOwes, problems: [ { row, code } ], rows: [ { row, name, owes, status } ] }`. `row` counts from 1. `status` is `ADDED`, `EXISTING` or a problem code; `newCustomers`/`withAmount`/`totalOwes` count `ADDED` rows only, `saved` = `ADDED` + `EXISTING`.
 
 ## Rules
 
 - Only the owner themself (the same check as file import). 1 to 500 rows. `idempotencyKey` is required, up to 40 characters.
-- Each row: find the customer by phone, or by name (ignoring case) when there is no phone. Otherwise create them with name, phone and village.
-- `owes` > 0 adds one *just an amount* sale named `label`, dated now, with the optional `dueDate`. Its client key is `idempotencyKey:row`, so a retry finds the same sale instead of adding it twice. A retry then reports the customers as found, not new: `saved` and `totalOwes` stay right, but `newCustomers` can be lower.
+- Each row: find the customer by phone, or by name (ignoring case and extra spaces) when there is no phone. Otherwise create them with name, phone and village.
+- **Already in the shop (2026-11-18):** the row is `EXISTING`: nothing is created and **their old balance is not added**. Their balance in the shop is the truth; adding it again (a second or edited file, contacts already there) would double what they owe. Exception: when a sale with this list's key (`idempotencyKey:row`) exists, it is a retry of this same list, so the row stays `ADDED` and the sale is found, not repeated.
+- `owes` > 0 adds one *just an amount* sale named `label`, dated now, with the optional `dueDate`. Its client key is `idempotencyKey:row`, so a retry finds the same sale instead of adding it twice. A retry then reports the customers as found, not new: `saved` and `totalOwes` stay right, and `totalOwes` stays right.
 - The same phone or name twice in one list: the later row is a `DUPLICATE` and is skipped.
 - Problem codes: `NO_NAME`, `BAD_PHONE` (not 10 digits), `PHONE_TAKEN` (the phone is another shop's customer), `DUPLICATE`, `BAD_AMOUNT` (negative), `BAD_DATE` (not yyyy-MM-dd), `FAILED` (anything else, logged). A bad row is skipped and the others still save.
 - `dryRun=true` checks the rows and counts, and saves nothing.

@@ -44,6 +44,7 @@ class CustomerBatchTest {
     @Mock CustomerRepository customerRepository;
     @Mock CustomerService customerService;
     @Mock SaleService saleService;
+    @Mock com.abhedyam.repository.SaleItemRepository saleItemRepository;
     @InjectMocks CustomerBatchService batch;
 
     UUID owner = UUID.randomUUID();
@@ -108,7 +109,7 @@ class CustomerBatchTest {
     }
 
     @Test
-    void customerAlreadyInTheShop_IsReusedNotCreated() {
+    void customerAlreadyInTheShop_IsMatched_AndTheirOldBalanceIsNotAddedAgain() {
         Customer ramesh = customer(owner, "Ramesh");
         when(customerRepository.findByPhoneNormalized("+919848012345")).thenReturn(Optional.of(ramesh));
 
@@ -116,10 +117,33 @@ class CustomerBatchTest {
 
         assertThat(r.getSaved()).isEqualTo(1);
         assertThat(r.getNewCustomers()).isZero();
+        assertThat(r.getTotalOwes()).isEqualByComparingTo("0");
+        assertThat(r.getRows()).containsExactly(new CustomerBatchResult.RowResult(1, "Ramesh", new BigDecimal("500"), "EXISTING"));
         verify(customerService, never()).create(any());
+        verify(saleService, never()).createSale(any());
+    }
+
+    @Test
+    void theSameListAgain_FindsWhatItAddedBefore_AndCountsItAsAdded() {
+        Customer ramesh = customer(owner, "Ramesh");
+        when(customerRepository.findByPhoneNormalized("+919848012345")).thenReturn(Optional.of(ramesh));
+        when(saleItemRepository.findFirstByOwnerIdAndClientKey(owner, "k1:1")).thenReturn(Optional.of(new com.abhedyam.model.SaleItem()));
+
+        CustomerBatchResult r = batch.save(owner, request(row("Ramesh", "9848012345", "500", null)), false);
+
+        assertThat(r.getNewCustomers()).isEqualTo(1);
+        assertThat(r.getTotalOwes()).isEqualByComparingTo("500");
+        assertThat(r.getRows().get(0).status()).isEqualTo("ADDED");
         ArgumentCaptor<SaleCreateRequest> sale = ArgumentCaptor.forClass(SaleCreateRequest.class);
-        verify(saleService).createSale(sale.capture());
-        assertThat(sale.getValue().getCustomerId()).isEqualTo(ramesh.getId());
+        verify(saleService).createSale(sale.capture()); // same key: SaleService answers with the first sale
+        assertThat(sale.getValue().getIdempotencyKey()).isEqualTo("k1:1");
+    }
+
+    @Test
+    void extraSpacesInANameAreTheSamePerson() {
+        CustomerBatchResult r = batch.save(owner, request(row("Ramesh  Kumar", null, "1", null), row(" ramesh kumar", null, "1", null)), true);
+        assertThat(r.getRows()).extracting(CustomerBatchResult.RowResult::status).containsExactly("ADDED", "DUPLICATE");
+        assertThat(r.getRows().get(0).name()).isEqualTo("Ramesh Kumar");
     }
 
     @Test
