@@ -25,5 +25,8 @@ public interface IItemService {
 
     ItemResponse changeStock(UUID ownerId, UUID itemId, StockChangeRequest request);
 
+    /** "Got more": adds stock to several items at once (one RECEIVED movement each), all or nothing. */
+    java.util.List<ItemResponse> gotMore(UUID ownerId, com.abhedyam.dto.GotMoreRequest request);
+
     PageResponse<StockMovementResponse> movements(UUID ownerId, UUID itemId, int page, int size);
 }

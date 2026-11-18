@@ -27,7 +27,7 @@ public class ItemController {
     private final IPurchaseService purchases;
 
     @GetMapping
-    @Operation(summary = "Items with stock", description = "Out of stock first, then low, then by name. filter = ALL | LOW | OUT | NOT_SELLING (stock not sold in 60 days). summary counts every active item and the stock value (stock × buying price).")
+    @Operation(summary = "Items with stock", description = "Out of stock first, then low, then by name. filter = ALL | LOW | OUT | NOT_SELLING (stock not sold in 60 days). LOW = at or below lowStockLevel: the owner's level, else a quarter of the last stock-up rounded up, at least 1 (lowStockAuto = true). summary counts every active item and the stock value (stock × buying price).")
     public ApiResponse<ItemListResponse> list(@PathVariable UUID ownerId,
                                               @RequestParam(defaultValue = "ALL") IItemService.Filter filter,
                                               @RequestParam(required = false) String search,
@@ -65,6 +65,12 @@ public class ItemController {
     @Operation(summary = "Change stock", description = "RECEIVED adds, REMOVED subtracts (reason DAMAGED/USED/RETURNED/OTHER), COUNT sets what you counted. Turns tracking on.")
     public ApiResponse<ItemResponse> changeStock(@PathVariable UUID ownerId, @PathVariable UUID itemId, @RequestBody StockChangeRequest request) {
         return ApiResponse.success(service.changeStock(ownerId, itemId, request));
+    }
+
+    @PostMapping("/stock/received")
+    @Operation(summary = "Got more (several items)", description = "Adds each line's quantity (> 0) to its item as RECEIVED, all in one go: if one line fails nothing is saved. Starts counting untracked items.")
+    public ApiResponse<java.util.List<ItemResponse>> gotMore(@PathVariable UUID ownerId, @RequestBody com.abhedyam.dto.GotMoreRequest request) {
+        return ApiResponse.success(service.gotMore(ownerId, request));
     }
 
     @GetMapping("/{itemId}/movements")

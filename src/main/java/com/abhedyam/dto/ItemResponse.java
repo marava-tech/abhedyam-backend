@@ -29,4 +29,6 @@ public class ItemResponse {
     private Instant lastSoldAt;
     private Integer daysLeft;
     private boolean notSelling;
+    /** true when lowStockLevel was not set by the owner but worked out (a quarter of the last stock-up, at least 1). */
+    private boolean lowStockAuto;
 }
