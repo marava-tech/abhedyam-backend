@@ -79,4 +79,33 @@ class OwnerSettingsRaceTest {
         }
         assertThat(repo.findAll().stream().filter(s -> owner.equals(s.getOwnerId())).count()).isEqualTo(1);
     }
+
+    /** The app saves simpleView and homeTools as two PATCHes at once; each must keep the other's key. */
+    @Test
+    void parallelFlagPatchesKeepEveryKey() throws Exception {
+        UUID owner = UUID.randomUUID();
+        int n = 8;
+        CountDownLatch go = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(n);
+        try {
+            List<Future<OwnerSettingsResponse>> results = new java.util.ArrayList<>();
+            for (int i = 0; i < n; i++) {
+                String key = "k" + i;
+                results.add(pool.submit(() -> {
+                    SecurityContextHolder.getContext().setAuthentication(
+                            new UsernamePasswordAuthenticationToken(new UserPrincipal(owner, null), null, List.of()));
+                    var req = new com.abhedyam.dto.OwnerSettingsUpdateRequest();
+                    req.setOtherFlags(java.util.Map.of(key, true));
+                    go.await();
+                    return service.updateOwnerSettings(owner, req);
+                }));
+            }
+            go.countDown();
+            for (Future<OwnerSettingsResponse> f : results) f.get(20, TimeUnit.SECONDS);
+        } finally {
+            pool.shutdownNow();
+        }
+        var flags = repo.findByOwnerId(owner).orElseThrow().getOtherFlags();
+        for (int i = 0; i < n; i++) assertThat(flags).containsEntry("k" + i, true);
+    }
 }
