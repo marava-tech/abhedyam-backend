@@ -192,6 +192,25 @@ class PurchaseServiceTest {
     }
 
     @Test
+    void editReplacesTheStockAndIsRefusedOnceSold() {
+        UUID a = item("A", "10", "1");
+        UUID id = buy("50", null, line(a, "5", null)).getId();
+        PurchaseRequest fix = new PurchaseRequest();
+        fix.setTotalPaid(new BigDecimal("80"));
+        fix.setIdempotencyKey("edit-1");
+        fix.setItems(new ArrayList<>(List.of(line(a, "8", null))));
+        PurchaseResponse edited = purchases.update(owner, id, fix);
+        assertEquals(0, new BigDecimal("9").compareTo(itemView(a).getStock())); // 1 opening + 8, the old 5 gone
+        assertEquals(edited.getId(), purchases.update(owner, id, fix).getId()); // timeout, then Save again
+        assertEquals(1, purchases.list(owner, IPurchaseService.Status.ALL, null, 0, 10).getContent().size());
+
+        stock.saleOut(owner, a, new BigDecimal("3"), "T");
+        fix.setIdempotencyKey("edit-2");
+        BusinessException e = assertThrows(BusinessException.class, () -> purchases.update(owner, edited.getId(), fix));
+        assertTrue(e.getMessage().contains("can't be changed"));
+    }
+
+    @Test
     void deleteOnlyWhileUntouchedAndItTakesTheStockBack() {
         UUID a = item("A", "10", "1");
         UUID id = buy("50", null, line(a, "5", null)).getId();
