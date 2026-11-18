@@ -498,6 +498,7 @@ public class SaleService implements ISaleService {
             one.setMedium(medium != null ? medium : PaymentMedium.CASH);
             one.setStatus(PaymentStatus.SUCCESS);
             one.setPaidAt(paidAt); // null = now
+            one.setPaidAtSale(true);
             paymentService.createManualPayment(one);
         }
     }

@@ -16,6 +16,12 @@ public class PaymentCreateRequest {
     @NotNull(message = "Sale Item ID is required")
     @Schema(description = "UUID of the sale item", example = "123e4567-e89b-12d3-a456-426614174000", required = true)
     private UUID saleItemId;
+
+    /** Set by the server for the money paid while making a sale: the sale's activity already says "Paid in full",
+     *  so no second "Payment from X" activity. Never read from the request body. */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @Schema(hidden = true)
+    private boolean paidAtSale;
     
     @NotNull(message = "Amount is required")
     @Positive(message = "Amount must be positive")

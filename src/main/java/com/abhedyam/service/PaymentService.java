@@ -121,7 +121,7 @@ public class PaymentService implements IPaymentService {
         
         if (savedPayment.getStatus() == PaymentStatus.SUCCESS) {
             updateSaleItemBalance(saleItem, savedPayment.getAmount(), true);
-            auditService.logPaymentSuccess(
+            if (!request.isPaidAtSale()) auditService.logPaymentSuccess(
                 savedPayment.getId(),
                 paymentOwnerId,
                 customer.getId(),
