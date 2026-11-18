@@ -61,6 +61,14 @@ public class PaymentResponse {
     @Schema(description = "Family member / helper who took this payment (by Ravi); null = the owner")
     private String addedByName;
 
+    /** Written into reference when the owner cancels a payment (PaymentService.cancel). */
+    public static final String CANCELLED_MARKER = "Cancelled by owner";
+
+    @Schema(description = "Cancelled by the owner (status is FAILED): show Cancelled, not Failed", example = "false")
+    public boolean isCancelled() {
+        return status == PaymentStatus.FAILED && CANCELLED_MARKER.equals(reference);
+    }
+
     public PaymentResponse(UUID id, UUID customerId, String customerName, UUID ownerId, UUID saleItemId, String productName, BigDecimal amount, PaymentMedium medium, Instant timestamp, String reference, PaymentStatus status, Instant createdAt, Instant updatedAt, boolean writeOff) {
         this(id, customerId, customerName, ownerId, saleItemId, productName, amount, medium, timestamp, reference, status, createdAt, updatedAt, writeOff, null);
     }

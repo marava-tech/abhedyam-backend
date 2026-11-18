@@ -162,17 +162,36 @@ public class PurchaseService implements IPurchaseService {
     @Override
     @Transactional
     public void delete(UUID ownerId, UUID purchaseId) {
+        remove(ownerId, purchaseId, "Purchase deleted");
+    }
+
+    /** Edit = take the old purchase's stock back off and save the new one, in one go. Same rule as delete: only while none
+     *  of it is sold or removed. A repeat of the same Save (same idempotency key) returns the purchase it made. */
+    @Override
+    @Transactional
+    public PurchaseResponse update(UUID ownerId, UUID purchaseId, PurchaseRequest request) {
+        requireSelf(ownerId);
+        String key = request.getIdempotencyKey() == null || request.getIdempotencyKey().isBlank() ? null : request.getIdempotencyKey().trim();
+        if (key != null) {
+            var earlier = purchases.findFirstByOwnerIdAndClientKey(ownerId, key);
+            if (earlier.isPresent()) return build(ownerId, List.of(earlier.get())).get(0);
+        }
+        remove(ownerId, purchaseId, "Purchase edited");
+        return create(ownerId, request);
+    }
+
+    private void remove(UUID ownerId, UUID purchaseId, String why) {
         requireSelf(ownerId);
         StockPurchase purchase = find(ownerId, purchaseId);
         PurchaseResponse view = build(ownerId, List.of(purchase)).get(0);
         if (!view.isCanDelete()) {
-            throw new BusinessException(ErrorCodes.INVALID, "Some of this purchase is already sold, so it can't be deleted. Use Remove or Count on the item instead.");
+            throw new BusinessException(ErrorCodes.INVALID, "Some of this purchase is already sold, so it can't be " + (why.endsWith("edited") ? "changed" : "deleted") + ". Use Remove or Count on the item instead.");
         }
         for (StockPurchaseItem line : lines.findByPurchaseIdIn(List.of(purchaseId))) {
             Product p = products.findById(line.getProductId()).orElse(null);
             if (p == null) continue;
             stock.apply(ownerId, p, StockMovementType.REMOVED, line.getQuantity().negate(), StockRemovalReason.OTHER,
-                    "Purchase deleted", null, purchaseId);
+                    why, null, purchaseId);
         }
         purchase.setIsActive(false);
         purchases.save(purchase);

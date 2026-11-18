@@ -291,7 +291,7 @@ public class PaymentService implements IPaymentService {
                 saleItemRepository.findById(p.getSaleItemId()).ifPresent(si -> updateSaleItemBalance(si, p.getAmount(), false));
             }
             p.setStatus(PaymentStatus.FAILED);
-            if (p.getReference() == null || p.getReference().isBlank()) p.setReference("Cancelled by owner");
+            if (p.getReference() == null || p.getReference().isBlank()) p.setReference(PaymentResponse.CANCELLED_MARKER);
             customers.add(p.getCustomerId());
             changed++;
         }

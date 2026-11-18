@@ -42,6 +42,12 @@ public class PurchaseController {
         return ApiResponse.success(service.create(ownerId, request));
     }
 
+    @PutMapping("/{purchaseId}")
+    @Operation(summary = "Edit a purchase", description = "Only while none of it is sold or removed; replaces its items, stock and buying prices")
+    public ApiResponse<PurchaseResponse> update(@PathVariable UUID ownerId, @PathVariable UUID purchaseId, @RequestBody PurchaseRequest request) {
+        return ApiResponse.success(service.update(ownerId, purchaseId, request));
+    }
+
     @DeleteMapping("/{purchaseId}")
     @Operation(summary = "Delete a purchase", description = "Only while none of it is sold or removed; takes its stock back off")
     public ApiResponse<Void> delete(@PathVariable UUID ownerId, @PathVariable UUID purchaseId) {
