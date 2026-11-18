@@ -132,9 +132,7 @@ public class CustomerService implements ICustomerService {
         invalidateAllRelatedCachesOnCustomerChange(ownerId);
         
         LocationDetails existingLocation = locationDetailsRepository.findById(savedCustomer.getId()).orElse(null);
-        String villageName = (request.getVillage() != null && !request.getVillage().trim().isEmpty()) 
-            ? request.getVillage().trim() 
-            : null;
+        String villageName = shopVillage(ownerId, request.getVillage(), null);
         boolean hasPin = request.getLatitude() != null && request.getLongitude() != null;
         
         if (existingLocation != null) {
@@ -202,9 +200,7 @@ public class CustomerService implements ICustomerService {
 
         Customer savedCustomer = customerRepository.save(customer);
 
-        String villageName = (request.getVillage() != null && !request.getVillage().trim().isEmpty())
-            ? request.getVillage().trim()
-            : null;
+        String villageName = shopVillage(customer.getOwnerId(), request.getVillage(), customerId); // their own old spelling doesn't count: they may be fixing it
         boolean hasPin = request.getLatitude() != null && request.getLongitude() != null;
 
         LocationDetails existingLocation = locationDetailsRepository.findByUserId(customerId).orElse(null);
@@ -937,5 +933,13 @@ public class CustomerService implements ICustomerService {
         }
         return customer;
     }
-}
 
+    /** The village as typed, cleaned ("  kondapur " → "kondapur"), or the shop's own spelling when it already has that
+     *  village with other capitals or spaces ("Kondapur"), so customers group under one village. Null when blank. */
+    String shopVillage(UUID ownerId, String typed, UUID skipCustomerId) {
+        if (typed == null || typed.isBlank()) return null;
+        String v = typed.trim().replaceAll("\\s+", " ");
+        List<String> spellings = ownerId == null ? List.of() : locationDetailsRepository.findVillageSpellings(ownerId, v, skipCustomerId);
+        return spellings.isEmpty() ? v : spellings.get(0);
+    }
+}

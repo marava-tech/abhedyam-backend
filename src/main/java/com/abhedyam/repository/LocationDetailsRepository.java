@@ -47,14 +47,14 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
        // The JPQL must differ from the Pageable version below (no "as customerCount" here): Hibernate 6.4 caches the plan
        // by query text, and when a paged call ran at the same moment this one went out with "limit null,null" and failed (Home summary 500).
 
-       @Query(value = "SELECT ld.village, COUNT(c.id) as customerCount " +
+       @Query(value = "SELECT MIN(ld.village), COUNT(c.id) as customerCount " +
                      "FROM LocationDetails ld " +
                      "INNER JOIN Customer c ON c.id = ld.userId " +
                      "WHERE c.ownerId = :ownerId " +
                      "AND ld.village IS NOT NULL " +
                      "AND c.isActive = true " +
-                     "GROUP BY ld.village " +
-                     "ORDER BY LOWER(TRIM(ld.village)) ASC", countQuery = "SELECT COUNT(DISTINCT ld.village) " +
+                     "GROUP BY LOWER(TRIM(ld.village)) " +
+                     "ORDER BY LOWER(TRIM(ld.village)) ASC", countQuery = "SELECT COUNT(DISTINCT LOWER(TRIM(ld.village))) " +
                                    "FROM LocationDetails ld " +
                                    "INNER JOIN Customer c ON c.id = ld.userId " +
                                    "WHERE c.ownerId = :ownerId " +
@@ -62,11 +62,11 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
                                    "AND c.isActive = true")
        Page<Object[]> findVillagesWithCustomerCountByOwnerIdPageable(@Param("ownerId") UUID ownerId, Pageable pageable);
 
-       @Query("SELECT COUNT(DISTINCT ld.village) FROM LocationDetails ld INNER JOIN Customer c ON c.id = ld.userId " +
+       @Query("SELECT COUNT(DISTINCT LOWER(TRIM(ld.village))) FROM LocationDetails ld INNER JOIN Customer c ON c.id = ld.userId " +
                      "WHERE c.ownerId = :ownerId AND ld.village IS NOT NULL AND c.isActive = true")
        long countVillagesByOwnerId(@Param("ownerId") UUID ownerId);
 
-       @Query(value = "SELECT ld.village, COUNT(c.id) as customerCount " +
+       @Query(value = "SELECT MIN(ld.village), COUNT(c.id) as customerCount " +
                      "FROM LocationDetails ld " +
                      "INNER JOIN Customer c ON c.id = ld.userId " +
                      "WHERE c.ownerId = :ownerId " +
@@ -74,8 +74,8 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
                      "AND (LOWER(ld.village) LIKE LOWER(CONCAT('%', :name, '%')) " +
                      "     OR (:key IS NOT NULL AND CONCAT(' ', ld.villageKey) LIKE CONCAT('% ', :key, '%'))) " +
                      "AND c.isActive = true " +
-                     "GROUP BY ld.village " +
-                     "ORDER BY LOWER(TRIM(ld.village)) ASC", countQuery = "SELECT COUNT(DISTINCT ld.village) " +
+                     "GROUP BY LOWER(TRIM(ld.village)) " +
+                     "ORDER BY LOWER(TRIM(ld.village)) ASC", countQuery = "SELECT COUNT(DISTINCT LOWER(TRIM(ld.village))) " +
                                    "FROM LocationDetails ld " +
                                    "INNER JOIN Customer c ON c.id = ld.userId " +
                                    "WHERE c.ownerId = :ownerId " +
@@ -88,6 +88,13 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
                      @Param("ownerId") UUID ownerId,
                      @Param("key") String key,
                      Pageable pageable);
+
+       /** How this shop already spells [village] ("kondapur " → "Kondapur"), so a new customer joins that village. */
+       @Query("SELECT ld.village FROM LocationDetails ld INNER JOIN Customer c ON c.id = ld.userId " +
+                     "WHERE c.ownerId = :ownerId AND (:skipId IS NULL OR c.id <> :skipId) AND ld.village IS NOT NULL " +
+                     "AND LOWER(TRIM(ld.village)) = LOWER(:village) " +
+                     "ORDER BY ld.village")
+       List<String> findVillageSpellings(@Param("ownerId") UUID ownerId, @Param("village") String village, @Param("skipId") UUID skipId);
 
        @Query("SELECT c.id, ld.village FROM LocationDetails ld " +
                      "INNER JOIN Customer c ON c.id = ld.userId " +
