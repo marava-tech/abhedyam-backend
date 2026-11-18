@@ -304,7 +304,9 @@ public class SaleService implements ISaleService {
     }
 
     private Product resolveProduct(SaleItemRequest itemRequest, UUID ownerId, String transactionId) {
-        if (itemRequest.getProductId() != null) {
+        if (Boolean.TRUE.equals(itemRequest.getAmountOnly())) {
+            return amountOnlyProduct(itemRequest, ownerId);
+        } else if (itemRequest.getProductId() != null) {
             Product product = productRepository.findById(itemRequest.getProductId())
                     .orElseThrow(() -> new ResourceNotFoundException("Product could not be found"));
 
@@ -333,6 +335,22 @@ public class SaleService implements ISaleService {
         } else {
             return createNewProduct(itemRequest, ownerId);
         }
+    }
+
+    /**
+     * A "just an amount" sale still needs a product row for its line, but it is not something the shop stocks:
+     * reuse or create one per name and keep it inactive, so Stock and the item pickers never list it.
+     */
+    Product amountOnlyProduct(SaleItemRequest itemRequest, UUID ownerId) {
+        String name = itemRequest.getProductName() == null || itemRequest.getProductName().isBlank()
+                ? "Udhar" : itemRequest.getProductName().trim();
+        Product product = productRepository.findByOwnerIdAndName(ownerId, name).stream().findFirst()
+                .orElseGet(() -> createNewProduct(itemRequest, ownerId, name, itemRequest.getPrice()));
+        if (!Boolean.FALSE.equals(product.getIsActive())) {
+            product.setIsActive(false);
+            product = productRepository.save(product);
+        }
+        return product;
     }
 
     private Product findOrCreateProduct(SaleItemRequest itemRequest, UUID ownerId) {
