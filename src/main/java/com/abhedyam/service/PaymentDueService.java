@@ -5,6 +5,8 @@ import com.abhedyam.dto.CollectionVisitRequest;
 import com.abhedyam.dto.CollectionCycleDto;
 import com.abhedyam.dto.CollectionVisitResponse;
 import com.abhedyam.dto.CustomerDuesResponse;
+import com.abhedyam.dto.NearbyCustomer;
+import com.abhedyam.dto.NearbyCustomersResponse;
 import com.abhedyam.dto.OwnerDueResponse;
 import com.abhedyam.dto.PaymentDueRequest;
 import com.abhedyam.dto.PaymentDueResponse;
@@ -31,6 +33,7 @@ import com.abhedyam.repository.PaymentRepository;
 import com.abhedyam.service.interfaces.ICustomerService;
 import com.abhedyam.service.interfaces.INotificationSettingsService;
 import com.abhedyam.service.interfaces.IPaymentDueService;
+import com.abhedyam.util.DistanceUtil;
 import com.abhedyam.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -232,6 +235,48 @@ public class PaymentDueService implements IPaymentDueService {
                 .filter(f -> f.getStatus().equals("OVERDUE") || !f.getDate().isAfter(end))
                 .toList();
         return new UpcomingDuesResponse(sum(upcoming), overdue.size(), sum(overdue), dues, visits, followUps);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public NearbyCustomersResponse nearby(UUID ownerId, double lat, double lng, int limit) {
+        requireSelf(ownerId);
+        if (Double.isNaN(lat) || Double.isNaN(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+            throw invalid("Your location could not be read");
+        }
+        Map<UUID, BigDecimal> sold = amounts(saleItems.sumTotalsByCustomer(ownerId));
+        Map<UUID, BigDecimal> paidTotal = amounts(paymentRepository.sumSuccessfulByCustomer(ownerId));
+        // Who owes: active, still chased ("not getting back" is left out), sales minus successful payments above zero.
+        Map<UUID, Customer> owing = new HashMap<>();
+        for (Customer c : customerRepository.findByOwnerId(ownerId)) {
+            if (!Boolean.TRUE.equals(c.getIsActive()) || Boolean.TRUE.equals(c.getChasePaused())) continue;
+            BigDecimal balance = sold.getOrDefault(c.getId(), BigDecimal.ZERO).subtract(paidTotal.getOrDefault(c.getId(), BigDecimal.ZERO));
+            if (balance.signum() > 0) owing.put(c.getId(), c);
+        }
+        // No village-name filter: distance alone decides (a typed village rarely matches the phone's town name).
+        Map<UUID, LocationDetails> located = new HashMap<>();
+        for (LocationDetails l : locations.findCustomerLocationsByOwnerId(ownerId)) {
+            if (owing.containsKey(l.getUserId())) located.putIfAbsent(l.getUserId(), l);
+        }
+        Map<UUID, List<PaymentDueResponse>> open = ownerDues(ownerId).stream()
+                .filter(o -> located.containsKey(o.getCustomerId()) && !"PAID".equals(o.getDue().getStatus()))
+                .collect(Collectors.groupingBy(OwnerDueResponse::getCustomerId,
+                        Collectors.mapping(OwnerDueResponse::getDue, Collectors.toList())));
+        LocalDate today = today(ownerId);
+        BigDecimal hereLat = BigDecimal.valueOf(lat), hereLng = BigDecimal.valueOf(lng);
+        List<NearbyCustomer> rows = located.values().stream().map(l -> {
+            Customer c = owing.get(l.getUserId());
+            List<PaymentDueResponse> dues = open.getOrDefault(c.getId(), List.of());
+            Integer overdueDays = dues.stream().filter(d -> "OVERDUE".equals(d.getStatus())).map(PaymentDueResponse::getDueDate)
+                    .min(Comparator.naturalOrder()).map(d -> (int) java.time.temporal.ChronoUnit.DAYS.between(d, today)).orElse(null);
+            LocalDate nextDue = dues.stream().filter(d -> !"OVERDUE".equals(d.getStatus())).map(PaymentDueResponse::getDueDate)
+                    .filter(d -> !d.isBefore(today)).min(Comparator.naturalOrder()).orElse(null);
+            double km = DistanceUtil.calculateDistanceKm(hereLat, hereLng, l.getLatitude(), l.getLongitude());
+            BigDecimal balance = sold.getOrDefault(c.getId(), BigDecimal.ZERO).subtract(paidTotal.getOrDefault(c.getId(), BigDecimal.ZERO));
+            return new NearbyCustomer(c.getId(), c.getName(), c.getPhone(), l.getVillage(), balance, Math.round(km * 1000),
+                    l.getLatitude(), l.getLongitude(), overdueDays, nextDue);
+        }).sorted(Comparator.comparingLong(NearbyCustomer::getDistanceMeters)).limit(Math.max(1, Math.min(limit, 50))).toList();
+        return new NearbyCustomersResponse(rows, owing.size() - located.size());
     }
 
     static BigDecimal sum(List<OwnerDueResponse> dues) {
