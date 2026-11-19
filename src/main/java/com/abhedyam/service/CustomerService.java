@@ -52,6 +52,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -816,6 +819,26 @@ public class CustomerService implements ICustomerService {
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal dueAmount = totalAmount.subtract(totalPaid);
         return new CustomerPaymentsSummaryResponse(customerId, (long) payments.size(), totalPaid, totalAmount, dueAmount);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.abhedyam.dto.PayHabitResponse getPayHabit(UUID ownerId, UUID customerId) {
+        validateOwnerAccess(ownerId);
+        getOwnerCustomer(ownerId, customerId);
+        // One bill = one sale: its items share a transactionId.
+        Map<Object, PayHabit.Sale> bills = new LinkedHashMap<>();
+        for (SaleItem s : saleItemRepository.findByCustomerIdAndOwnerId(customerId, ownerId)) {
+            BigDecimal amount = s.getPrice().multiply(s.getQuantity() != null ? s.getQuantity() : BigDecimal.ONE);
+            bills.merge(s.getTransactionId() != null ? s.getTransactionId() : s.getId(), new PayHabit.Sale(s.getCreatedAt(), amount),
+                (a, b) -> new PayHabit.Sale(a.at().isBefore(b.at()) ? a.at() : b.at(), a.amount().add(b.amount())));
+        }
+        List<PayHabit.Paid> paid = paymentRepository.findByCustomerIdAndOwnerId(customerId, ownerId).stream()
+            .filter(p -> p.getStatus() == PaymentStatus.SUCCESS)
+            .map(p -> new PayHabit.Paid(p.getTimestamp() != null ? p.getTimestamp() : p.getCreatedAt(), p.getAmount(), Boolean.TRUE.equals(p.getWriteOff())))
+            .toList();
+        PayHabit.Result r = PayHabit.of(new ArrayList<>(bills.values()), paid, ZoneId.of(notificationSettings.forOwner(ownerId).getTimezone()));
+        return new com.abhedyam.dto.PayHabitResponse(r.usualDays(), r.cleared(), r.mostOwed(), r.writtenOff(), r.lastWriteOff());
     }
 
     @Override

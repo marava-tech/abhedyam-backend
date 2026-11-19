@@ -94,6 +94,12 @@ public class OwnerCustomerController {
         return ApiResponse.success(customerService.getCustomerPaymentsSummary(ownerId, customerId));
     }
 
+    @GetMapping("/{customerId}/pay-habit")
+    @Operation(summary = "How the customer pays back udhar", description = "Usual days to pay back, most ever owed, written off. Only the shop sees it.")
+    public ApiResponse<com.abhedyam.dto.PayHabitResponse> getPayHabit(@PathVariable UUID ownerId, @PathVariable UUID customerId) {
+        return ApiResponse.success(customerService.getPayHabit(ownerId, customerId));
+    }
+
     @GetMapping("/{customerId}/notes-summary")
     @Operation(summary = "Customer notes summary", description = "Get notes summary for a customer")
     public ApiResponse<CustomerNotesSummaryResponse> getCustomerNotesSummary(
