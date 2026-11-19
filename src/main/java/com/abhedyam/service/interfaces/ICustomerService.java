@@ -30,6 +30,7 @@ public interface ICustomerService {
     CustomerBasicSummaryResponse getCustomerBasicSummary(UUID ownerId, UUID customerId);
     CustomerSalesSummaryResponse getCustomerSalesSummary(UUID ownerId, UUID customerId);
     CustomerPaymentsSummaryResponse getCustomerPaymentsSummary(UUID ownerId, UUID customerId);
+    com.abhedyam.dto.PayHabitResponse getPayHabit(UUID ownerId, UUID customerId);
     CustomerNotesSummaryResponse getCustomerNotesSummary(UUID ownerId, UUID customerId);
     CustomerRemindersSummaryResponse getCustomerRemindersSummary(UUID ownerId, UUID customerId);
     NearestCustomerResponse findNearestCustomer(NearestCustomerRequest request);
