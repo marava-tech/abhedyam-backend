@@ -25,10 +25,6 @@ public class ItemResponse {
     private BigDecimal stockValue;
     private String imageUrl;
     private Instant updatedAt;
-    private BigDecimal soldLast30;
-    private Instant lastSoldAt;
-    private Integer daysLeft;
-    private boolean notSelling;
     /** true when lowStockLevel was not set by the owner but worked out (a quarter of the last stock-up, at least 1). */
     private boolean lowStockAuto;
 }

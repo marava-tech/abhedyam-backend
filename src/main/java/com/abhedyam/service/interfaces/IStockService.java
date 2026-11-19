@@ -9,12 +9,7 @@ import java.util.UUID;
 
 public interface IStockService {
     BigDecimal apply(UUID ownerId, Product product, StockMovementType type, BigDecimal change,
-                     StockRemovalReason reason, String note, String saleTransactionId, UUID purchaseId);
-
-    default BigDecimal apply(UUID ownerId, Product product, StockMovementType type, BigDecimal change,
-                             StockRemovalReason reason, String note, String saleTransactionId) {
-        return apply(ownerId, product, type, change, reason, note, saleTransactionId, null);
-    }
+                     StockRemovalReason reason, String note, String saleTransactionId);
 
     BigDecimal count(UUID ownerId, Product product, BigDecimal counted, String note);
 
