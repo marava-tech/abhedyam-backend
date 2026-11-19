@@ -165,7 +165,7 @@ class DueDigestJobTest {
 
     static com.abhedyam.dto.ItemResponse item(String name, String stock, com.abhedyam.dto.ItemResponse.Status status) {
         return new com.abhedyam.dto.ItemResponse(UUID.randomUUID(), name, java.math.BigDecimal.TEN, null, com.abhedyam.model.enums.StockUnit.KG,
-            true, new java.math.BigDecimal(stock), java.math.BigDecimal.ONE, status, null, null, null, java.math.BigDecimal.ZERO, null, null, false, false);
+            true, new java.math.BigDecimal(stock), java.math.BigDecimal.ONE, status, null, null, null, false);
     }
 
     @Test

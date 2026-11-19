@@ -17,7 +17,6 @@ import com.abhedyam.model.enums.StockMovementType;
 import com.abhedyam.model.enums.StockUnit;
 import com.abhedyam.repository.InventoryRepository;
 import com.abhedyam.repository.ProductRepository;
-import com.abhedyam.repository.SaleItemRepository;
 import com.abhedyam.repository.StockMovementRepository;
 import com.abhedyam.service.interfaces.IItemService;
 import com.abhedyam.service.interfaces.IProductService;
@@ -31,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Comparator;
@@ -46,19 +44,12 @@ import java.util.stream.Collectors;
 public class ItemService implements IItemService {
 
     private static final int MAX_NAME = 80;
-    static final int NOT_SELLING_DAYS = 60;
-
-    /** Sales of one item: quantity in the last 30 days and the latest sale. */
-    record Sales(BigDecimal last30, Instant lastSoldAt) {
-        static final Sales NONE = new Sales(BigDecimal.ZERO, null);
-    }
 
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
     private final StockMovementRepository movementRepository;
     private final IStockService stockService;
     private final IProductService productService;
-    private final SaleItemRepository saleItems;
 
     @Override
     @Transactional(readOnly = true)
@@ -66,19 +57,12 @@ public class ItemService implements IItemService {
         requireSelf(ownerId);
         List<ItemResponse> all = all(ownerId);
 
-        BigDecimal value = BigDecimal.ZERO, profit = BigDecimal.ZERO, stuck = BigDecimal.ZERO;
-        int missingCost = 0, notSelling = 0;
+        BigDecimal value = BigDecimal.ZERO;
+        int missingCost = 0;
         for (ItemResponse i : all) {
             if (!i.isTrackStock() || i.getStock().signum() <= 0) continue;
             if (i.getStockValue() == null) missingCost++;
-            else {
-                value = value.add(i.getStockValue());
-                if (i.getPrice().signum() > 0) profit = profit.add(i.getStock().multiply(i.getPrice().subtract(i.getCostPrice())));
-            }
-            if (i.isNotSelling()) {
-                notSelling++;
-                if (i.getStockValue() != null) stuck = stuck.add(i.getStockValue());
-            }
+            else value = value.add(i.getStockValue());
         }
         ItemListResponse.Summary summary = new ItemListResponse.Summary(
                 all.size(),
@@ -86,18 +70,14 @@ public class ItemService implements IItemService {
                 (int) all.stream().filter(i -> i.getStatus() == ItemResponse.Status.LOW).count(),
                 (int) all.stream().filter(i -> i.getStatus() == ItemResponse.Status.OUT).count(),
                 value.setScale(2, RoundingMode.HALF_UP),
-                missingCost,
-                profit.setScale(2, RoundingMode.HALF_UP),
-                notSelling,
-                stuck.setScale(2, RoundingMode.HALF_UP));
+                missingCost);
 
         String q = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
         List<ItemResponse> shown = all.stream()
                 .filter(i -> q.isEmpty() || i.getName().toLowerCase(Locale.ROOT).contains(q))
                 .filter(i -> filter == null || filter == Filter.ALL
                         || (filter == Filter.LOW && i.getStatus() == ItemResponse.Status.LOW)
-                        || (filter == Filter.OUT && i.getStatus() == ItemResponse.Status.OUT)
-                        || (filter == Filter.NOT_SELLING && i.isNotSelling()))
+                        || (filter == Filter.OUT && i.getStatus() == ItemResponse.Status.OUT))
                 .sorted(Comparator.comparingInt((ItemResponse i) -> rank(i.getStatus()))
                         .thenComparing(i -> i.getName().toLowerCase(Locale.ROOT)))
                 .toList();
@@ -114,18 +94,15 @@ public class ItemService implements IItemService {
     @Override
     @Transactional(readOnly = true)
     public List<ItemResponse> all(UUID ownerId) {
-        // ponytail: loads all of an owner's active items and sale lines into memory (shops have hundreds of items, thousands of sale lines); move to SQL aggregates if an owner passes ~50k sale lines.
         List<Product> products = productRepository.findByOwnerId(ownerId).stream()
                 .filter(p -> Boolean.TRUE.equals(p.getIsActive()))
                 .toList();
         Map<UUID, BigDecimal> stock = inventoryRepository.findByOwnerId(ownerId).stream()
                 .filter(i -> i.getStock() != null)
                 .collect(Collectors.toMap(Inventory::getProductId, Inventory::getStock, (a, b) -> a));
-        Map<UUID, Sales> sales = sales(ownerId, Instant.now());
         Map<UUID, BigDecimal> stockUps = lastStockUps(ownerId);
-        Instant now = Instant.now();
         return products.stream()
-                .map(p -> toResponse(p, stock.get(p.getId()), sales.getOrDefault(p.getId(), Sales.NONE), stockUps.get(p.getId()), now))
+                .map(p -> toResponse(p, stock.get(p.getId()), stockUps.get(p.getId())))
                 .toList();
     }
 
@@ -147,23 +124,6 @@ public class ItemService implements IItemService {
     static BigDecimal autoLowLevel(BigDecimal lastStockUp) {
         if (lastStockUp == null || lastStockUp.signum() <= 0) return null;
         return lastStockUp.divide(BigDecimal.valueOf(4), 0, RoundingMode.UP).max(BigDecimal.ONE);
-    }
-
-    private Map<UUID, Sales> sales(UUID ownerId, Instant now) {
-        Instant since = now.minus(Duration.ofDays(30));
-        Map<UUID, BigDecimal> qty = new HashMap<>();
-        Map<UUID, Instant> last = new HashMap<>();
-        for (Object[] row : saleItems.saleLinesByOwner(ownerId)) {
-            UUID pid = row[0] instanceof UUID u ? u : UUID.fromString(row[0].toString());
-            BigDecimal q = row[1] == null ? BigDecimal.ONE : new BigDecimal(row[1].toString());
-            Instant at = (Instant) row[2];
-            if (at == null) continue;
-            last.merge(pid, at, (a, b) -> a.isAfter(b) ? a : b);
-            if (!at.isBefore(since)) qty.merge(pid, q, BigDecimal::add);
-        }
-        Map<UUID, Sales> out = new HashMap<>();
-        last.forEach((pid, at) -> out.put(pid, new Sales(qty.getOrDefault(pid, BigDecimal.ZERO), at)));
-        return out;
     }
 
     @Override
@@ -283,16 +243,12 @@ public class ItemService implements IItemService {
     }
 
     private ItemResponse toResponse(Product p, BigDecimal rawStock) {
-        Map<UUID, Sales> sales = sales(p.getOwnerId(), Instant.now());
-        return toResponse(p, rawStock, sales.getOrDefault(p.getId(), Sales.NONE), lastStockUps(p.getOwnerId()).get(p.getId()), Instant.now());
+        return toResponse(p, rawStock, lastStockUps(p.getOwnerId()).get(p.getId()));
     }
 
-    static ItemResponse toResponse(Product p, BigDecimal rawStock, Sales sales, BigDecimal lastStockUp, Instant now) {
+    static ItemResponse toResponse(Product p, BigDecimal rawStock, BigDecimal lastStockUp) {
         boolean tracked = p.tracksStock();
         BigDecimal stock = tracked ? (rawStock == null ? BigDecimal.ZERO : rawStock).stripTrailingZeros() : null;
-        Instant cutoff = now.minus(Duration.ofDays(NOT_SELLING_DAYS));
-        Instant since = sales.lastSoldAt() != null ? sales.lastSoldAt() : p.getCreatedAt();
-        boolean notSelling = tracked && stock.signum() > 0 && since != null && since.isBefore(cutoff);
         boolean auto = tracked && p.getLowStockLevel() == null;
         BigDecimal low = auto ? autoLowLevel(lastStockUp) : p.getLowStockLevel();
         ItemResponse.Status status;
@@ -302,16 +258,10 @@ public class ItemService implements IItemService {
         else status = ItemResponse.Status.OK;
         BigDecimal value = tracked && stock.signum() > 0 && p.getCostPrice() != null
                 ? stock.multiply(p.getCostPrice()).setScale(2, RoundingMode.HALF_UP) : null;
-        Integer daysLeft = null;
-        if (tracked && stock.signum() <= 0) daysLeft = 0;
-        else if (tracked && sales.last30().signum() > 0) {
-            daysLeft = stock.multiply(BigDecimal.valueOf(30)).divide(sales.last30(), 0, RoundingMode.DOWN).intValue();
-        }
         return new ItemResponse(p.getId(), p.getName(), p.getPrice(), p.getCostPrice(),
                 p.getUnit() == null ? StockUnit.PCS : p.getUnit(), tracked, stock,
                 low == null ? null : low.stripTrailingZeros(),
-                status, value, p.getImageUrl(), p.getUpdatedAt(),
-                sales.last30().stripTrailingZeros(), sales.lastSoldAt(), daysLeft, notSelling, auto && low != null);
+                status, value, p.getImageUrl(), p.getUpdatedAt(), auto && low != null);
     }
 
     private static StockMovementResponse toMovement(StockMovement m) {

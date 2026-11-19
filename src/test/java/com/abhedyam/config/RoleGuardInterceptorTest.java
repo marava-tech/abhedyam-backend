@@ -79,7 +79,6 @@ class RoleGuardInterceptorTest {
         assertFalse(allowed("DELETE", shop + "/customers/" + UUID.randomUUID() + "/dues/" + UUID.randomUUID()));
         assertFalse(allowed("POST", "/api/v1/sales/transaction/abc/cancel"));
         assertFalse(allowed("POST", shop + "/items"));
-        assertFalse(allowed("POST", shop + "/purchases"));
         assertFalse(allowed("PUT", shop + "/customers/" + UUID.randomUUID() + "/chase"));
         assertFalse(allowed("GET", shop + "/members"));
     }
