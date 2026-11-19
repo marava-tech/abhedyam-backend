@@ -23,6 +23,8 @@ public final class ErrorCodes {
     public static final String GUIDE_DATA_MISSING = "GUIDE_DATA_MISSING";
     public static final String GUIDE_LOAD_FAILED = "GUIDE_LOAD_FAILED";
     public static final String CUSTOMER_EXISTS = "CUSTOMER_EXISTS";
+    public static final String CUSTOMER_OWES = "CUSTOMER_OWES";
+    public static final String CUSTOMER_HAS_RECORDS = "CUSTOMER_HAS_RECORDS";
     public static final String INVALID_QUANTITY = "INVALID_QUANTITY";
     public static final String WALK_IN_MUST_BE_PAID = "WALK_IN_MUST_BE_PAID";
     public static final String PAYMENT_EXCEEDS_DUE = "PAYMENT_EXCEEDS_DUE";

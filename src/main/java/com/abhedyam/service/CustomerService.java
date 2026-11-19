@@ -14,7 +14,12 @@ import com.abhedyam.dto.PageResponse;
 import com.abhedyam.util.PendingOrdering;
 import com.abhedyam.exception.BusinessException;
 import com.abhedyam.exception.ResourceNotFoundException;
+import com.abhedyam.model.Audit;
 import com.abhedyam.model.Customer;
+import com.abhedyam.model.FcmDetails;
+import com.abhedyam.model.Note;
+import com.abhedyam.model.Notification;
+import com.abhedyam.model.PaymentDue;
 import com.abhedyam.model.LocationDetails;
 import com.abhedyam.model.Payment;
 import com.abhedyam.model.Product;
@@ -84,6 +89,9 @@ public class CustomerService implements ICustomerService {
     private final com.abhedyam.service.interfaces.IOwnerSettingsService ownerSettings;
     private final com.abhedyam.service.interfaces.INotificationSettingsService notificationSettings;
     
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager em;
+
     @Autowired
     @Qualifier("virtualThreadExecutor")
     private Executor virtualThreadExecutor;
@@ -105,6 +113,8 @@ public class CustomerService implements ICustomerService {
                 if (existingCustomer.getOwnerId() == null) {
                     customerRepository.delete(existingCustomer);
                     customerRepository.flush();
+                } else if (isHiddenOf(existingCustomer, ownerId)) {
+                    return showAgain(existingCustomer, ownerId);
                 } else {
                     throw new BusinessException(ErrorCodes.CUSTOMER_EXISTS,
                         "Customer with this phone number already exists and is associated with another owner");
@@ -113,6 +123,9 @@ public class CustomerService implements ICustomerService {
         } else if (hasVillage) {
             Optional<Customer> existingCustomerOpt = customerRepository.findByOwnerIdAndNameAndVillageIgnoreCase(
                 ownerId, request.getName().trim(), request.getVillage().trim());
+            if (existingCustomerOpt.isPresent() && isHiddenOf(existingCustomerOpt.get(), ownerId)) {
+                return showAgain(existingCustomerOpt.get(), ownerId); // added again: bring the hidden one back
+            }
             if (existingCustomerOpt.isPresent()) {
                 throw new BusinessException(ErrorCodes.CUSTOMER_EXISTS,
                     "Customer with this name and village already exists");
@@ -909,6 +922,79 @@ public class CustomerService implements ICustomerService {
         customerRepository.save(customer);
         invalidateAllRelatedCachesOnCustomerChange(ownerId);
         return CustomerResponse.fromEntity(customer, null);
+    }
+
+    private static boolean isHiddenOf(Customer c, UUID ownerId) {
+        return ownerId.equals(c.getOwnerId()) && Boolean.FALSE.equals(c.getIsActive()) && c.getDeletedAt() == null;
+    }
+
+    private Customer showAgain(Customer c, UUID ownerId) {
+        c.setIsActive(true);
+        customerRepository.save(c);
+        invalidateAllRelatedCachesOnCustomerChange(ownerId);
+        return c;
+    }
+
+    private Customer ownCustomer(UUID ownerId, UUID customerId) {
+        validateOwnerAccess(ownerId);
+        return customerRepository.findById(customerId)
+            .filter(c -> ownerId.equals(c.getOwnerId()) && c.getDeletedAt() == null)
+            .orElseThrow(() -> new ResourceNotFoundException("Customer could not be found"));
+    }
+
+    /** Spec hide-remove-customer.md: hiding needs a ₹0 balance (the app offers the write-off first). */
+    @Override
+    @Transactional
+    public CustomerResponse setHidden(UUID ownerId, UUID customerId, boolean hidden) {
+        Customer customer = ownCustomer(ownerId, customerId);
+        if (hidden) {
+            BigDecimal pending = pendingByCustomer(ownerId).getOrDefault(customerId, BigDecimal.ZERO);
+            if (pending.signum() != 0) {
+                throw new BusinessException(ErrorCodes.CUSTOMER_OWES,
+                    "Settle ₹" + pending.abs().stripTrailingZeros().toPlainString() + " before hiding this customer");
+            }
+            customer.setIsActive(false);
+            customerRepository.save(customer);
+            invalidateAllRelatedCachesOnCustomerChange(ownerId);
+        } else {
+            showAgain(customer, ownerId);
+        }
+        String village = locationDetailsRepository.findByUserId(customerId).map(LocationDetails::getVillage).orElse(null);
+        return CustomerResponse.fromEntity(customer, village);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CustomerResponse> hiddenCustomers(UUID ownerId) {
+        validateOwnerAccess(ownerId);
+        List<Customer> hidden = customerRepository.findByOwnerIdAndIsActiveFalseAndDeletedAtIsNullOrderByNameAsc(ownerId);
+        if (hidden.isEmpty()) return List.of();
+        Map<UUID, String> villages = new HashMap<>();
+        for (LocationDetails ld : locationDetailsRepository.findByUserIdIn(hidden.stream().map(Customer::getId).toList())) {
+            villages.put(ld.getUserId(), ld.getVillage());
+        }
+        return hidden.stream().map(c -> CustomerResponse.fromEntity(c, villages.get(c.getId()))).toList();
+    }
+
+    /** Only a customer with no sales and no payments (a typo, a test). Their due dates, notes and reminders go too. */
+    @Override
+    @Transactional
+    public void deleteCustomer(UUID ownerId, UUID customerId) {
+        Customer customer = ownCustomer(ownerId, customerId);
+        if (!saleItemRepository.findByCustomerIdAndOwnerId(customerId, ownerId).isEmpty()
+                || !paymentRepository.findByCustomerIdAndOwnerId(customerId, ownerId).isEmpty()) {
+            throw new BusinessException(ErrorCodes.CUSTOMER_HAS_RECORDS, "This customer has sales or payments. Hide them instead");
+        }
+        for (Class<?> c : List.of(PaymentDue.class, Note.class, Reminder.class, Audit.class)) {
+            em.createQuery("delete from " + c.getSimpleName() + " e where e.customerId = :c")
+                .setParameter("c", customerId).executeUpdate();
+        }
+        for (Class<?> c : List.of(LocationDetails.class, FcmDetails.class, Notification.class)) {
+            em.createQuery("delete from " + c.getSimpleName() + " e where e.userId = :c")
+                .setParameter("c", customerId).executeUpdate();
+        }
+        customerRepository.delete(customer);
+        invalidateAllRelatedCachesOnCustomerChange(ownerId);
     }
 
     /** Collection cycle: set (count starts today) or remove (null). Spec collection-cycle.md. */

@@ -55,6 +55,33 @@ public class OwnerCustomerController {
                 customerService.setChasePaused(ownerId, customerId, Boolean.TRUE.equals(body.get("paused"))));
     }
 
+    @PostMapping("/{customerId}/hide")
+    @Operation(summary = "Hide a customer",
+            description = "Out of lists, search, village groups and nearby; records and reports stay. Needs a ₹0 balance, else 400 CUSTOMER_OWES (write off first). A new sale, or adding them again, brings them back. Spec hide-remove-customer.md.")
+    public ApiResponse<CustomerResponse> hide(@PathVariable UUID ownerId, @PathVariable UUID customerId) {
+        return ApiResponse.success(customerService.setHidden(ownerId, customerId, true));
+    }
+
+    @PostMapping("/{customerId}/show")
+    @Operation(summary = "Show a hidden customer again")
+    public ApiResponse<CustomerResponse> show(@PathVariable UUID ownerId, @PathVariable UUID customerId) {
+        return ApiResponse.success(customerService.setHidden(ownerId, customerId, false));
+    }
+
+    @GetMapping("/hidden")
+    @Operation(summary = "Hidden customers", description = "This owner's hidden customers, by name.")
+    public ApiResponse<List<CustomerResponse>> hidden(@PathVariable UUID ownerId) {
+        return ApiResponse.success(customerService.hiddenCustomers(ownerId));
+    }
+
+    @DeleteMapping("/{customerId}")
+    @Operation(summary = "Remove a customer",
+            description = "Only with no sales and no payments, else 400 CUSTOMER_HAS_RECORDS (hide them instead). Their due dates, notes and reminders go too. Cannot be undone.")
+    public ApiResponse<Void> delete(@PathVariable UUID ownerId, @PathVariable UUID customerId) {
+        customerService.deleteCustomer(ownerId, customerId);
+        return ApiResponse.success(null);
+    }
+
     @PutMapping("/{customerId}/cycle")
     @Operation(summary = "Set a collection cycle",
             description = "Body {kind: WEEKLY|MONTHLY, day: 1-7 (Mon-Sun) or 1-31, amount}. The next collection then shows in Upcoming collections and reminders. Saving restarts the count from today.")

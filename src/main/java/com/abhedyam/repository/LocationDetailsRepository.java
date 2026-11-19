@@ -27,14 +27,14 @@ public interface LocationDetailsRepository extends JpaRepository<LocationDetails
 
        @Query("SELECT ld FROM LocationDetails ld " +
                      "INNER JOIN Customer c ON c.id = ld.userId " +
-                     "WHERE c.ownerId = :ownerId " +
+                     "WHERE c.ownerId = :ownerId AND c.isActive = true " +
                      "AND ld.latitude IS NOT NULL " +
                      "AND ld.longitude IS NOT NULL")
        List<LocationDetails> findCustomerLocationsByOwnerId(@Param("ownerId") UUID ownerId);
 
        @Query("SELECT ld FROM LocationDetails ld " +
                      "INNER JOIN Customer c ON c.id = ld.userId " +
-                     "WHERE c.ownerId = :ownerId " +
+                     "WHERE c.ownerId = :ownerId AND c.isActive = true " +
                      "AND LOWER(TRIM(ld.village)) = LOWER(TRIM(:village)) " +
                      "AND ld.latitude IS NOT NULL " +
                      "AND ld.longitude IS NOT NULL")

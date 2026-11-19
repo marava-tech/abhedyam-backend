@@ -24,7 +24,7 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
     Optional<Customer> findByLinkToken(String linkToken);
     Optional<Customer> findFirstByOwnerIdAndNameIgnoreCase(UUID ownerId, String name);
 
-    @Query("SELECT c FROM Customer c WHERE c.ownerId = :ownerId " +
+    @Query("SELECT c FROM Customer c WHERE c.ownerId = :ownerId AND c.isActive = true " +
            "AND (:searchTerm IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
            "OR (:key IS NOT NULL AND CONCAT(' ', c.nameKey) LIKE CONCAT('% ', :key, '%')) " +
            "OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
@@ -35,7 +35,7 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
 
     @Query("SELECT DISTINCT c FROM Customer c " +
            "LEFT JOIN LocationDetails ld ON ld.userId = c.id " +
-           "WHERE c.ownerId = :ownerId " +
+           "WHERE c.ownerId = :ownerId AND c.isActive = true " + // hidden customers stay out of lists
            "AND (:searchText IS NULL OR " +
            "     LOWER(c.name) LIKE LOWER(CONCAT('%', :searchText, '%')) OR " +
            "     (:key IS NOT NULL AND CONCAT(' ', c.nameKey) LIKE CONCAT('% ', :key, '%')) OR " +
@@ -49,7 +49,7 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
 
     @Query("SELECT DISTINCT c FROM Customer c " +
            "LEFT JOIN LocationDetails ld ON ld.userId = c.id " +
-           "WHERE c.ownerId = :ownerId " +
+           "WHERE c.ownerId = :ownerId AND c.isActive = true " + // hidden customers stay out of lists
            "AND (:searchText IS NULL OR " +
            "     LOWER(c.name) LIKE LOWER(CONCAT('%', :searchText, '%')) OR " +
            "     (:key IS NOT NULL AND CONCAT(' ', c.nameKey) LIKE CONCAT('% ', :key, '%')) OR " +
@@ -64,7 +64,7 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
     
     @Query("SELECT DISTINCT c FROM Customer c " +
            "LEFT JOIN LocationDetails ld ON ld.userId = c.id " +
-           "WHERE c.ownerId = :ownerId " +
+           "WHERE c.ownerId = :ownerId AND c.isActive = true " + // hidden customers stay out of lists
            "AND (:village IS NULL OR (ld.village IS NOT NULL AND LOWER(TRIM(ld.village)) = LOWER(TRIM(:village)))) " +
            "AND (:searchText IS NULL OR " +
            "     LOWER(c.name) LIKE LOWER(CONCAT('%', :searchText, '%')) OR " +
@@ -86,7 +86,7 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
      */
     @Query(value = "SELECT c FROM Customer c " +
            "LEFT JOIN LocationDetails ld ON ld.userId = c.id " +
-           "WHERE c.ownerId = :ownerId " +
+           "WHERE c.ownerId = :ownerId AND c.isActive = true " + // hidden customers stay out of lists
            "AND (:searchText IS NULL OR " +
            "     LOWER(c.name) LIKE LOWER(CONCAT('%', :searchText, '%')) OR " +
            "     (:key IS NOT NULL AND CONCAT(' ', c.nameKey) LIKE CONCAT('% ', :key, '%')) OR " +
@@ -97,7 +97,7 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
            "LOWER(TRIM(ld.village)), LOWER(TRIM(c.name))",
            countQuery = "SELECT COUNT(c) FROM Customer c " +
            "LEFT JOIN LocationDetails ld ON ld.userId = c.id " +
-           "WHERE c.ownerId = :ownerId " +
+           "WHERE c.ownerId = :ownerId AND c.isActive = true " + // hidden customers stay out of lists
            "AND (:searchText IS NULL OR " +
            "     LOWER(c.name) LIKE LOWER(CONCAT('%', :searchText, '%')) OR " +
            "     (:key IS NOT NULL AND CONCAT(' ', c.nameKey) LIKE CONCAT('% ', :key, '%')) OR " +
@@ -112,7 +112,7 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
 
     @Query(value = "SELECT c FROM Customer c " +
            "LEFT JOIN LocationDetails ld ON ld.userId = c.id " +
-           "WHERE c.ownerId = :ownerId " +
+           "WHERE c.ownerId = :ownerId AND c.isActive = true " + // hidden customers stay out of lists
            "AND (:village IS NULL OR (ld.village IS NOT NULL AND LOWER(TRIM(ld.village)) = LOWER(TRIM(:village)))) " +
            "AND (:searchText IS NULL OR " +
            "     LOWER(c.name) LIKE LOWER(CONCAT('%', :searchText, '%')) OR " +
@@ -122,7 +122,7 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
            "LOWER(TRIM(ld.village)), LOWER(TRIM(c.name))",
            countQuery = "SELECT COUNT(c) FROM Customer c " +
            "LEFT JOIN LocationDetails ld ON ld.userId = c.id " +
-           "WHERE c.ownerId = :ownerId " +
+           "WHERE c.ownerId = :ownerId AND c.isActive = true " + // hidden customers stay out of lists
            "AND (:village IS NULL OR (ld.village IS NOT NULL AND LOWER(TRIM(ld.village)) = LOWER(TRIM(:village)))) " +
            "AND (:searchText IS NULL OR " +
            "     LOWER(c.name) LIKE LOWER(CONCAT('%', :searchText, '%')) OR " +
@@ -135,11 +135,17 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
                                                                  @Param("key") String key,
                                                                  Pageable pageable);
 
+    /** Hidden customers (spec hide-remove-customer.md); deleted accounts also have deletedAt set. */
+    List<Customer> findByOwnerIdAndIsActiveFalseAndDeletedAtIsNullOrderByNameAsc(UUID ownerId);
+
     @Query("SELECT c FROM Customer c WHERE c.id IN :customerIds")
     List<Customer> findByIdIn(@Param("customerIds") List<UUID> customerIds);
     
     @Query("SELECT COUNT(c) FROM Customer c WHERE c.ownerId = :ownerId")
     long countByOwnerId(@Param("ownerId") UUID ownerId);
+
+    /** "N customers" on Home and the Customers tab: hidden ones left out. */
+    long countByOwnerIdAndIsActiveTrue(UUID ownerId);
 
     @Query("SELECT DISTINCT c FROM Customer c " +
            "LEFT JOIN LocationDetails ld ON ld.userId = c.id " +
