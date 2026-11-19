@@ -16,5 +16,7 @@ public record BillingStatusResponse(
         @Schema(description = "Phones the owner can be signed in on at once", example = "1") int maxPhones,
         @Schema(description = "Family members + helpers the shop can have", example = "2") int maxHelpers,
         @Schema(description = "The second free month was earned (10 customers + 5 payments)") boolean extraMonthEarned,
-        @Schema(description = "false on an extra shop: the plan is bought and shown on the main shop") boolean mainShop) {
+        @Schema(description = "false on an extra shop: the plan is bought and shown on the main shop") boolean mainShop,
+        @Schema(description = "Customers so far, toward the 10 for the second free month (0 once earned or paying)", example = "4") long bonusCustomers,
+        @Schema(description = "Successful payments so far, toward the 5 for the second free month (0 once earned or paying)", example = "1") long bonusPayments) {
 }
