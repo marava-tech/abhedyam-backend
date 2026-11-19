@@ -106,6 +106,7 @@ class CustomerBatchTest {
         assertThat(sale.getValue().getItems().get(0).getAmountOnly()).isTrue();
         assertThat(sale.getValue().getItems().get(0).getProductName()).isEqualTo("పాత బాకీ");
         assertThat(sale.getValue().getDueDate()).isNotNull();
+        assertThat(sale.getValue().getOldBalance()).isTrue(); // left out of Reports and "Bought …"
     }
 
     @Test

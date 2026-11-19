@@ -56,5 +56,8 @@ public class SaleItemResponse {
     
     @Schema(description = "Is active")
     private Boolean isActive;
+
+    @Schema(description = "True = old balance from before Abhedyam, not a sale")
+    private Boolean oldBalance;
 }
 

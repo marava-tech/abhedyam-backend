@@ -58,5 +58,10 @@ public class SaleItem extends BaseEntity {
      *  saved offline and sent again later is never recorded twice. Null = older app. */
     @Column(name = "client_key", length = 64)
     private String clientKey;
+
+    /** Owed from before Abhedyam (Bring in old records, or "Already owes" on Add customer): it counts in the balance,
+     *  never as a sale in Reports or "Bought …". Null = a normal sale. */
+    @Column(name = "old_balance")
+    private Boolean oldBalance;
 }
 

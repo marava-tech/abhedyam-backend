@@ -54,4 +54,7 @@ public class SaleCreateRequest {
     @Size(max = 64)
     @Schema(description = "Client-generated key; a repeat of the same key returns the first sale")
     private String idempotencyKey;
+
+    @Schema(description = "True = an old balance from before Abhedyam, not a sale: it adds to what the customer owes but is left out of Reports and the last-sale date")
+    private Boolean oldBalance;
 }

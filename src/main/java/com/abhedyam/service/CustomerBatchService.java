@@ -140,6 +140,7 @@ public class CustomerBatchService implements ICustomerBatchService {
         sale.setItems(List.of(line));
         sale.setDueDate(c.due());
         sale.setIdempotencyKey(clientKey); // a retry finds this sale instead of adding it twice
+        sale.setOldBalance(true);
         return sale;
     }
 
