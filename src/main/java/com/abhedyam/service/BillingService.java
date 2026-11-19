@@ -64,9 +64,13 @@ public class BillingService implements IBillingService {
         long daysLeft = active ? (long) Math.ceil(Duration.between(now, until).toHours() / 24.0) : 0;
         long foundingLeft = Math.max(0, FOUNDING_SEATS - ownerRepository.countByFirstPaidAtIsNotNull());
         Plan plan = Plan.of(owner);
+        // Progress toward the second free month, counted like grantEarnedMonth: shown on the trial sheet
+        boolean earning = active && owner.getPlayProductId() == null && owner.getFirstPaidAt() == null && owner.getTrialBonusAt() == null;
+        long customers = earning ? customerRepository.countByOwnerId(owner.getId()) : 0;
+        long payments = earning ? paymentRepository.countSuccessfulPaymentsByOwnerIdAndDateRange(owner.getId(), null, null) : 0;
         return new BillingStatusResponse(until, active, owner.getPlayProductId() != null,
                 owner.getPlayProductId(), daysLeft, foundingLeft, plan.name(), plan.phones, plan.helpers,
-                owner.getTrialBonusAt() != null, shop.getParentOwnerId() == null);
+                owner.getTrialBonusAt() != null, shop.getParentOwnerId() == null, customers, payments);
     }
 
     @Override
