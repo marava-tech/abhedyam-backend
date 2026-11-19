@@ -33,7 +33,7 @@ All under `/api/v1/owner/account`, owner JWT required (current user = owner).
 `owner_settings.last_export_requested_at` (nullable timestamp) records the last export request.
 Delete removes, for the owner id: sale_items, payments, products,
 inventories, reminders, notes, documents, upi_accounts, audits, notifications,
-owner_settings, daily_stats, top_products, payment_links, customers (and each
+owner_settings, payment_links, customers (and each
 customer's location_details, fcm_details, notifications), then the owner's own
 fcm_details, feedbacks, location_details, and finally the owner/user row.
 Kept: `subscriptions` rows (billing records; hold only ids and amounts, no name or phone).
