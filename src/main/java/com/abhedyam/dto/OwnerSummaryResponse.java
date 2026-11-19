@@ -38,4 +38,10 @@ public class OwnerSummaryResponse {
 
     @Schema(description = "Collected last week from Monday up to this same weekday and time (fair comparison)", example = "3900.00")
     private BigDecimal collectedLastWeekSoFar;
+
+    @Schema(description = "Sold today (Asia/Kolkata): bills of any kind, paid or udhar; old balances are not sales", example = "3300.00")
+    private BigDecimal soldToday;
+
+    @Schema(description = "Number of bills today (Asia/Kolkata)", example = "2")
+    private Long soldTodayCount;
 }

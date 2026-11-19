@@ -152,6 +152,8 @@ public class OwnerService implements IOwnerService {
         java.time.ZonedDateTime dayStart = java.time.LocalDate.now(zone).atStartOfDay(zone);
         java.time.Instant dayEnd = dayStart.plusDays(1).toInstant();
         WeekWindow week = WeekWindow.at(java.time.ZonedDateTime.now(zone));
+        // Home's "Sold today": the same totals as Reports (old balances left out)
+        Object[] sold = saleItemRepository.periodTotals(ownerId, dayStart.toInstant(), dayEnd).get(0);
 
         return new OwnerSummaryResponse(
             totalPendingAmount,
@@ -162,7 +164,9 @@ public class OwnerService implements IOwnerService {
             paymentRepository.sumSuccessfulBetween(ownerId, dayStart.toInstant(), dayEnd),
             paymentRepository.countSuccessfulBetween(ownerId, dayStart.toInstant(), dayEnd),
             paymentRepository.sumSuccessfulBetween(ownerId, week.thisStart(), week.now()),
-            paymentRepository.sumSuccessfulBetween(ownerId, week.lastStart(), week.lastSameTime())
+            paymentRepository.sumSuccessfulBetween(ownerId, week.lastStart(), week.lastSameTime()),
+            new BigDecimal(sold[0].toString()),
+            ((Number) sold[1]).longValue()
         );
     }
     
