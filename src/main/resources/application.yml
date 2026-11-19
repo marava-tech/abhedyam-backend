@@ -2,6 +2,12 @@ spring:
   application:
     name: abhedyam-backend
 
+  # 7 @Scheduled jobs; with Spring's default of 1 thread a slow due-digest pass delays the every-minute push sender.
+  task:
+    scheduling:
+      pool:
+        size: 4
+
   # Owner notification texts (specs/notifications-telugu.md). A missing Telugu key falls back to messages.properties
   # (English), never to the server's own locale.
   messages:

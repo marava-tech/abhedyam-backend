@@ -144,7 +144,7 @@ All endpoints are versioned under `/api/v1/`
 - **Payments**: `/api/v1/payments`
 - **Reminders**: `/api/v1/reminders`
 - **Notifications**: `/api/v1/notifications`
-- **Stats**: `/api/v1/stats`
+- **Stats**: `/api/v1/stats/dashboard`, `/analytics`, `/recent-activities`
 
 ---
 

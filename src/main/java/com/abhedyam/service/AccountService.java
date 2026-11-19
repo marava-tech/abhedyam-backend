@@ -33,8 +33,7 @@ public class AccountService implements IAccountService {
     /** Tables keyed by owner_id that are removed with the owner. */
     private static final List<Class<?>> OWNER_SCOPED = List.of(
             SaleItem.class, Payment.class, Product.class, Inventory.class, Reminder.class, Note.class,
-            UPIAccount.class, Audit.class, Notification.class, OwnerSettings.class,
-            DailyStats.class, TopProduct.class);
+            UPIAccount.class, Audit.class, Notification.class, OwnerSettings.class);
 
     @PersistenceContext
     private EntityManager em;
