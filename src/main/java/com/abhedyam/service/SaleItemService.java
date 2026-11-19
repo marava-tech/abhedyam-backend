@@ -71,6 +71,7 @@ public class SaleItemService implements ISaleItemService {
                     response.setCreatedAt(item.getCreatedAt());
                     response.setUpdatedAt(item.getUpdatedAt());
                     response.setIsActive(item.getIsActive());
+                    response.setOldBalance(Boolean.TRUE.equals(item.getOldBalance()) ? true : null);
                     return response;
                 })
                 .toList();

@@ -135,6 +135,7 @@ public class SaleService implements ISaleService {
                 SaleItem saleItem = createSaleItem(customer.getId(), ownerId, productId, itemPrice,
                         quantity, itemTotal, transactionId, request.getDueDate());
                 saleItem.setClientKey(clientKey);
+                if (Boolean.TRUE.equals(request.getOldBalance())) saleItem.setOldBalance(true);
 
                 SaleItem savedItem = saleItemRepository.save(saleItem);
                 saleItems.add(savedItem);
@@ -169,7 +170,8 @@ public class SaleService implements ISaleService {
                 auditService.logSaleCreation(firstSaleItemId != null ? firstSaleItemId : UUID.randomUUID(),
                         ownerId, customer.getId(), customer.getName(), totalAmount, transactionId,
                         ActivityText.itemsSummary(activityLines), request.getPaidAmount(),
-                        ActivityText.saleFacts(activityLines, request.getPaidAmount(), totalAmount));
+                        ActivityText.saleFacts(activityLines, request.getPaidAmount(), totalAmount),
+                        Boolean.TRUE.equals(request.getOldBalance()));
             } catch (Exception e) {
                 log.warn("Audit logging failed, sale still created: {}", e.getMessage());
             }
@@ -345,7 +347,7 @@ public class SaleService implements ISaleService {
         String name = itemRequest.getProductName() == null || itemRequest.getProductName().isBlank()
                 ? "Udhar" : itemRequest.getProductName().trim();
         Product product = productRepository.findByOwnerIdAndName(ownerId, name).stream().findFirst()
-                .orElseGet(() -> createNewProduct(itemRequest, ownerId, name, itemRequest.getPrice()));
+                .orElseGet(() -> createNewProduct(itemRequest, ownerId, name, itemRequest.getPrice(), false));
         if (!Boolean.FALSE.equals(product.getIsActive())) {
             product.setIsActive(false);
             product = productRepository.save(product);
@@ -380,7 +382,7 @@ public class SaleService implements ISaleService {
         }
 
         log.info("No existing product found with name '{}', creating new product", productName);
-        return createNewProduct(itemRequest, ownerId, productName, price);
+        return createNewProduct(itemRequest, ownerId, productName, price, true);
     }
 
     private Product createNewProduct(SaleItemRequest itemRequest, UUID ownerId) {
@@ -398,10 +400,11 @@ public class SaleService implements ISaleService {
             log.warn("Product price missing or invalid, using default: {}", price);
         }
 
-        return createNewProduct(itemRequest, ownerId, productName, price);
+        return createNewProduct(itemRequest, ownerId, productName, price, true);
     }
 
-    private Product createNewProduct(SaleItemRequest itemRequest, UUID ownerId, String productName, BigDecimal price) {
+    /** logActivity=false for the hidden line of a "just an amount" sale: it is not stock, so no "Added … to stock". */
+    private Product createNewProduct(SaleItemRequest itemRequest, UUID ownerId, String productName, BigDecimal price, boolean logActivity) {
         String productCode = "PROD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         int attempts = 0;
         while (productRepository.findByOwnerIdAndCode(ownerId, productCode).isPresent() && attempts < 10) {
@@ -424,7 +427,7 @@ public class SaleService implements ISaleService {
         inventory.setStock(BigDecimal.ZERO);
         inventoryRepository.save(inventory);
 
-        try {
+        if (logActivity) try {
             auditService.logProductCreation(product.getId(), ownerId, product.getName(), product.getCode());
         } catch (Exception e) {
             log.warn("Audit logging failed for product creation: {}", e.getMessage());

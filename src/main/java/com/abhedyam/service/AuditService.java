@@ -55,7 +55,7 @@ public class AuditService implements IAuditService {
     @Override
     @Async("virtualThreadExecutor")
     @Transactional
-    public void logSaleCreation(UUID saleId, UUID ownerId, UUID customerId, String customerName, BigDecimal amount, String transactionId, String itemsSummary, BigDecimal paid, String facts) {
+    public void logSaleCreation(UUID saleId, UUID ownerId, UUID customerId, String customerName, BigDecimal amount, String transactionId, String itemsSummary, BigDecimal paid, String facts, boolean oldBalance) {
         try {
             Audit audit = new Audit();
             audit.setOwnerId(ownerId);
@@ -65,9 +65,9 @@ public class AuditService implements IAuditService {
             audit.setAmount(amount);
             audit.setCustomerId(customerId);
             audit.setCustomerName(customerName);
-            audit.setHeadline(String.format("Sale to %s", customerName));
-            audit.setDetail(ActivityText.saleDetail(itemsSummary, paid, amount));
-            audit.setFacts(facts);
+            audit.setHeadline(String.format(oldBalance ? "Old balance: %s" : "Sale to %s", customerName));
+            audit.setDetail(oldBalance ? "From before Abhedyam" : ActivityText.saleDetail(itemsSummary, paid, amount));
+            audit.setFacts(oldBalance ? ActivityText.write(java.util.Map.of("old", true, "total", amount)) : facts);
             audit.setDescription(String.format("Sale of %s to %s. %s", ActivityText.money(amount), customerName, audit.getDetail()));
             audit.setTimestamp(Instant.now());
             

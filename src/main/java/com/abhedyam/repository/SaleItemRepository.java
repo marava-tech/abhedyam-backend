@@ -25,7 +25,8 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, UUID> {
     /** Sales report totals for [from, to): sales amount, bills, customers, units sold. Always one row. */
     @Query("SELECT COALESCE(SUM(s.price * s.quantity), 0), COUNT(DISTINCT s.transactionId), " +
            "COUNT(DISTINCT s.customerId), COALESCE(SUM(s.quantity), 0) FROM SaleItem s " +
-           "WHERE s.ownerId = :ownerId AND s.isActive = true AND s.createdAt >= :from AND s.createdAt < :to")
+           "WHERE s.ownerId = :ownerId AND s.isActive = true AND COALESCE(s.oldBalance, false) = false " +
+           "AND s.createdAt >= :from AND s.createdAt < :to")
     List<Object[]> periodTotals(@Param("ownerId") UUID ownerId, @Param("from") Instant from, @Param("to") Instant to);
 
     /** A sale entered later (saved offline): dated when it was made, not when it reached the server. */
@@ -64,7 +65,8 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, UUID> {
     List<Object[]> sumTotalsByCustomer(@Param("ownerId") UUID ownerId);
 
     /** customerId, created-at of that customer's latest sale. */
-    @Query("SELECT s.customerId, MAX(s.createdAt) FROM SaleItem s WHERE s.ownerId = :ownerId GROUP BY s.customerId")
+    @Query("SELECT s.customerId, MAX(s.createdAt) FROM SaleItem s WHERE s.ownerId = :ownerId " +
+           "AND COALESCE(s.oldBalance, false) = false GROUP BY s.customerId")
     List<Object[]> lastSaleByCustomer(@Param("ownerId") UUID ownerId);
 
     /** customerId, created-at of that customer's oldest sale not yet fully paid. */
