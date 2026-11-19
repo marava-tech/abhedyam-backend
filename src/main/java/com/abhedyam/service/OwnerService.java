@@ -137,7 +137,7 @@ public class OwnerService implements IOwnerService {
     public OwnerSummaryResponse getOwnerSummary(UUID ownerId) {
         validateOwnerAccess(ownerId);
         
-        long totalCustomers = customerRepository.countByOwnerId(ownerId);
+        long totalCustomers = customerRepository.countByOwnerIdAndIsActiveTrue(ownerId); // hidden ones left out
         
         BigDecimal totalCollectedAmount = paymentRepository.sumCollected(ownerId);
         BigDecimal totalPendingAmount = toCollect(ownerId);

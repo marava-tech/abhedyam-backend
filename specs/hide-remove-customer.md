@@ -10,4 +10,5 @@ Owner asked (2026-11-19): a way to stop seeing a customer who stopped buying, so
 - **Comes back by itself**: a new sale for them (SaleService already reactivates), or adding a customer with the same phone, or the same name + village.
 - **Remove** (`DELETE .../customers/{customerId}`): only with no sales and no payments, else 400 `CUSTOMER_HAS_RECORDS`. Deletes their due dates, notes, reminders, audits, location, and the customer. The app's Undo is a 5 s delay before it calls this.
 - Left out while hidden: customer list and search (all orders, all filters), New sale picker (same search), nearby/route locations. Kept: reports and totals (history doesn't change), customer page by id, statement, khata link.
+- "N customers" (owner summary) counts only shown customers.
 - `CustomerResponse.hidden` tells the app to show "Hidden · Show again" on the customer page.

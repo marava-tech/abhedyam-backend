@@ -144,6 +144,9 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
     @Query("SELECT COUNT(c) FROM Customer c WHERE c.ownerId = :ownerId")
     long countByOwnerId(@Param("ownerId") UUID ownerId);
 
+    /** "N customers" on Home and the Customers tab: hidden ones left out. */
+    long countByOwnerIdAndIsActiveTrue(UUID ownerId);
+
     @Query("SELECT DISTINCT c FROM Customer c " +
            "LEFT JOIN LocationDetails ld ON ld.userId = c.id " +
            "WHERE c.ownerId = :ownerId " +
