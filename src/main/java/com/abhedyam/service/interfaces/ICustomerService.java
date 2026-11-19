@@ -37,6 +37,11 @@ public interface ICustomerService {
     void invalidateCustomerSummaryCache(UUID ownerId, UUID customerId);
     com.abhedyam.dto.CustomerResponse setChasePaused(java.util.UUID ownerId, java.util.UUID customerId, boolean paused);
 
+    /** Spec hide-remove-customer.md: hide needs a ₹0 balance; show brings them back; delete needs no sales or payments. */
+    com.abhedyam.dto.CustomerResponse setHidden(UUID ownerId, UUID customerId, boolean hidden);
+    List<com.abhedyam.dto.CustomerResponse> hiddenCustomers(UUID ownerId);
+    void deleteCustomer(UUID ownerId, UUID customerId);
+
     /** null = remove the cycle. */
     com.abhedyam.dto.CustomerResponse setCycle(java.util.UUID ownerId, java.util.UUID customerId, com.abhedyam.dto.CollectionCycleDto cycle);
 }
