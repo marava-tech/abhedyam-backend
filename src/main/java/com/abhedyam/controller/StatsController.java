@@ -40,6 +40,14 @@ public class StatsController {
         return ApiResponse.success(statsService.getRecentActivities(pageable));
     }
 
+    @GetMapping("/report")
+    @Operation(summary = "Reports for a date range", description = "Sold, bills, customers, collected (cash / UPI), written off and a per-day series for the signed-in shop, from `from` to `to` (YYYY-MM-DD, both whole days in the shop's time zone, at most a year).")
+    public ApiResponse<com.abhedyam.dto.ReportResponse> report(
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate from,
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate to) {
+        return ApiResponse.success(statsService.report(from, to));
+    }
+
     @PostMapping("/analytics")
     @Operation(summary = "Get analytics data", description = "Get analytics data by type (DAILY, WEEKLY, MONTHLY) and owner ID. Daily returns last 7 days, Weekly returns weekly breakdown of last 4 weeks, Monthly returns monthly breakdown of last 6 months")
     public ApiResponse<AnalyticsResponse> getAnalytics(@Valid @RequestBody AnalyticsRequest request) {

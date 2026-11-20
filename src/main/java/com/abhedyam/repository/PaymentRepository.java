@@ -71,6 +71,11 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
            "AND (p.writeOff IS NULL OR p.writeOff = false)")
     BigDecimal sumCollected(@Param("ownerId") UUID ownerId);
 
+    /** Report rows: when received, amount, medium, write-off. Only money that came in (SUCCESS). */
+    @Query("SELECT p.timestamp, p.amount, p.medium, p.writeOff FROM Payment p WHERE p.ownerId = :ownerId " +
+           "AND p.status = 'SUCCESS' AND p.timestamp >= :from AND p.timestamp < :to")
+    List<Object[]> reportRows(@Param("ownerId") UUID ownerId, @Param("from") java.time.Instant from, @Param("to") java.time.Instant to);
+
     /** customerId, date of that customer's latest successful payment. */
     @Query("SELECT p.customerId, MAX(p.timestamp) FROM Payment p " +
            "WHERE p.ownerId = :ownerId AND p.status = 'SUCCESS' AND (p.writeOff IS NULL OR p.writeOff = false) GROUP BY p.customerId")

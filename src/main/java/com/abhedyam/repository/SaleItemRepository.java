@@ -29,6 +29,11 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, UUID> {
            "AND s.createdAt >= :from AND s.createdAt < :to")
     List<Object[]> periodTotals(@Param("ownerId") UUID ownerId, @Param("from") Instant from, @Param("to") Instant to);
 
+    /** Report rows: when, line total, bill, customer. Grouped by the owner's day in ReportMath. */
+    @Query("SELECT s.createdAt, s.price * s.quantity, s.transactionId, s.customerId FROM SaleItem s " +
+           "WHERE s.ownerId = :ownerId AND s.isActive = true AND s.createdAt >= :from AND s.createdAt < :to")
+    List<Object[]> reportRows(@Param("ownerId") UUID ownerId, @Param("from") Instant from, @Param("to") Instant to);
+
     /** A sale entered later (saved offline): dated when it was made, not when it reached the server. */
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true)
     @Query("UPDATE SaleItem s SET s.createdAt = :at WHERE s.transactionId = :transactionId")

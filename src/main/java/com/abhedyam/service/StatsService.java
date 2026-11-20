@@ -16,6 +16,7 @@ import com.abhedyam.repository.ProductRepository;
 import com.abhedyam.repository.SaleItemRepository;
 import com.abhedyam.service.interfaces.IStatsService;
 import com.abhedyam.util.SecurityUtil;
+import com.abhedyam.exception.BusinessException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +48,7 @@ import java.util.stream.Collectors;
 public class StatsService implements IStatsService {
 
         private final SaleItemRepository saleItemRepository;
+        private final com.abhedyam.repository.PaymentRepository paymentRepository;
         private final com.abhedyam.service.interfaces.INotificationSettingsService notificationSettings;
         private final ProductRepository productRepository;
         private final AuditRepository auditRepository;
@@ -268,6 +270,23 @@ public class StatsService implements IStatsService {
 
                 Collections.reverse(periods);
                 return new AnalyticsResponse(type, startDate, endDate, periods);
+        }
+
+        @Override
+        public com.abhedyam.dto.ReportResponse report(LocalDate from, LocalDate to) {
+                if (from == null || to == null || to.isBefore(from)) {
+                        throw new BusinessException("INVALID_RANGE", "Pick a start date on or before the end date.");
+                }
+                if (from.plusDays(366).isBefore(to)) {
+                        throw new BusinessException("RANGE_TOO_LONG", "Pick at most one year.");
+                }
+                UUID ownerId = SecurityUtil.getCurrentUserId(); // from the token: one shop can never read another's
+                ZoneId zone = ZoneId.of(notificationSettings.forOwner(ownerId).getTimezone());
+                Instant start = from.atStartOfDay(zone).toInstant();
+                Instant end = to.plusDays(1).atStartOfDay(zone).toInstant();
+                return ReportMath.build(from, to, zone,
+                                saleItemRepository.reportRows(ownerId, start, end),
+                                paymentRepository.reportRows(ownerId, start, end));
         }
 
         /** Every active sale from the first day to the last day (both whole days, owner's time zone). */

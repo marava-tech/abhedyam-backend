@@ -14,4 +14,7 @@ public interface IStatsService {
     Page<RecentActivityResponse> getRecentActivities(Pageable pageable);
 
     AnalyticsResponse getAnalytics(AnalyticsRequest request);
+
+    /** Reports for the signed-in owner's shop, from the first day to the last (both whole days, shop time zone). */
+    com.abhedyam.dto.ReportResponse report(java.time.LocalDate from, java.time.LocalDate to);
 }
